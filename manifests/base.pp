@@ -23,4 +23,20 @@ node default {
       "python3-dev": ensure => installed;
       "python3-pip": ensure => installed;
   }
+
+  exec{ "retrieve_pypy":
+    command => "/usr/bin/wget -q https://bitbucket.org/pypy/pypy/get/default.tar.gz -O /home/vagrant/pypy.tar.gz",
+    creates => "/home/vagrant/pypy.tar.gz",
+  }
+
+  file { "/home/vagrant/pypy":
+      ensure => "directory",
+  }
+
+  exec{ "extract_pypy":
+    command => "tar xfv pypy.tar.gz -C pypy --strip-components 1",
+    cwd => "/home/vagrant",
+    #creates => "/home/vagrant/pypy/pypy",
+    require => File["/home/vagrant/pypy"]
+  }
 }
