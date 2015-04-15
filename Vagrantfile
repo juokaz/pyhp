@@ -1,4 +1,6 @@
-Vagrant::Config.run do |config|
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "utopic"
   config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/utopic/current/utopic-server-cloudimg-amd64-vagrant-disk1.box"
 
@@ -7,7 +9,11 @@ Vagrant::Config.run do |config|
     puppet.manifest_file  = "base.pp"
   end
 
-  config.vm.network :hostonly, "33.33.33.20"
+  config.vm.provider "virtualbox" do |vb|
+    vb.customize ["modifyvm", :id, "--memory", "2048"]
+  end
 
-  config.vm.share_folder "www", "/var/www/pyhp", "./", :nfs => true
+  config.vm.network "private_network", ip: "33.33.33.20"
+
+  config.vm.synced_folder "./", "/var/www/pyhp", type: "nfs"
 end
