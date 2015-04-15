@@ -69,4 +69,9 @@ node default {
         target => '/home/vagrant/pypy-src/rpython/bin/rpython',
         require => Exec["extract_pypy-src"]
     }
+
+    exec { "python-virtualenv":
+        command => "pip3 install pytest",
+        require => Package["python3-pip"],
+    }
 }
