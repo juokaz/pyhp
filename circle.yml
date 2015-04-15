@@ -1,0 +1,14 @@
+machine:
+  python:
+    version: 3.4.1
+dependencies:
+  cache_directories:
+    - pypy-2.5.1-src
+  pre:
+    - mkdir pypy-src
+    - wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-src.tar.bz2
+    - tar xfv pypy-2.5.1-src.tar.bz2 --strip-components 1
+    - pip install py.test
+test:
+  override:
+    - PYTHONPATH=$PYTHONPATH:pypy-src py.test tests
