@@ -10,3 +10,4 @@ dependencies:
 test:
   override:
     - PYTHONPATH=$PYTHONPATH:pypy-src py.test tests
+    - pypy-2.5.1-src/rpython/bin/rpython targetpyhp.py
