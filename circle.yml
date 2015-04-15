@@ -5,9 +5,7 @@ dependencies:
   cache_directories:
     - pypy-2.5.1-src
   pre:
-    - mkdir pypy-src
-    - wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-src.tar.bz2
-    - tar xfv pypy-2.5.1-src.tar.bz2 --strip-components 1
+    - if [[ ! -e pypy-2.5.1-src ]]; then wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-src.tar.bz2 && tar xfv pypy-2.5.1-src.tar.bz2 --strip-components 1; fi
     - pip install pytest
 test:
   override:
