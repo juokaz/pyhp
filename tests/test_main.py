@@ -10,7 +10,7 @@ class TestMain(object):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
         phpfile = tmpdir.join(self.tmpname + '.php')
         phpfile.write(code)
-        r = main(str(phpfile))
+        r = main([None, str(phpfile)])
         out, err = capfd.readouterr()
         assert r == expected_exitcode
         assert not err
