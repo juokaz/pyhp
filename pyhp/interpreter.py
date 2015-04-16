@@ -17,6 +17,8 @@ from pyhp.bytecode import compile_ast
 from pyhp import bytecode
 from rpython.rlib import jit
 
+from utils import printf
+
 def printable_loc(pc, code, bc):
     return str(pc) + " " + bytecode.bytecodes[ord(code[pc])]
 
@@ -74,6 +76,11 @@ class W_StringObject(W_Root):
         assert(isinstance(stringval, str))
         self.stringval = stringval
 
+    def append(self, other):
+        if not isinstance(other, W_StringObject):
+            raise Exception("wrong type")
+        return W_StringObject(self.stringval + other.stringval)
+
     def str(self):
         return str(self.stringval)
 
@@ -129,6 +136,10 @@ def execute(frame, bc):
             right = frame.pop()
             left = frame.pop()
             frame.push(left.lt(right))
+        elif c == bytecode.STRING_JOIN:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left.append(right))
         elif c == bytecode.JUMP_IF_FALSE:
             if not frame.pop().is_true():
                 pc = arg
@@ -138,7 +149,7 @@ def execute(frame, bc):
             driver.can_enter_jit(pc=pc, code=code, bc=bc, frame=frame)
         elif c == bytecode.PRINT:
             item = frame.pop()
-            print item.str(),
+            printf(item.str())
         elif c == bytecode.ASSIGN:
             frame.vars[arg] = frame.pop()
         elif c == bytecode.LOAD_VAR:

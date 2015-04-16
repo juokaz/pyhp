@@ -86,6 +86,18 @@ class BinOp(Node):
         self.right.compile(ctx)
         ctx.emit(bytecode.BINOP[self.op])
 
+class StringJoin(Node):
+    """ A string concatenation operation
+    """
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def compile(self, ctx):
+        self.left.compile(ctx)
+        self.right.compile(ctx)
+        ctx.emit(bytecode.STRING_JOIN)
+
 class Variable(Node):
     """ Variable reference
     """
@@ -181,9 +193,14 @@ class Transformer(object):
     def visit_expr(self, node):
         if len(node.children) == 1:
             return self.visit_atom(node.children[0])
-        return BinOp(node.children[1].additional_info,
-                     self.visit_atom(node.children[0]),
-                     self.visit_expr(node.children[2]))
+        op = node.children[1].additional_info
+        if op != '.':
+            return BinOp(op,
+                         self.visit_atom(node.children[0]),
+                         self.visit_expr(node.children[2]))
+        else:
+            return StringJoin(self.visit_atom(node.children[0]),
+                              self.visit_expr(node.children[2]))
 
     def visit_atom(self, node):
         chnode = node.children[0]

@@ -27,7 +27,14 @@ class TestMain(object):
         print $x;""", capfd)
         assert out == "1"
 
-    def test_strinval(self, capfd):
+    def test_stringval(self, capfd):
         out = self.run("""$x = 'Hello world';
         print $x;""", capfd)
         assert out == "Hello world"
+
+    def test_string_join(self, capfd):
+        out = self.run("""$hello = 'Hello';
+        $world = 'World';
+        $x = $hello . ' ' . $world;
+        print $x;""", capfd)
+        assert out == "Hello World"

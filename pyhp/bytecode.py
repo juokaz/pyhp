@@ -1,7 +1,7 @@
 
 bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
-             'BINARY_EQ', 'RETURN', 'PRINT', 'BINARY_LT']
+             'BINARY_EQ', 'RETURN', 'PRINT', 'BINARY_LT', 'STRING_JOIN']
 for i, bytecode in enumerate(bytecodes):
     globals()[bytecode] = i
 

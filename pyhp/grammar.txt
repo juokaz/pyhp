@@ -2,14 +2,15 @@
 IGNORE: "<\?php|[ \t\n]";
 DECIMAL: "-?0|[1-9][0-9]*";
 FLOAT: "-?(0?|[1-9][0-9]*)\.[0-9]+([eE][-+]?[0-9]+)?";
-STRING: "'[a-zA-Z0-9_ ]*'";
+STRING: "'[^']*'";
 ADD_SYMBOL: "(==)|[-+<]";
+STRING_JOIN_SYMBOL: "\.";
 VARIABLE: "\$[a-zA-Z_][a-zA-Z0-9_]*";
 
 main: statement* [EOF];
 
 statement: expr ";" | VARIABLE "=" expr ";" | "while" "(" expr ")" "{" statement* "}" | "if" "(" expr ")" "{" statement* "}" | "print" expr ";";
 
-expr: atom ADD_SYMBOL expr | atom;
+expr: atom ADD_SYMBOL expr | atom STRING_JOIN_SYMBOL expr | atom;
 
 atom: DECIMAL | FLOAT | VARIABLE | STRING;
