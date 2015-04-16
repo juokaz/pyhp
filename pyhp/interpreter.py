@@ -69,6 +69,14 @@ class W_FloatObject(W_Root):
         return str(self.floatval)
 
 
+class W_StringObject(W_Root):
+    def __init__(self, stringval):
+        assert(isinstance(stringval, str))
+        self.stringval = stringval
+
+    def str(self):
+        return str(self.stringval)
+
 
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']

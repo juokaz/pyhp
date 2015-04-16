@@ -56,9 +56,21 @@ class ConstantFloat(Node):
         self.floatval = floatval
 
     def compile(self, ctx):
-        # convert the integer to W_FloatObject already here
+        # convert the float to W_FloatObject already here
         from pyhp.interpreter import W_FloatObject
         w = W_FloatObject(self.floatval)
+        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+
+class ConstantString(Node):
+    """ Represent a constant
+    """
+    def __init__(self, stringval):
+        self.stringval = stringval
+
+    def compile(self, ctx):
+        # convert the string to W_StringObject already here
+        from pyhp.interpreter import W_StringObject
+        w = W_StringObject(self.stringval)
         ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
 
 class BinOp(Node):
@@ -181,6 +193,8 @@ class Transformer(object):
             return Variable(chnode.additional_info)
         if chnode.symbol == 'FLOAT':
             return ConstantFloat(float(chnode.additional_info))
+        if chnode.symbol == 'STRING':
+            return ConstantString(chnode.additional_info.strip("'"))
         raise NotImplementedError
 
 transformer = Transformer()

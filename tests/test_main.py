@@ -26,3 +26,8 @@ class TestMain(object):
         $x = 1;
         print $x;""", capfd)
         assert out == "1"
+
+    def test_strinval(self, capfd):
+        out = self.run("""$x = 'Hello world';
+        print $x;""", capfd)
+        assert out == "Hello world"
