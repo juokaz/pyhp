@@ -27,8 +27,13 @@ class TestMain(object):
         print $x;""", capfd)
         assert out == "1"
 
-    def test_stringval(self, capfd):
+    def test_string(self, capfd):
         out = self.run("""$x = 'Hello world';
+        print $x;""", capfd)
+        assert out == "Hello world"
+
+    def test_string_double_quotes(self, capfd):
+        out = self.run("""$x = "Hello world";
         print $x;""", capfd)
         assert out == "Hello world"
 

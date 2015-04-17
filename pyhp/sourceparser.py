@@ -211,7 +211,7 @@ class Transformer(object):
         if chnode.symbol == 'FLOAT':
             return ConstantFloat(float(chnode.additional_info))
         if chnode.symbol == 'STRING':
-            return ConstantString(chnode.additional_info.strip("'"))
+            return ConstantString(chnode.additional_info.strip("'\""))
         raise NotImplementedError
 
 transformer = Transformer()
