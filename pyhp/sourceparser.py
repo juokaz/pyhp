@@ -27,6 +27,65 @@ class Block(Node):
         for stmt in self.stmts:
             stmt.compile(ctx)
 
+class Function(Node):
+    """ A function
+    """
+    def __init__(self, name, params, body):
+        self.name = name
+        self.params = params
+        self.body = body
+
+    def compile(self, ctx):
+        method = {'name': self.name,
+                  'args': len(self.params.declarations),
+                  'body': None}
+        ctx.register_function(method)
+
+        ctx2 = bytecode.CompilerContext()
+        ctx2.functions  = ctx.functions[:]
+        ctx2.function_id= ctx.function_id
+        ctx2.names      = ctx.names
+        ctx2.names_id   = ctx.names_id
+
+        if self.params is not None:
+          self.params.compile(ctx2)
+
+        self.body.compile(ctx2)
+
+        method['body'] = ctx2.create_bytecode()
+        #hack
+        #method['body'].functions[-1]['body'] = method['body']
+
+class Call(Node):
+    def __init__(self, func, args):
+        self.func  = func
+        self.args = []
+        for arg in args: self.args.insert(0,arg)
+
+    def compile(self, ctx):
+        id, method = ctx.resolve_function(self.func)
+        numargs = method['args']
+        if numargs != len(self.args):
+          raise PException(
+                  self.func+' expects %d arguments got %d at %s' %
+                  (numargs, len(self.args), self.docpos.str())
+                )
+
+        for i,expr in enumerate(self.args):
+          expr.compile(ctx)
+          ctx.emit(bytecode.NARG)
+        ctx.emit(bytecode.CALL, id)
+
+class DeclareVariables(Node):
+    """ Variable definition
+    """
+    def __init__(self, varlist):
+        self.declarations = varlist
+
+    def compile(self, ctx):
+        for var,dtype in self.declarations:
+          ctx.register_var(var)
+
 class Stmt(Node):
     """ A single statement
     """
@@ -156,6 +215,15 @@ class Print(Node):
         self.expr.compile(ctx)
         ctx.emit(bytecode.PRINT, 0)
 
+
+class Return(Node):
+    def __init__(self, arg=None):
+        self.arg = arg
+
+    def compile(self, ctx):
+        ctx.emit(bytecode.RETURN)
+
+
 class Transformer(object):
     """ Transforms AST from the obscure format given to us by the ennfparser
     to something easier to work with
@@ -173,11 +241,15 @@ class Transformer(object):
         return Block(stmts)
 
     def visit_stmt(self, node):
-        if len(node.children) == 2:
-            return Stmt(self.visit_expr(node.children[0]))
-        if len(node.children) == 4:
-            return Assignment(node.children[0].additional_info,
-                              self.visit_expr(node.children[2]))
+        if node.children[0].symbol == 'expr':
+            return self.visit_expr(node.children[0])
+        if node.children[0].additional_info == 'function':
+            name = str(node.children[1].children[0].additional_info)
+            params = []
+            for param in node.children[3].children:
+                params.append(param.children[0].additional_info)
+            stmts = self._grab_stmts(node.children[6])
+            return Function(name, DeclareVariables(params), Block(stmts))
         if node.children[0].additional_info == 'while':
             cond = self.visit_expr(node.children[2])
             stmts = self._grab_stmts(node.children[5])
@@ -188,11 +260,24 @@ class Transformer(object):
             return If(cond, Block(stmts))
         if node.children[0].additional_info == 'print':
             return Print(self.visit_expr(node.children[1]))
+        if node.children[0].additional_info == 'return':
+            return Return(self.visit_expr(node.children[1]))
+        if len(node.children) == 2:
+            return Stmt(self.visit_expr(node.children[0]))
+        if len(node.children) == 4:
+            return Assignment(node.children[0].additional_info,
+                              self.visit_expr(node.children[2]))
         raise NotImplementedError
 
     def visit_expr(self, node):
         if len(node.children) == 1:
             return self.visit_atom(node.children[0])
+        if node.children[0].symbol == 'function_name':
+            name = str(node.children[0].children[0].additional_info)
+            params = []
+            for param in node.children[2].children:
+                params.append(self.visit_atom(param))
+            return Call(name, params)
         op = node.children[1].additional_info
         if op != '.':
             return BinOp(op,

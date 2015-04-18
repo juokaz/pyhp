@@ -43,3 +43,13 @@ class TestMain(object):
         $x = $hello . ' ' . $world;
         print $x;""", capfd)
         assert out == "Hello World"
+
+    def test_function_call(self, capfd):
+        out = self.run("""function hello($a) {
+            print 'Hello world';
+            return $a;
+        }
+
+        hello('Hello world');""", capfd)
+        assert out == "Hello world"
+

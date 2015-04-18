@@ -84,6 +84,7 @@ class W_StringObject(W_Root):
     def str(self):
         return str(self.stringval)
 
+ARGSTACK_MIN = 32
 
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
@@ -93,6 +94,10 @@ class Frame(object):
         self.valuestack = [None] * 3 # safe estimate!
         self.vars = [None] * bc.numvars
         self.valuestack_pos = 0
+
+        self.arg_pos = 0
+        self.argstack_size = ARGSTACK_MIN
+        self.argstack = [None] * ARGSTACK_MIN
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
@@ -107,6 +112,22 @@ class Frame(object):
         v = self.valuestack[new_pos]
         self.valuestack_pos = new_pos
         return v
+
+    def push_arg(self, v):
+        argpos = jit.hint(self.arg_pos, promote=True)
+        assert argpos >= 0, 'Argstack underflow'
+        self.argstack[argpos] = v
+
+        self.arg_pos = argpos + 1
+
+    def pop_arg(self):
+        argpos = jit.hint(self.arg_pos, promote=True)
+        new_pos = argpos - 1
+        assert new_pos >= 0, 'Argstack underflow'
+        result = self.argstack[new_pos]
+        self.arg_pos = new_pos
+
+        return result
 
 def add(left, right):
     return left + right
@@ -147,6 +168,20 @@ def execute(frame, bc):
             pc = arg
             # required hint indicating this is the end of a loop
             driver.can_enter_jit(pc=pc, code=code, bc=bc, frame=frame)
+        elif c == bytecode.NARG:
+            frame.push_arg(frame.pop()) #push to the argument-stack
+        elif c == bytecode.CALL:
+            method = bc.functions[arg]
+            method['body'].globals = [None]*bc.numvars  #XXX
+
+            new_bc = method['body']
+            new_frame = Frame(new_bc)
+
+            for i in range(method['args']):
+                new_frame.vars[i] = frame.pop_arg()
+
+            res = execute(new_frame, new_bc)
+            frame.push(res)
         elif c == bytecode.PRINT:
             item = frame.pop()
             printf(item.str())

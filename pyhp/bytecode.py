@@ -1,7 +1,8 @@
 
 bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
-             'BINARY_EQ', 'RETURN', 'PRINT', 'BINARY_LT', 'STRING_JOIN']
+             'BINARY_EQ', 'RETURN', 'PRINT', 'BINARY_LT', 'STRING_JOIN',
+             'NARG', 'CALL']
 for i, bytecode in enumerate(bytecodes):
     globals()[bytecode] = i
 
@@ -12,7 +13,10 @@ class CompilerContext(object):
         self.data = []
         self.constants = []
         self.names = []
-        self.names_to_numbers = {}
+        self.names_id = {}
+
+        self.functions = []
+        self.function_id = {}
 
     def register_constant(self, v):
         self.constants.append(v)
@@ -20,25 +24,49 @@ class CompilerContext(object):
 
     def register_var(self, name):
         try:
-            return self.names_to_numbers[name]
+            return self.names_id[name]
         except KeyError:
-            self.names_to_numbers[name] = len(self.names)
+            self.names_id[name] = len(self.names)
             self.names.append(name)
             return len(self.names) - 1
+
+    def get_var(self, name):
+        if name in self.names_id:
+            return (self.names_id[name],'local')
+        else:
+            raise NameError('Variable `'+name+'` is not defined')
+
+    def register_function(self, func):
+        name = func['name'].lower()
+        if name in self.function_id:
+          raise NameError('Function `%s` is already defined' % name)
+        else:
+          self.function_id[name] = [len(self.functions)]
+          self.functions.append(func)
+          return len(self.functions) - 1
+
+    def resolve_function(self, name):
+        name = name.lower()
+        try:
+            ids = self.function_id[name]
+            return (ids[0], self.functions[ids[0]])
+        except KeyError:
+            raise NameError('Function `'+name+'` is not defined')
 
     def emit(self, bc, arg=0):
         self.data.append(chr(bc))
         self.data.append(chr(arg))
 
     def create_bytecode(self):
-        return ByteCode("".join(self.data), self.constants[:], len(self.names))
+        return ByteCode("".join(self.data), self.constants[:], self.functions[:], len(self.names))
 
 class ByteCode(object):
-    _immutable_fields_ = ['code', 'constants[*]', 'numvars']
+    _immutable_fields_ = ['code', 'constants[*]', 'functions[*]', 'numvars']
 
-    def __init__(self, code, constants, numvars):
+    def __init__(self, code, constants, functions, numvars):
         self.code = code
         self.constants = constants
+        self.functions = functions
         self.numvars = numvars
 
     def dump(self):
