@@ -1,5 +1,6 @@
 
-bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'LOAD_BOOLEAN', 'ASSIGN', 'DISCARD_TOP',
+bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'LOAD_BOOLEAN',
+             'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
              'BINARY_EQ', 'BINARY_GE', 'BINARY_LT', 'RETURN', 'PRINT',
              'BINARY_STRINGJOIN',
@@ -10,6 +11,7 @@ BytecodesMap = {}
 for i, bytecode in enumerate(bytecodes):
     globals()[bytecode] = i
     BytecodesMap[bytecode] = i
+
 
 class CompilerContext(object):
     def __init__(self):
@@ -42,11 +44,11 @@ class CompilerContext(object):
     def register_function(self, func):
         name = func.name.lower()
         if name in self.function_id:
-          raise NameError('Function `%s` is already defined' % name)
+            raise NameError('Function `%s` is already defined' % name)
         else:
-          self.function_id[name] = [len(self.functions)]
-          self.functions.append(func)
-          return len(self.functions) - 1
+            self.function_id[name] = [len(self.functions)]
+            self.functions.append(func)
+            return len(self.functions) - 1
 
     def resolve_function(self, name):
         name = name.lower()
@@ -61,7 +63,9 @@ class CompilerContext(object):
         self.data.append(chr(arg))
 
     def create_bytecode(self):
-        return ByteCode("".join(self.data), self.constants[:], self.functions[:], len(self.names))
+        return ByteCode("".join(self.data), self.constants[:],
+                        self.functions[:], len(self.names))
+
 
 class ByteCode(object):
     _immutable_fields_ = ['code', 'constants[*]', 'functions[*]', 'numvars']
@@ -72,8 +76,8 @@ class ByteCode(object):
         self.functions = functions
         self.numvars = numvars
 
-        #print 'Bytecode: '
-        #print self.dump()
+        # print 'Bytecode: '
+        # print self.dump()
 
     def dump(self):
         lines = []
@@ -84,8 +88,9 @@ class ByteCode(object):
             lines.append(bytecodes[ord(c)] + " " + str(ord(c2)))
         return '\n'.join(lines)
 
+
 def compile_ast(astnode):
     c = CompilerContext()
     astnode.compile(c)
-    c.emit(RETURN)
+    c.emit(BytecodesMap['RETURN'])
     return c.create_bytecode()

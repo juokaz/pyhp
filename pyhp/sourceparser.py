@@ -1,8 +1,8 @@
 import py
 from rpython.rlib.parsing.ebnfparse import parse_ebnf, make_parse_function
-from rpython.rlib.parsing.tree import RPythonVisitor, Symbol, Nonterminal
+from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.parsing.parsing import ParseError
-from rpython.rlib.rarithmetic import intmask, ovfcheck, ovfcheck_float_to_int
+from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
 
@@ -10,10 +10,11 @@ grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
 try:
     regexs, rules, ToAST = parse_ebnf(grammar)
-except ParseError,e:
-    print e.nice_error_message(filename=grammar_file,source=grammar)
+except ParseError, e:
+    print e.nice_error_message(filename=grammar_file, source=grammar)
     raise
 _parse = make_parse_function(regexs, rules, eof=True)
+
 
 class Scope(object):
     def __init__(self):
@@ -23,7 +24,7 @@ class Scope(object):
         return 'Scope ' + repr(self.local_variables)
 
     def add_local(self, variable):
-        if not self.is_local(variable) == True:
+        if not self.is_local(variable) is True:
             self.local_variables.append(variable)
 
     def is_local(self, variable):
@@ -31,6 +32,7 @@ class Scope(object):
 
     def get_local(self, variable):
         return self.local_variables.index(variable)
+
 
 class Scopes(object):
     def __init__(self):
@@ -54,7 +56,8 @@ class Scopes(object):
         return []
 
     def is_local(self, variable):
-        return self.scope_present() == True and self.current_scope().is_local(variable) == True
+        return self.scope_present() is True \
+            and self.current_scope().is_local(variable) is True
 
     def scope_present(self):
         return self.current_scope() is not None
@@ -70,6 +73,7 @@ class Scopes(object):
 class FakeParseError(Exception):
     def __init__(self, msg):
         self.msg = msg
+
 
 class Transformer(RPythonVisitor):
     """ Transforms AST from the obscure format given to us by the ennfparser
@@ -103,7 +107,7 @@ class Transformer(RPythonVisitor):
     def visit_sourceelements(self, node):
         self.varlists.append({})
         self.funclists.append({})
-        nodes=[]
+        nodes = []
         for child in node.children:
             node = self.dispatch(child)
             if node is not None:
@@ -118,7 +122,7 @@ class Transformer(RPythonVisitor):
 
     def functioncommon(self, node, declaration=True):
         self.scopes.new_scope()
-        i=0
+        i = 0
         identifier, i = self.get_next_expr(node, i)
         parameters, i = self.get_next_expr(node, i)
         functionbody, i = self.get_next_expr(node, i)
@@ -202,15 +206,14 @@ class Transformer(RPythonVisitor):
         return left
 
     def visit_block(self, node):
-        op = node.children[0]
         l = [self.dispatch(child) for child in node.children[1:]]
         return operations.Block(l)
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])
-        ifblock =  self.dispatch(node.children[1])
+        ifblock = self.dispatch(node.children[1])
         if len(node.children) > 2:
-            elseblock =  self.dispatch(node.children[2])
+            elseblock = self.dispatch(node.children[2])
         else:
             elseblock = None
         return operations.If(condition, ifblock, elseblock)
@@ -254,7 +257,7 @@ class Transformer(RPythonVisitor):
         name = node.additional_info
         return operations.Variable(name)
 
-    def string(self,node):
+    def string(self, node):
         return operations.ConstantString(node.additional_info)
     visit_DOUBLESTRING = string
     visit_SINGLESTRING = string
@@ -266,17 +269,15 @@ class Transformer(RPythonVisitor):
         else:
             return self.dispatch(node.children[i]), i+2
 
-    def is_variable(self, obj):
-        return isinstance(obj, Variable)
-
 transformer = Transformer()
+
 
 def parse(source):
     """ Parse the source code and produce an AST
     """
     try:
         t = _parse(source)
-    except ParseError,e:
+    except ParseError, e:
         print e.nice_error_message(source=source)
         raise
     ast = ToAST().transform(t)

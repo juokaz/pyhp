@@ -1,6 +1,7 @@
 from pyhp import bytecode
 from constants import unescapedict
 
+
 class Node(object):
     """ The abstract AST node
     """
@@ -14,19 +15,24 @@ class Node(object):
     def __ne__(self, other):
         return not self == other
 
+
 class Statement(Node):
     pass
 
+
 class Expression(Statement):
     pass
+
 
 class ListOp(Expression):
     def __init__(self, nodes):
         self.nodes = nodes
 
+
 class SourceElements(Statement):
     """
-    SourceElements nodes are found on each function declaration and in global code
+    SourceElements nodes are found on each function declaration and in global
+    code
     """
     def __init__(self, var_decl, func_decl, nodes):
         self.var_decl = var_decl
@@ -42,6 +48,7 @@ class SourceElements(Statement):
         for node in self.nodes:
             node.compile(ctx)
 
+
 class Program(Statement):
     def __init__(self, body):
         self.body = body
@@ -49,12 +56,14 @@ class Program(Statement):
     def compile(self, ctx):
         self.body.compile(ctx)
 
+
 class StatementList(Statement):
     def __init__(self, block):
         self.block = block
 
     def compile(self, ctx):
         self.block.compile(ctx)
+
 
 class ExprStatement(Node):
     def __init__(self, expr):
@@ -64,16 +73,15 @@ class ExprStatement(Node):
         self.expr.compile(ctx)
         ctx.emit(bytecode.DISCARD_TOP)
 
+
 class FUNCTION(object):
     def __init__(self, name, params, body=None):
-      assert isinstance(name, str)
+        assert isinstance(name, str)
 
-      self.name = name
-      self.params = params
-      self.body  = body
+        self.name = name
+        self.params = params
+        self.body = body
 
-    def emit(self):
-      return ScriptFunction(self.program, len(self.argtypes), self.passby)
 
 class Function(Node):
     """ A function
@@ -88,11 +96,11 @@ class Function(Node):
         ctx.register_function(method)
 
         ctx2 = bytecode.CompilerContext()
-        ctx2.functions  = ctx.functions[:]
-        ctx2.function_id= ctx.function_id
+        ctx2.functions = ctx.functions[:]
+        ctx2.function_id = ctx.function_id
         # no variables from the parent context can be accessed
-        ctx2.names      = []
-        ctx2.names_id   = {}
+        ctx2.names = []
+        ctx2.names_id = {}
 
         for param in self.params:
             ctx2.register_var(param)
@@ -101,6 +109,7 @@ class Function(Node):
             self.body.compile(ctx2)
 
         method.body = ctx2.create_bytecode()
+
 
 class Call(Node):
     def __init__(self, left, params):
@@ -111,14 +120,15 @@ class Call(Node):
         id, method = ctx.resolve_function(self.func)
         numargs = len(method.params)
         if numargs != len(self.params.nodes):
-          raise Exception(
-                  self.func+' expects %d arguments got %d' %
-                  (numargs, len(self.params.nodes))
-                )
+            raise Exception(
+                self.func+' expects %d arguments got %d' %
+                (numargs, len(self.params.nodes))
+            )
 
         self.params.compile(ctx)
 
         ctx.emit(bytecode.CALL, id)
+
 
 class Identifier(Expression):
     def __init__(self, name):
@@ -127,11 +137,13 @@ class Identifier(Expression):
     def get_literal(self):
         return self.name
 
+
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
             node.compile(ctx)
             ctx.emit(bytecode.LOAD_PARAM)
+
 
 class ConstantInt(Node):
     """ Represent a constant
@@ -145,6 +157,7 @@ class ConstantInt(Node):
         w = W_IntObject(self.intval)
         ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
 
+
 class ConstantFloat(Node):
     """ Represent a constant
     """
@@ -156,6 +169,7 @@ class ConstantFloat(Node):
         from pyhp.interpreter import W_FloatObject
         w = W_FloatObject(self.floatval)
         ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+
 
 class ConstantString(Node):
     """ Represent a constant
@@ -178,12 +192,6 @@ class ConstantString(Node):
         assert stop >= 0
         last = ""
 
-        #removing the begining quotes (" or \')
-        if string.startswith('"'):
-            singlequote = False
-        else:
-            singlequote = True
-
         internalstring = string[1:stop]
 
         for c in internalstring:
@@ -192,11 +200,12 @@ class ConstantString(Node):
                 # unknown escape sequences (like SM)
                 unescapeseq = unescapedict.get(last+c, c)
                 temp.append(unescapeseq)
-                c = ' ' # Could be anything
+                c = ' '  # Could be anything
             elif c != "\\":
                 temp.append(c)
             last = c
         return ''.join(temp)
+
 
 class Boolean(Expression):
     def __init__(self, boolval):
@@ -205,9 +214,11 @@ class Boolean(Expression):
     def compile(self, ctx):
         ctx.emit(bytecode.LOAD_BOOLEAN, self.bool)
 
+
 class Null(Expression):
     def compile(self, ctx):
         ctx.emit(bytecode.LOAD_NULL)
+
 
 class Variable(Node):
     """ Variable reference
@@ -221,6 +232,7 @@ class Variable(Node):
     def compile(self, ctx):
         ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.varname))
 
+
 class VariableDeclaration(Expression):
     def __init__(self, identifier, expr=None):
         self.identifier = identifier.get_literal()
@@ -230,6 +242,7 @@ class VariableDeclaration(Expression):
         if self.expr is not None:
             self.expr.compile(ctx)
             ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+
 
 class If(Node):
     """ A very simple if
@@ -246,10 +259,12 @@ class If(Node):
         self.true_branch.compile(ctx)
         ctx.data[jmp_pos] = chr(len(ctx.data))
 
+
 class WhileBase(Statement):
     def __init__(self, condition, body):
         self.condition = condition
         self.body = body
+
 
 class While(WhileBase):
     def compile(self, ctx):
@@ -260,6 +275,7 @@ class While(WhileBase):
         self.body.compile(ctx)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
         ctx.data[jmp_pos] = chr(len(ctx.data))
+
 
 class Print(Node):
     def __init__(self, expr):
@@ -288,6 +304,7 @@ class Block(Statement):
         for node in self.nodes:
             node.compile(ctx)
 
+
 def create_binary_op(name):
     class BinaryOp(Expression):
         def __init__(self, left, right):
@@ -302,16 +319,14 @@ def create_binary_op(name):
     BinaryOp.__name__ = name
     return BinaryOp
 
+Plus = create_binary_op('ADD')  # +
+Mult = create_binary_op('MUL')  # *
+Mod = create_binary_op('MOD')  # %
+Division = create_binary_op('DIV')  # /
+Sub = create_binary_op('SUB')  # -
 
-Plus = create_binary_op('ADD') # +
-Mult = create_binary_op('MUL') # *
-Mod = create_binary_op('MOD') # %
-Division = create_binary_op('DIV') # /
-Sub = create_binary_op('SUB') # -
+Eq = create_binary_op('EQ')  # ==
+Ge = create_binary_op('GE')  # >=
+Lt = create_binary_op('LT')  # <
 
-
-Eq = create_binary_op('EQ') # ==
-Ge = create_binary_op('GE') # >=
-Lt = create_binary_op('LT') # <
-
-StringJoin = create_binary_op('STRINGJOIN')
+StringJoin = create_binary_op('STRINGJOIN')  # .

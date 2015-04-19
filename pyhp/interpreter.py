@@ -3,7 +3,7 @@ necessary to construct a Jit.
 
 There are two required hints:
 1. JitDriver.jit_merge_point() at the start of the opcode dispatch loop
-2. JitDriver.can_enter_jit() at the end of loops (where they jump back to the start)
+2. JitDriver.can_enter_jit() at the end of loops (where they jump back)
 
 These bounds and the "green" variables effectively mark loops and
 allow the jit to decide if a loop is "hot" and in need of compiling.
@@ -19,16 +19,19 @@ from rpython.rlib import jit
 
 from utils import printf
 
+
 def printable_loc(pc, code, bc):
     return str(pc) + " " + bytecode.bytecodes[ord(code[pc])]
 
-driver = jit.JitDriver(greens = ['pc', 'code', 'bc'],
-                       reds = ['frame'],
+driver = jit.JitDriver(greens=['pc', 'code', 'bc'],
+                       reds=['frame'],
                        virtualizables=['frame'],
                        get_printable_location=printable_loc)
 
+
 class W_Root(object):
     pass
+
 
 class W_IntObject(W_Root):
     def __init__(self, intval):
@@ -114,32 +117,36 @@ class W_StringObject(W_Root):
     def str(self):
         return str(self.stringval)
 
+
 class W_Boolean(W_Root):
     _immutable_fields_ = ['boolval']
+
     def __init__(self, boolval):
         assert(isinstance(boolval, bool))
         self.boolval = boolval
 
     def str(self):
-        if self.boolval == True:
+        if self.boolval is True:
             return "true"
         return "false"
+
 
 class W_Null(W_Root):
     def str(self):
         return "null"
+
 
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
     def __init__(self, bc):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)
-        self.valuestack = [None] * 3 # safe estimate!
+        self.valuestack = [None] * 3  # safe estimate!
         self.vars = [None] * bc.numvars
         self.valuestack_pos = 0
 
         self.arg_pos = 0
-        self.argstack = [None] * 3 # safe estimate!
+        self.argstack = [None] * 3  # safe estimate!
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
@@ -171,6 +178,7 @@ class Frame(object):
 
         return result
 
+
 def execute(frame, bc):
     code = bc.code
     pc = 0
@@ -194,14 +202,14 @@ def execute(frame, bc):
         elif c == bytecode.LOAD_BOOLEAN:
             frame.push(W_Boolean(bool(arg)))
         elif c == bytecode.LOAD_PARAM:
-            frame.push_arg(frame.pop()) #push to the argument-stack
+            frame.push_arg(frame.pop())  # push to the argument-stack
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
         elif c == bytecode.RETURN:
             if frame.valuestack_pos > 0:
-              return frame.pop()
+                return frame.pop()
             else:
-              return W_Null()
+                return W_Null()
         elif c == bytecode.BINARY_ADD:
             right = frame.pop()
             left = frame.pop()
@@ -236,7 +244,7 @@ def execute(frame, bc):
             driver.can_enter_jit(pc=pc, code=code, bc=bc, frame=frame)
         elif c == bytecode.CALL:
             method = bc.functions[arg]
-            method.body.globals = [None]*bc.numvars  #XXX
+            method.body.globals = [None]*bc.numvars  # XXX
 
             new_bc = method.body
             new_frame = Frame(new_bc)
@@ -256,8 +264,9 @@ def execute(frame, bc):
         else:
             raise Exception("Unkown operation %s" % bytecode.bytecodes[c])
 
+
 def interpret(source):
     bc = compile_ast(parse(source))
     frame = Frame(bc)
     execute(frame, bc)
-    return frame # for tests and later introspection
+    return frame  # for tests and later introspection
