@@ -114,6 +114,17 @@ class W_StringObject(W_Root):
     def str(self):
         return str(self.stringval)
 
+class W_Boolean(W_Root):
+    _immutable_fields_ = ['boolval']
+    def __init__(self, boolval):
+        assert(isinstance(boolval, bool))
+        self.boolval = boolval
+
+    def str(self):
+        if self.boolval == True:
+            return "true"
+        return "false"
+
 class W_Null(W_Root):
     def str(self):
         return "null"
@@ -180,6 +191,8 @@ def execute(frame, bc):
             frame.push(frame.vars[arg])
         elif c == bytecode.LOAD_NULL:
             frame.push(W_Null())
+        elif c == bytecode.LOAD_BOOLEAN:
+            frame.push(W_Boolean(bool(arg)))
         elif c == bytecode.LOAD_PARAM:
             frame.push_arg(frame.pop()) #push to the argument-stack
         elif c == bytecode.DISCARD_TOP:

@@ -198,6 +198,13 @@ class ConstantString(Node):
             last = c
         return ''.join(temp)
 
+class Boolean(Expression):
+    def __init__(self, boolval):
+        self.bool = boolval
+
+    def compile(self, ctx):
+        ctx.emit(bytecode.LOAD_BOOLEAN, self.bool)
+
 class Null(Expression):
     def compile(self, ctx):
         ctx.emit(bytecode.LOAD_NULL)
