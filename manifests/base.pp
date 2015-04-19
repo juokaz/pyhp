@@ -70,8 +70,9 @@ node default {
         require => Exec["extract_pypy-src"]
     }
 
-    exec { "python-virtualenv":
-        command => "pip3 install pytest",
+    exec { "python-dependencies":
+        command => "pip3 install -r requirements.txt",
+        cwd => "/var/www/pyhp",
         require => Package["python3-pip"],
     }
 }
