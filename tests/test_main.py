@@ -1,21 +1,6 @@
-import py, re, tempfile, os, sys
-from pyhp.main import main
+from tests import TestBase
 
-class TestMain(object):
-    def setup_method(self, meth):
-        self.tmpname = meth.im_func.func_name
-
-    def run(self, code, capfd, expected_exitcode=0,
-            cgi=False, args=[]):
-        tmpdir = py.path.local.make_numbered_dir('pyhp')
-        phpfile = tmpdir.join(self.tmpname + '.php')
-        phpfile.write(code)
-        r = main([None, str(phpfile)])
-        out, err = capfd.readouterr()
-        assert r == expected_exitcode
-        assert not err
-        return out
-
+class TestMain(TestBase):
     def test_running(self, capfd):
         out = self.run("""$x = 1;
         print $x;""", capfd)
@@ -27,6 +12,79 @@ class TestMain(object):
         print $x;""", capfd)
         assert out == "1"
 
+    def test_function_call(self, capfd):
+        out = self.run("""function hello($a) {
+            print 'Hello world';
+        }
+
+        hello('Hello world');""", capfd)
+        assert out == "Hello world"
+
+    def test_function_call_multiple_args(self, capfd):
+        out = self.run("""function hello($a, $b) {
+            print $a;
+            print ' ';
+            print $b;
+        }
+
+        hello('Hello', 'world');""", capfd)
+        # todo arguments get inverted
+        assert out == "Hello world"
+
+    def test_function_call_return(self, capfd):
+        out = self.run("""function hello($a) {
+            return $a;
+        }
+
+        print hello('Hello world');""", capfd)
+        assert out == "Hello world"
+
+    def test_function_call_empty_return(self, capfd):
+        out = self.run("""function hello($a) {
+            return;
+        }
+
+        print hello('Hello world');""", capfd)
+        assert out == "null"
+
+    def test_function_call_no_return(self, capfd):
+        out = self.run("""function hello($a) {
+
+        }
+
+        print hello('Hello world');""", capfd)
+        assert out == "null"
+
+    def test_function_call_return_null(self, capfd):
+        out = self.run("""function hello($a) {
+            return null;
+        }
+
+        print hello('Hello world');""", capfd)
+        assert out == "null"
+
+    def test_function_call_return_breaks(self, capfd):
+        out = self.run("""function hello() {
+            print 'hello';
+            return;
+            print 'world';
+        }
+
+        hello();""", capfd)
+        assert out == "hello"
+
+    def test_function_call_local_vars(self, capfd):
+        out = self.run("""function test($x) {
+            return $x + 1;
+        }
+
+        $i = 1;
+        $i = test($i);
+
+        print $i;
+        """, capfd)
+        assert out == "2"
+
     def test_string(self, capfd):
         out = self.run("""$x = 'Hello world';
         print $x;""", capfd)
@@ -36,20 +94,3 @@ class TestMain(object):
         out = self.run("""$x = "Hello world";
         print $x;""", capfd)
         assert out == "Hello world"
-
-    def test_string_join(self, capfd):
-        out = self.run("""$hello = 'Hello';
-        $world = 'World';
-        $x = $hello . ' ' . $world;
-        print $x;""", capfd)
-        assert out == "Hello World"
-
-    def test_function_call(self, capfd):
-        out = self.run("""function hello($a) {
-            print 'Hello world';
-            return $a;
-        }
-
-        hello('Hello world');""", capfd)
-        assert out == "Hello world"
-

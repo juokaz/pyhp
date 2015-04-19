@@ -1,12 +1,15 @@
 
-bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'ASSIGN', 'DISCARD_TOP',
+bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
-             'BINARY_EQ', 'RETURN', 'PRINT', 'BINARY_LT', 'STRING_JOIN',
-             'NARG', 'CALL']
+             'BINARY_EQ', 'BINARY_GE', 'BINARY_LT', 'RETURN', 'PRINT',
+             'BINARY_STRINGJOIN',
+             'LOAD_PARAM', 'CALL']
+
+BytecodesMap = {}
+
 for i, bytecode in enumerate(bytecodes):
     globals()[bytecode] = i
-
-BINOP = {'+': BINARY_ADD, '-': BINARY_SUB, '==': BINARY_EQ, '<': BINARY_LT}
+    BytecodesMap[bytecode] = i
 
 class CompilerContext(object):
     def __init__(self):
@@ -32,12 +35,12 @@ class CompilerContext(object):
 
     def get_var(self, name):
         if name in self.names_id:
-            return (self.names_id[name],'local')
+            return self.names_id[name]
         else:
             raise NameError('Variable `'+name+'` is not defined')
 
     def register_function(self, func):
-        name = func['name'].lower()
+        name = func.name.lower()
         if name in self.function_id:
           raise NameError('Function `%s` is already defined' % name)
         else:
@@ -69,6 +72,9 @@ class ByteCode(object):
         self.functions = functions
         self.numvars = numvars
 
+        #print 'Bytecode: '
+        #print self.dump()
+
     def dump(self):
         lines = []
         i = 0
@@ -81,5 +87,5 @@ class ByteCode(object):
 def compile_ast(astnode):
     c = CompilerContext()
     astnode.compile(c)
-    c.emit(RETURN, 0)
+    c.emit(RETURN)
     return c.create_bytecode()

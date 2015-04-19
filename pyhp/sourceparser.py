@@ -1,307 +1,283 @@
 import py
 from rpython.rlib.parsing.ebnfparse import parse_ebnf, make_parse_function
+from rpython.rlib.parsing.tree import RPythonVisitor, Symbol, Nonterminal
+from rpython.rlib.parsing.parsing import ParseError
+from rpython.rlib.rarithmetic import intmask, ovfcheck, ovfcheck_float_to_int
 from pyhp import pyhpdir
-from pyhp import bytecode
+from pyhp import operations
 
-grammar = py.path.local(pyhpdir).join('grammar.txt').read("rt")
-regexs, rules, ToAST = parse_ebnf(grammar)
+grammar_file = 'grammar.txt'
+grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
+try:
+    regexs, rules, ToAST = parse_ebnf(grammar)
+except ParseError,e:
+    print e.nice_error_message(filename=grammar_file,source=grammar)
+    raise
 _parse = make_parse_function(regexs, rules, eof=True)
 
-class Node(object):
-    """ The abstract AST node
-    """
-    def __eq__(self, other):
-        return (self.__class__ == other.__class__ and
-                self.__dict__ == other.__dict__)
+class Scope(object):
+    def __init__(self):
+        self.local_variables = []
 
-    def __ne__(self, other):
-        return not self == other
+    def __repr__(self):
+        return 'Scope ' + repr(self.local_variables)
 
-class Block(Node):
-    """ A list of statements
-    """
-    def __init__(self, stmts):
-        self.stmts = stmts
+    def add_local(self, variable):
+        if not self.is_local(variable) == True:
+            self.local_variables.append(variable)
 
-    def compile(self, ctx):
-        for stmt in self.stmts:
-            stmt.compile(ctx)
+    def is_local(self, variable):
+        return variable in self.local_variables
 
-class Function(Node):
-    """ A function
-    """
-    def __init__(self, name, params, body):
-        self.name = name
-        self.params = params
-        self.body = body
+    def get_local(self, variable):
+        return self.local_variables.index(variable)
 
-    def compile(self, ctx):
-        method = {'name': self.name,
-                  'args': len(self.params.declarations),
-                  'body': None}
-        ctx.register_function(method)
+class Scopes(object):
+    def __init__(self):
+        self.scopes = []
 
-        ctx2 = bytecode.CompilerContext()
-        ctx2.functions  = ctx.functions[:]
-        ctx2.function_id= ctx.function_id
-        ctx2.names      = ctx.names
-        ctx2.names_id   = ctx.names_id
+    def current_scope(self):
+        if not self.scopes:
+            return None
+        else:
+            return self.scopes[-1]
 
-        if self.params is not None:
-          self.params.compile(ctx2)
+    def new_scope(self):
+        self.scopes.append(Scope())
 
-        self.body.compile(ctx2)
+    def end_scope(self):
+        self.scopes.pop()
 
-        method['body'] = ctx2.create_bytecode()
-        #hack
-        #method['body'].functions[-1]['body'] = method['body']
+    def variables(self):
+        if self.scope_present():
+            return self.current_scope().local_variables
+        return []
 
-class Call(Node):
-    def __init__(self, func, args):
-        self.func  = func
-        self.args = []
-        for arg in args: self.args.insert(0,arg)
+    def is_local(self, variable):
+        return self.scope_present() == True and self.current_scope().is_local(variable) == True
 
-    def compile(self, ctx):
-        id, method = ctx.resolve_function(self.func)
-        numargs = method['args']
-        if numargs != len(self.args):
-          raise PException(
-                  self.func+' expects %d arguments got %d at %s' %
-                  (numargs, len(self.args), self.docpos.str())
-                )
+    def scope_present(self):
+        return self.current_scope() is not None
 
-        for i,expr in enumerate(self.args):
-          expr.compile(ctx)
-          ctx.emit(bytecode.NARG)
-        ctx.emit(bytecode.CALL, id)
+    def add_local(self, variable):
+        if self.scope_present():
+            self.current_scope().add_local(variable)
 
-class DeclareVariables(Node):
-    """ Variable definition
-    """
-    def __init__(self, varlist):
-        self.declarations = varlist
-
-    def compile(self, ctx):
-        for var,dtype in self.declarations:
-          ctx.register_var(var)
-
-class Stmt(Node):
-    """ A single statement
-    """
-    def __init__(self, expr):
-        self.expr = expr
-
-    def compile(self, ctx):
-        self.expr.compile(ctx)
-        ctx.emit(bytecode.DISCARD_TOP)
-
-class ConstantInt(Node):
-    """ Represent a constant
-    """
-    def __init__(self, intval):
-        self.intval = intval
-
-    def compile(self, ctx):
-        # convert the integer to W_IntObject already here
-        from pyhp.interpreter import W_IntObject
-        w = W_IntObject(self.intval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
-
-class ConstantFloat(Node):
-    """ Represent a constant
-    """
-    def __init__(self, floatval):
-        self.floatval = floatval
-
-    def compile(self, ctx):
-        # convert the float to W_FloatObject already here
-        from pyhp.interpreter import W_FloatObject
-        w = W_FloatObject(self.floatval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
-
-class ConstantString(Node):
-    """ Represent a constant
-    """
-    def __init__(self, stringval):
-        self.stringval = stringval
-
-    def compile(self, ctx):
-        # convert the string to W_StringObject already here
-        from pyhp.interpreter import W_StringObject
-        w = W_StringObject(self.stringval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
-
-class BinOp(Node):
-    """ A binary operation
-    """
-    def __init__(self, op, left, right):
-        self.op = op
-        self.left = left
-        self.right = right
-
-    def compile(self, ctx):
-        self.left.compile(ctx)
-        self.right.compile(ctx)
-        ctx.emit(bytecode.BINOP[self.op])
-
-class StringJoin(Node):
-    """ A string concatenation operation
-    """
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def compile(self, ctx):
-        self.left.compile(ctx)
-        self.right.compile(ctx)
-        ctx.emit(bytecode.STRING_JOIN)
-
-class Variable(Node):
-    """ Variable reference
-    """
-    def __init__(self, varname):
-        self.varname = varname
-
-    def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.register_var(self.varname))
-
-class Assignment(Node):
-    """ Assign to a variable
-    """
-    def __init__(self, varname, expr):
-        self.varname = varname
-        self.expr = expr
-
-    def compile(self, ctx):
-        self.expr.compile(ctx)
-        ctx.emit(bytecode.ASSIGN, ctx.register_var(self.varname))
-
-class While(Node):
-    """ Simple loop
-    """
-    def __init__(self, cond, body):
-        self.cond = cond
-        self.body = body
-
-    def compile(self, ctx):
-        pos = len(ctx.data)
-        self.cond.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
-        self.body.compile(ctx)
-        ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
-
-class If(Node):
-    """ A very simple if
-    """
-    def __init__(self, cond, body):
-        self.cond = cond
-        self.body = body
-
-    def compile(self, ctx):
-        self.cond.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
-        self.body.compile(ctx)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
-
-class Print(Node):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def compile(self, ctx):
-        self.expr.compile(ctx)
-        ctx.emit(bytecode.PRINT, 0)
+    def get_local(self, variable):
+        return self.current_scope().get_local(variable)
 
 
-class Return(Node):
-    def __init__(self, arg=None):
-        self.arg = arg
+class FakeParseError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
 
-    def compile(self, ctx):
-        ctx.emit(bytecode.RETURN)
-
-
-class Transformer(object):
+class Transformer(RPythonVisitor):
     """ Transforms AST from the obscure format given to us by the ennfparser
     to something easier to work with
     """
-    def _grab_stmts(self, star):
-        stmts = []
-        while len(star.children) == 2:
-            stmts.append(self.visit_stmt(star.children[0]))
-            star = star.children[1]
-        stmts.append(self.visit_stmt(star.children[0]))
-        return stmts
+    BINOP_TO_CLS = {
+        '+': operations.Plus,
+        '-': operations.Sub,
+        '*': operations.Mult,
+        '/': operations.Division,
+        '%': operations.Mod,
+        '>=': operations.Ge,
+        '==': operations.Eq,
+        '<': operations.Lt,
+        '.': operations.StringJoin,
+    }
+
+    def __init__(self):
+        self.varlists = []
+        self.funclists = []
+        self.scopes = Scopes()
 
     def visit_main(self, node):
-        stmts = self._grab_stmts(node.children[0])
-        return Block(stmts)
+        body = self.dispatch(node.children[0])
+        return operations.Program(body)
 
-    def visit_stmt(self, node):
-        if node.children[0].symbol == 'expr':
-            return self.visit_expr(node.children[0])
-        if node.children[0].additional_info == 'function':
-            name = str(node.children[1].children[0].additional_info)
-            params = []
-            for param in node.children[3].children:
-                params.append(param.children[0].additional_info)
-            stmts = self._grab_stmts(node.children[6])
-            return Function(name, DeclareVariables(params), Block(stmts))
-        if node.children[0].additional_info == 'while':
-            cond = self.visit_expr(node.children[2])
-            stmts = self._grab_stmts(node.children[5])
-            return While(cond, Block(stmts))
-        if node.children[0].additional_info == 'if':
-            cond = self.visit_expr(node.children[2])
-            stmts = self._grab_stmts(node.children[5])
-            return If(cond, Block(stmts))
-        if node.children[0].additional_info == 'print':
-            return Print(self.visit_expr(node.children[1]))
-        if node.children[0].additional_info == 'return':
-            return Return(self.visit_expr(node.children[1]))
-        if len(node.children) == 2:
-            return Stmt(self.visit_expr(node.children[0]))
-        if len(node.children) == 4:
-            return Assignment(node.children[0].additional_info,
-                              self.visit_expr(node.children[2]))
-        raise NotImplementedError
+    def visit_arguments(self, node):
+        nodes = [self.dispatch(child) for child in node.children[1:]]
+        return operations.ArgumentList(nodes)
 
-    def visit_expr(self, node):
-        if len(node.children) == 1:
-            return self.visit_atom(node.children[0])
-        if node.children[0].symbol == 'function_name':
-            name = str(node.children[0].children[0].additional_info)
-            params = []
-            for param in node.children[2].children:
-                params.append(self.visit_atom(param))
-            return Call(name, params)
-        op = node.children[1].additional_info
-        if op != '.':
-            return BinOp(op,
-                         self.visit_atom(node.children[0]),
-                         self.visit_expr(node.children[2]))
+    def visit_sourceelements(self, node):
+        self.varlists.append({})
+        self.funclists.append({})
+        nodes=[]
+        for child in node.children:
+            node = self.dispatch(child)
+            if node is not None:
+                nodes.append(node)
+        var_decl = self.scopes.variables()
+        if not var_decl:
+            var_decl = self.varlists.pop().keys()
         else:
-            return StringJoin(self.visit_atom(node.children[0]),
-                              self.visit_expr(node.children[2]))
+            self.varlists.pop()
+        func_decl = self.funclists.pop()
+        return operations.SourceElements(var_decl, func_decl, nodes)
 
-    def visit_atom(self, node):
-        chnode = node.children[0]
-        if chnode.symbol == 'DECIMAL':
-            return ConstantInt(int(chnode.additional_info))
-        if chnode.symbol == 'VARIABLE':
-            return Variable(chnode.additional_info)
-        if chnode.symbol == 'FLOAT':
-            return ConstantFloat(float(chnode.additional_info))
-        if chnode.symbol == 'STRING':
-            return ConstantString(chnode.additional_info.strip("'\""))
-        raise NotImplementedError
+    def functioncommon(self, node, declaration=True):
+        self.scopes.new_scope()
+        i=0
+        identifier, i = self.get_next_expr(node, i)
+        parameters, i = self.get_next_expr(node, i)
+        functionbody, i = self.get_next_expr(node, i)
+        if parameters is None:
+            p = []
+        else:
+            p = [pident.get_literal() for pident in parameters.nodes]
+        funcobj = operations.Function(identifier, p, functionbody)
+        if declaration:
+            self.funclists[-1][identifier.get_literal()] = funcobj
+        self.scopes.end_scope()
+        return funcobj
+
+    def visit_functiondeclaration(self, node):
+        self.functioncommon(node)
+        return None
+
+    def visit_formalparameterlist(self, node):
+        nodes = [self.dispatch(child) for child in node.children]
+        return operations.ArgumentList(nodes)
+
+    def visit_statementlist(self, node):
+        block = self.dispatch(node.children[0])
+        return operations.StatementList(block)
+
+    def binaryop(self, node):
+        left = self.dispatch(node.children[0])
+        for i in range((len(node.children) - 1) // 2):
+            op = node.children[i * 2 + 1]
+            right = self.dispatch(node.children[i * 2 + 2])
+            result = self.BINOP_TO_CLS[op.additional_info](left, right)
+            left = result
+        return left
+    visit_stringjoinexpression = binaryop
+    visit_relationalexpression = binaryop
+    visit_equalityexpression = binaryop
+    visit_additiveexpression = binaryop
+    visit_expression = binaryop
+    visit_memberexpression = binaryop
+
+    def literalop(self, node):
+        value = node.children[0].additional_info
+        if value == "true":
+            return operations.Boolean(True)
+        elif value == "false":
+            return operations.Boolean(False)
+        else:
+            return operations.Null()
+    visit_nullliteral = literalop
+    visit_booleanliteral = literalop
+
+    def visit_expressionstatement(self, node):
+        return operations.ExprStatement(self.dispatch(node.children[0]))
+
+    def visit_printstatement(self, node):
+        return operations.Print(self.dispatch(node.children[1]))
+
+    def visit_variabledeclaration(self, node):
+        variable = self.dispatch(node.children[0])
+        variable_name = variable.get_literal()
+        self.scopes.add_local(variable_name)
+        self.varlists[-1][variable_name] = None
+        if len(node.children) > 1:
+            expr = self.dispatch(node.children[1])
+        else:
+            expr = None
+
+        return operations.VariableDeclaration(variable, expr)
+
+    def visit_callexpression(self, node):
+        left = self.dispatch(node.children[0])
+        nodelist = node.children[1:]
+        while nodelist:
+            currnode = nodelist.pop(0)
+            if isinstance(currnode, Symbol):
+                raise NotImplementedError("Not implemented")
+            else:
+                right = self.dispatch(currnode)
+                left = operations.Call(left, right)
+
+        return left
+
+    def visit_block(self, node):
+        op = node.children[0]
+        l = [self.dispatch(child) for child in node.children[1:]]
+        return operations.Block(l)
+
+    def visit_ifstatement(self, node):
+        condition = self.dispatch(node.children[0])
+        ifblock =  self.dispatch(node.children[1])
+        if len(node.children) > 2:
+            elseblock =  self.dispatch(node.children[2])
+        else:
+            elseblock = None
+        return operations.If(condition, ifblock, elseblock)
+
+    def visit_iterationstatement(self, node):
+        return self.dispatch(node.children[0])
+
+    def visit_whiles(self, node):
+        itertype = node.children[0].additional_info
+        if itertype == 'while':
+            condition = self.dispatch(node.children[1])
+            block = self.dispatch(node.children[2])
+            return operations.While(condition, block)
+        else:
+            raise NotImplementedError("Unknown while version %s" % (itertype,))
+
+    def visit_returnstatement(self, node):
+        if len(node.children) > 0:
+            value = self.dispatch(node.children[0])
+        else:
+            value = None
+        return operations.Return(value)
+
+    def visit_DECIMALLITERAL(self, node):
+        try:
+
+            f = float(node.additional_info)
+            i = ovfcheck_float_to_int(f)
+            if i != f:
+                return operations.ConstantFloat(f)
+            else:
+                return operations.ConstantInt(i)
+        except (ValueError, OverflowError):
+            return operations.ConstantFloat(float(node.additional_info))
+
+    def visit_IDENTIFIERNAME(self, node):
+        name = node.additional_info
+        return operations.Identifier(name)
+
+    def visit_VARIABLENAME(self, node):
+        name = node.additional_info
+        return operations.Variable(name)
+
+    def string(self,node):
+        return operations.ConstantString(node.additional_info)
+    visit_DOUBLESTRING = string
+    visit_SINGLESTRING = string
+
+    def get_next_expr(self, node, i):
+        if isinstance(node.children[i], Symbol) and \
+           node.children[i].additional_info in [';', ')', '(', '}']:
+            return None, i+1
+        else:
+            return self.dispatch(node.children[i]), i+2
+
+    def is_variable(self, obj):
+        return isinstance(obj, Variable)
 
 transformer = Transformer()
 
 def parse(source):
     """ Parse the source code and produce an AST
     """
-    return transformer.visit_main(_parse(source))
+    try:
+        t = _parse(source)
+    except ParseError,e:
+        print e.nice_error_message(source=source)
+        raise
+    ast = ToAST().transform(t)
+    return transformer.dispatch(ast)

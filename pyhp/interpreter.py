@@ -40,10 +40,25 @@ class W_IntObject(W_Root):
             raise Exception("wrong type")
         return W_IntObject(self.intval + other.intval)
 
+    def sub(self, other):
+        if not isinstance(other, W_IntObject):
+            raise Exception("wrong type")
+        return W_IntObject(self.intval - other.intval)
+
     def lt(self, other):
         if not isinstance(other, W_IntObject):
             raise Exception("wrong type")
         return W_IntObject(self.intval < other.intval)
+
+    def ge(self, other):
+        if not isinstance(other, W_IntObject):
+            raise Exception("wrong type")
+        return W_IntObject(self.intval >= other.intval)
+
+    def eq(self, other):
+        if not isinstance(other, W_IntObject):
+            raise Exception("wrong type")
+        return W_IntObject(self.intval == other.intval)
 
     def is_true(self):
         return self.intval != 0
@@ -62,10 +77,25 @@ class W_FloatObject(W_Root):
             raise Exception("wrong type")
         return W_FloatObject(self.floatval + other.floatval)
 
+    def sub(self, other):
+        if not isinstance(other, W_FloatObject):
+            raise Exception("wrong type")
+        return W_FloatObject(self.floatval - other.floatval)
+
     def lt(self, other):
         if not isinstance(other, W_FloatObject):
             raise Exception("wrong type")
         return W_IntObject(self.floatval < other.floatval)
+
+    def ge(self, other):
+        if not isinstance(other, W_FloatObject):
+            raise Exception("wrong type")
+        return W_IntObject(self.floatval >= other.floatval)
+
+    def eq(self, other):
+        if not isinstance(other, W_FloatObject):
+            raise Exception("wrong type")
+        return W_IntObject(self.floatval == other.floatval)
 
     def str(self):
         return str(self.floatval)
@@ -84,7 +114,9 @@ class W_StringObject(W_Root):
     def str(self):
         return str(self.stringval)
 
-ARGSTACK_MIN = 32
+class W_Null(W_Root):
+    def str(self):
+        return "null"
 
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
@@ -96,8 +128,7 @@ class Frame(object):
         self.valuestack_pos = 0
 
         self.arg_pos = 0
-        self.argstack_size = ARGSTACK_MIN
-        self.argstack = [None] * ARGSTACK_MIN
+        self.argstack = [None] * 3 # safe estimate!
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
@@ -129,25 +160,35 @@ class Frame(object):
 
         return result
 
-def add(left, right):
-    return left + right
-
 def execute(frame, bc):
     code = bc.code
     pc = 0
     while True:
         # required hint indicating this is the top of the opcode dispatch
         driver.jit_merge_point(pc=pc, code=code, bc=bc, frame=frame)
+
+        if pc >= len(code):
+            return W_Null()
+
         c = ord(code[pc])
         arg = ord(code[pc + 1])
         pc += 2
         if c == bytecode.LOAD_CONSTANT:
             w_constant = bc.constants[arg]
             frame.push(w_constant)
+        elif c == bytecode.LOAD_VAR:
+            frame.push(frame.vars[arg])
+        elif c == bytecode.LOAD_NULL:
+            frame.push(W_Null())
+        elif c == bytecode.LOAD_PARAM:
+            frame.push_arg(frame.pop()) #push to the argument-stack
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
         elif c == bytecode.RETURN:
-            return
+            if frame.valuestack_pos > 0:
+              return frame.pop()
+            else:
+              return W_Null()
         elif c == bytecode.BINARY_ADD:
             right = frame.pop()
             left = frame.pop()
@@ -157,7 +198,19 @@ def execute(frame, bc):
             right = frame.pop()
             left = frame.pop()
             frame.push(left.lt(right))
-        elif c == bytecode.STRING_JOIN:
+        elif c == bytecode.BINARY_GE:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left.ge(right))
+        elif c == bytecode.BINARY_EQ:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left.eq(right))
+        elif c == bytecode.BINARY_SUB:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left.sub(right))
+        elif c == bytecode.BINARY_STRINGJOIN:
             right = frame.pop()
             left = frame.pop()
             frame.push(left.append(right))
@@ -168,17 +221,17 @@ def execute(frame, bc):
             pc = arg
             # required hint indicating this is the end of a loop
             driver.can_enter_jit(pc=pc, code=code, bc=bc, frame=frame)
-        elif c == bytecode.NARG:
-            frame.push_arg(frame.pop()) #push to the argument-stack
         elif c == bytecode.CALL:
             method = bc.functions[arg]
-            method['body'].globals = [None]*bc.numvars  #XXX
+            method.body.globals = [None]*bc.numvars  #XXX
 
-            new_bc = method['body']
+            new_bc = method.body
             new_frame = Frame(new_bc)
 
-            for i in range(method['args']):
-                new_frame.vars[i] = frame.pop_arg()
+            # reverse args index to preserve order
+            for i in range(len(method.params)):
+                index = len(method.params) - 1 - i
+                new_frame.vars[index] = frame.pop_arg()
 
             res = execute(new_frame, new_bc)
             frame.push(res)
@@ -187,10 +240,8 @@ def execute(frame, bc):
             printf(item.str())
         elif c == bytecode.ASSIGN:
             frame.vars[arg] = frame.pop()
-        elif c == bytecode.LOAD_VAR:
-            frame.push(frame.vars[arg])
         else:
-            assert False
+            raise Exception("Unkown operation %s" % bytecode.bytecodes[c])
 
 def interpret(source):
     bc = compile_ast(parse(source))

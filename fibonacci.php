@@ -1,18 +1,17 @@
 <?php
 
-$count = 0;
-$x = 0;
-$y = 1;
+function fib ($n)
+{
+   if ($n == 0) {
+      return 0;
+   }
 
-print $x;
-print ' - ';
-print $y;
+   if ($n == 1)
+   {
+      return 1;
+   }
 
-while($count < 90) {
-    $z = $x + $y;
-    print $z;
-    print ' - ';
-    $x = $y;
-    $y = $z;
-    $count = $count + 1;
+   return fib( $n - 1 ) + fib( $n - 2 );
 }
+
+print fib(40);

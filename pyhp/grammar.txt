@@ -1,32 +1,167 @@
 
 IGNORE: "<\?php|[ \t\n]";
-DECIMAL: "-?0|[1-9][0-9]*";
-FLOAT: "-?(0?|[1-9][0-9]*)\.[0-9]+([eE][-+]?[0-9]+)?";
-STRING: "'[^']*'|\"[^\"]*\"";
-ADD_SYMBOL: "(==)|[-+<]";
-STRING_JOIN_SYMBOL: "\.";
-VARIABLE: "\$[a-zA-Z_][a-zA-Z0-9_]*";
-FUNCTION_NAME: "[a-zA-Z_][a-zA-Z0-9_]*";
 
-main: statement* [EOF];
+VARIABLENAME: "\$[a-zA-Z_][a-zA-Z0-9_]*";
+IDENTIFIERNAME: "[a-zA-Z_][a-zA-Z0-9_]*";
 
-statement: expr ";"
-    | VARIABLE "=" expr ";"
-    | "while" "(" expr ")" "{" statement* "}"
-    | "if" "(" expr ")" "{" statement* "}"
-    | "function" function_name "(" param_list ")" "{" statement* "}"
-    | "print" expr ";"
-    | "return" expr ";"
-    | expr;
+main: sourceelements [EOF];
 
-param_list: param ("," param)*;
-value_list: atom ("," atom)*;
+sourceelements  : sourceelement >sourceelements<
+                | sourceelement
+                ;
 
-expr: atom ADD_SYMBOL expr
-    | atom STRING_JOIN_SYMBOL expr
-    | atom
-    | function_name "(" value_list ")";
+sourceelement   : <functiondeclaration>
+                | <statement>
+                ;
 
-function_name: FUNCTION_NAME;
-param: VARIABLE;
-atom: DECIMAL | FLOAT | VARIABLE | STRING;
+functiondeclaration : ["function"] identifier "(" formalparameterlist? ")" ["{"] functionbody? "}"
+                    ;
+
+functionexpression  : ["function"] identifier? "(" formalparameterlist? ")" ["{"] functionbody? "}"
+                    ;
+
+formalparameterlist : variable [","] >formalparameterlist<
+                    | variable
+                    ;
+
+functionbody    : <sourceelements>
+                ;
+
+statement : <block>
+          | <variabledeclaration> [";"]
+          | <expressionstatement> [";"]
+          | <ifstatement>
+          | <iterationstatement>
+          | <printstatement> [";"]
+          | <returnstatement> [";"]
+          ;
+
+block   : "{" >statementlist<? ["}"]
+        ;
+
+statementlist   : statement >statementlist<
+                | statement
+                ;
+
+returnstatement : ["return"] expression?
+                ;
+
+expressionstatement : expression
+                    ;
+
+variabledeclaration : variable >initialiser<?
+                    ;
+
+initialiser : ["="] assignmentexpression
+            ;
+
+ifstatement : ["if"] ["("] expression [")"] statement  ["else"] statement
+            | ["if"] ["("] expression [")"] statement
+            ;
+
+iterationstatement
+    : whiles
+    ;
+
+whiles
+    : "while" ["("] expression [")"] statement
+    ;
+
+printstatement: "print" expression ;
+
+primaryexpression   : <identifier>
+                    | <variable>
+                    | <literal>
+                    ;
+
+memberexpression    : primaryexpression
+                    | functionexpression
+                    | <primaryexpression>
+                    | <functionexpression>
+                    ;
+
+newexpression   : <memberexpression>
+                ;
+
+callexpression  : memberexpression arguments >callexpressiona<*
+                ;
+
+callexpressiona : arguments
+                ;
+
+arguments   : "(" [")"]
+            | "(" >argumentlist< [")"]
+            ;
+
+argumentlist    : assignmentexpression [","] >argumentlist<
+                | assignmentexpression;
+
+lefthandsideexpression  : <callexpression>
+                        | <newexpression>
+                        ;
+joinop: ".";
+stringjoinexpression  : lefthandsideexpression (>joinop< lefthandsideexpression)+
+                    | <lefthandsideexpression>
+                    ;
+
+multop: "*" | "/" | "%";
+multiplicativeexpression    : stringjoinexpression (>multop< stringjoinexpression)+
+                            | <stringjoinexpression>
+                            ;
+addop: "+" | "-";
+additiveexpression  : multiplicativeexpression (>addop< multiplicativeexpression)+
+                    | <multiplicativeexpression>
+                    ;
+
+relationalop: "<" | ">" | "<=" | ">=" | "instanceof" | "in";
+relationalexpression    : additiveexpression (>relationalop< relationalexpression)+
+                        | <additiveexpression>
+                        ;
+
+equalityop: "==" | "!=" | "===" | "!==";
+equalityexpression  : relationalexpression (>equalityop< relationalexpression)+
+                    | <relationalexpression>
+                    ;
+
+assignmentexpression    : lefthandsideexpression >assignmentoperator< assignmentexpression
+                        | <equalityexpression>
+                        ;
+
+assignmentoperator  : "=" | "\*=" | "\/=" | "\%=" | "\+=" | "\-=" | "<<="
+                    | ">>=" | ">>>=" | "&=" | "^=" | "\|="
+                    ;
+
+expression  : assignmentexpression ("," assignmentexpression)+
+            | <assignmentexpression>
+            ;
+
+identifier: <IDENTIFIERNAME>;
+variable: <VARIABLENAME>;
+
+literal : <nullliteral>
+        | <booleanliteral>
+        | <numericliteral>
+        | <stringliteral>
+        ;
+
+nullliteral : "null";
+
+booleanliteral  : "true"
+                | "false"
+                ;
+
+numericliteral  : <DECIMALLITERAL>
+                ;
+
+DECIMALLITERAL  : "(((0|[1-9][0-9]*)(\.[0-9]*)?)|(\.[0-9]+))([eE][\+\-]?[0-9]*)?"
+                ;
+
+stringliteral   : <SINGLESTRING>
+                | <DOUBLESTRING>
+                ;
+
+SINGLESTRING    : "'([^'\\]|\\.)*'"
+                ;
+
+DOUBLESTRING    : "\"([^\"\\]|\\.)*\""
+                ;
