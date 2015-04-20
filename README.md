@@ -48,4 +48,4 @@ Run tests
 
 [Pascal on top of RPython](https://github.com/WarPie/Pascal)
 
-[HippyVM - php on top of RRython](https://github.com/hippyvm/hippyvm)
+[HippyVM - php on top of RPython](https://github.com/hippyvm/hippyvm)
