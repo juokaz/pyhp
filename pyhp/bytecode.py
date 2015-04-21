@@ -36,6 +36,12 @@ class CompilerContext(object):
             self.names.append(name)
             return len(self.names) - 1
 
+    def get_var(self, name):
+        if name in self.names_id:
+            return self.names_id[name]
+        else:
+            raise NameError('Variable `'+name+'` is not defined')
+
     def register_function(self, func):
         name = func.name.lower()
         if name in self.function_id:
@@ -59,17 +65,18 @@ class CompilerContext(object):
 
     def create_bytecode(self):
         return ByteCode("".join(self.data), self.constants[:],
-                        self.functions[:], len(self.names))
+                        self.names[:], self.functions[:])
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['code', 'constants[*]', 'functions[*]', 'numvars']
+    _immutable_fields_ = ['code', 'constants[*]', 'variables[*]', 'functions[*]', 'numvars']
 
-    def __init__(self, code, constants, functions, numvars):
+    def __init__(self, code, constants, variables, functions):
         self.code = code
         self.constants = constants
+        self.variables = variables
         self.functions = functions
-        self.numvars = numvars
+        self.numvars = len(variables)
 
         # print 'Bytecode: '
         # print self.dump()

@@ -305,6 +305,13 @@ def execute(frame, bc):
                 assert index >= 0
                 new_frame.vars[index] = frame.pop_arg()
 
+            for i in range(len(method.globals)):
+                index = len(method.globals) - 1 - i
+                assert index >= 0
+                value_index = bc.variables.index(method.globals[i])
+                assert value_index >= 0
+                new_frame.vars[index] = frame.vars[value_index]
+
             res = execute(new_frame, new_bc)
             frame.push(res)
         elif c == bytecode.PRINT:
