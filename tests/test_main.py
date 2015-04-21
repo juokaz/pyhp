@@ -32,10 +32,17 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "1"
 
-    def test_string(self, capfd):
+    def test_string_single_quotes(self, capfd):
         out = self.run("""$x = 'Hello world';
         print $x;""", capfd)
         assert out == "Hello world"
+
+    def test_string_single_quotes_embed(self, capfd):
+        out = self.run("""$y = 'world';
+        $z = 1;
+        $x = 'Hello $y $z';
+        print $x;""", capfd)
+        assert out == "Hello $y $z"
 
     def test_string_double_quotes(self, capfd):
         out = self.run("""$x = "Hello world";

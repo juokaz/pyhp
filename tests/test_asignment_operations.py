@@ -1,10 +1,16 @@
 from tests import TestBase
 
-class TestBinaryOperations(TestBase):
+class TestAsignmentOperations(TestBase):
     def test_increase(self, capfd):
         out = self.run("""$i = 1;
         $i++;
         print $i;""", capfd)
+        assert out == "2"
+
+    def test_array_increase(self, capfd):
+        out = self.run("""$i = [1];
+        $i[0]++;
+        print $i[0];""", capfd)
         assert out == "2"
 
     def test_decrease(self, capfd):

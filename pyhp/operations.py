@@ -202,7 +202,10 @@ class ConstantString(Node):
     """
     def __init__(self, stringval):
         self.stringval = self.string_unquote(stringval)
-        self.variables = self.get_variables(self.stringval)
+
+        self.variables = []
+        if not self.is_single_quoted(stringval):
+            self.variables = self.get_variables(self.stringval)
 
     def compile(self, ctx):
         for variable in self.variables:
