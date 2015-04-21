@@ -17,12 +17,16 @@ sourceelement   : <functiondeclaration>
 functiondeclaration : ["function"] identifier "(" formalparameterlist? ")" ["{"] functionbody? "}"
                     ;
 
-functionexpression  : ["function"] identifier? "(" formalparameterlist? ")" ["{"] functionbody? "}"
+functionexpression  : ["function"] identifier "(" formalparameterlist? ")"
                     ;
 
 formalparameterlist : variable [","] >formalparameterlist<
                     | variable
                     ;
+
+globallist : variable [","] >globallist<
+           | variable
+           ;
 
 functionbody    : <sourceelements>
                 ;
@@ -32,6 +36,7 @@ statement : <block>
           | <ifstatement>
           | <iterationstatement>
           | <printstatement> [";"]
+          | <globalstatement> [";"]
           | <returnstatement> [";"]
           ;
 
@@ -64,6 +69,8 @@ whiles
     ;
 
 printstatement: "print" expression ;
+
+globalstatement: "global" globallist ;
 
 primaryexpression   : <identifier>
                     | <variable>

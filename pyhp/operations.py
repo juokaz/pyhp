@@ -34,14 +34,11 @@ class SourceElements(Statement):
     SourceElements nodes are found on each function declaration and in global
     code
     """
-    def __init__(self, var_decl, func_decl, nodes):
-        self.var_decl = var_decl
+    def __init__(self, func_decl, nodes):
         self.func_decl = func_decl
         self.nodes = nodes
 
     def compile(self, ctx):
-        for varname in self.var_decl:
-            ctx.register_var(varname)
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
 
@@ -74,24 +71,26 @@ class ExprStatement(Node):
 
 
 class FUNCTION(object):
-    def __init__(self, name, params, body=None):
+    def __init__(self, name, params, globals=[], body=None):
         assert isinstance(name, str)
 
         self.name = name
         self.params = params
+        self.globals = globals
         self.body = body
 
 
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, params, body):
+    def __init__(self, name, params, globals=None, body=None):
         self.name = name.get_literal()
         self.params = params
+        self.globals = globals
         self.body = body
 
     def compile(self, ctx):
-        method = FUNCTION(name=self.name, params=self.params)
+        method = FUNCTION(self.name, self.params, self.globals)
         ctx.register_function(method)
 
         ctx2 = bytecode.CompilerContext()
@@ -103,6 +102,9 @@ class Function(Node):
 
         for param in self.params:
             ctx2.register_var(param)
+
+        for variable in self.globals:
+            ctx2.register_var(variable)
 
         if self.body:
             self.body.compile(ctx2)
@@ -149,6 +151,11 @@ class Array(ListOp):
         for element in self.nodes:
             element.compile(ctx)
         ctx.emit(bytecode.LOAD_ARRAY, len(self.nodes))
+
+
+class Global(ListOp):
+    def compile(self, ctx):
+        pass
 
 
 class Member(Expression):

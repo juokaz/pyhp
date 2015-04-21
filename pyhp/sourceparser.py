@@ -113,25 +113,32 @@ class Transformer(RPythonVisitor):
             node = self.dispatch(child)
             if node is not None:
                 nodes.append(node)
-        var_decl = self.scopes.variables()
-        if not var_decl:
-            var_decl = self.varlists.pop().keys()
-        else:
-            self.varlists.pop()
         func_decl = self.funclists.pop()
-        return operations.SourceElements(var_decl, func_decl, nodes)
+        return operations.SourceElements(func_decl, nodes)
 
     def functioncommon(self, node, declaration=True):
         self.scopes.new_scope()
         i = 0
         identifier, i = self.get_next_expr(node, i)
+
+        p = []
         parameters, i = self.get_next_expr(node, i)
-        functionbody, i = self.get_next_expr(node, i)
-        if parameters is None:
-            p = []
-        else:
+        if parameters is not None:
             p = [pident.get_literal() for pident in parameters.nodes]
-        funcobj = operations.Function(identifier, p, functionbody)
+
+        functionbody, i = self.get_next_expr(node, i)
+
+        global_variables = None
+        if functionbody:
+            for node in functionbody.nodes:
+                if isinstance(node, operations.Global):
+                    global_variables = node
+
+        g = []
+        if global_variables is not None:
+            g = [pident.get_literal() for pident in global_variables.nodes]
+
+        funcobj = operations.Function(identifier, p, g, functionbody)
         if declaration:
             self.funclists[-1][identifier.get_literal()] = funcobj
         self.scopes.end_scope()
@@ -180,6 +187,10 @@ class Transformer(RPythonVisitor):
 
     def visit_printstatement(self, node):
         return operations.Print(self.dispatch(node.children[1]))
+
+    def visit_globalstatement(self, node):
+        nodes = [self.dispatch(child) for child in node.children[1].children]
+        return operations.Global(nodes)
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
