@@ -6,6 +6,20 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "1"
 
+    def test_running_comments(self, capfd):
+        out = self.run("""// $x is a variable
+        $x = 1;
+        print $x;""", capfd)
+        assert out == "1"
+
+    def test_running_comments_block(self, capfd):
+        out = self.run("""/*
+         * $x is a variable
+         */
+        $x = 1;
+        print $x;""", capfd)
+        assert out == "1"
+
     def test_running_assigning_variable_twice(self, capfd):
         out = self.run("""$x = 1;
         $x= 5;
