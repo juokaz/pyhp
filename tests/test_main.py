@@ -42,6 +42,13 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "Hello world"
 
+    def test_string_double_quotes_embed(self, capfd):
+        out = self.run("""$y = 'world';
+        $z = 1;
+        $x = "Hello $y $z";
+        print $x;""", capfd)
+        assert out == "Hello world 1"
+
     def test_boolean(self, capfd):
         out = self.run("""$x = true;
         print $x;""", capfd)
@@ -67,4 +74,3 @@ class TestMain(TestBase):
         $x[1] = 5;
         print $x;""", capfd)
         assert out == "[1: 5, 0: 1, 2: 3]"
-

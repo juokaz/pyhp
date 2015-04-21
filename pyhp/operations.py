@@ -1,6 +1,7 @@
 from pyhp import bytecode
 from constants import unescapedict
 from rpython.rlib.unroll import unrolling_iterable
+import re
 
 
 class Node(object):
@@ -202,12 +203,26 @@ class ConstantString(Node):
     """
     def __init__(self, stringval):
         self.stringval = self.string_unquote(stringval)
+        self.variables = self.get_variables(stringval)
 
     def compile(self, ctx):
+        for variable in self.variables:
+            ctx.emit(bytecode.LOAD_VAR, ctx.get_var(variable))
         # convert the string to W_StringObject already here
         from pyhp.interpreter import W_StringObject
-        w = W_StringObject(self.stringval)
+        w = W_StringObject(self.stringval, self.variables)
         ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+
+    def is_single_quoted(self, string):
+        return string[0] == "'"
+
+    def get_variables(self, string):
+        variables = []
+        if not self.is_single_quoted(string):
+            VARIABLENAME = '\$[a-zA-Z_][a-zA-Z0-9_]*'
+            for variable in re.findall(VARIABLENAME, string):
+                variables.append(variable)
+        return variables
 
     def string_unquote(self, string):
         # XXX I don't think this works, it's very unlikely IMHO

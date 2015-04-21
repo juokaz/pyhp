@@ -123,17 +123,27 @@ class W_FloatObject(W_Root):
 
 
 class W_StringObject(W_Root):
-    def __init__(self, stringval):
+    def __init__(self, stringval, variables=[]):
         assert(isinstance(stringval, str))
         self.stringval = stringval
+        self.variables = variables
 
     def append(self, other):
         if not isinstance(other, W_StringObject):
             raise Exception("wrong type")
         return W_StringObject(self.stringval + other.stringval)
 
+    def replace(self, search, replace):
+        return W_StringObject(self.stringval.replace(search, replace))
+
+    def get_variables(self):
+        return self.variables
+
     def str(self):
         return str(self.stringval)
+
+    def __repr__(self):
+        return 'W_StringObject(%s)' % (self.stringval,)
 
 
 class W_Array(W_Root):
@@ -240,6 +250,18 @@ def execute(frame, bc):
         pc += 2
         if c == bytecode.LOAD_CONSTANT:
             w_constant = bc.constants[arg]
+
+            # Strings need all placeholders replaced with the actual values
+            if isinstance(w_constant, W_StringObject):
+                variables = w_constant.get_variables()
+
+                for i in range(len(variables)):
+                    index = len(variables) - 1 - i
+                    assert index >= 0
+                    variable = variables[index]
+                    replace = frame.pop().str()
+                    w_constant = w_constant.replace(variable, replace)
+
             frame.push(w_constant)
         elif c == bytecode.LOAD_VAR:
             frame.push(frame.vars[arg])

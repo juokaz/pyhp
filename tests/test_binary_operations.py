@@ -1,13 +1,6 @@
 from tests import TestBase
 
 class TestBinaryOperations(TestBase):
-    def test_string_join(self, capfd):
-        out = self.run("""$hello = 'Hello';
-        $world = 'World';
-        $x = $hello . ' ' . $world;
-        print $x;""", capfd)
-        assert out == "Hello World"
-
     def test_increase(self, capfd):
         out = self.run("""$i = 1;
         $i++;
@@ -31,3 +24,10 @@ class TestBinaryOperations(TestBase):
         $i -= 2;
         print $i;""", capfd)
         assert out == "0"
+
+    def test_string_join(self, capfd):
+        out = self.run("""$hello = 'Hello';
+        $world = 'World';
+        $x = $hello . ' ' . $world;
+        print $x;""", capfd)
+        assert out == "Hello World"
