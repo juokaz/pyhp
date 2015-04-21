@@ -1,5 +1,6 @@
 
 bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'LOAD_BOOLEAN',
+             'LOAD_ARRAY', 'LOAD_MEMBER', 'STORE_MEMBER',
              'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
              'BINARY_EQ', 'BINARY_GE', 'BINARY_LT', 'RETURN', 'PRINT',
@@ -34,12 +35,6 @@ class CompilerContext(object):
             self.names_id[name] = len(self.names)
             self.names.append(name)
             return len(self.names) - 1
-
-    def get_var(self, name):
-        if name in self.names_id:
-            return self.names_id[name]
-        else:
-            raise NameError('Variable `'+name+'` is not defined')
 
     def register_function(self, func):
         name = func.name.lower()

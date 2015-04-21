@@ -71,7 +71,6 @@ class ExprStatement(Node):
 
     def compile(self, ctx):
         self.expr.compile(ctx)
-        ctx.emit(bytecode.DISCARD_TOP)
 
 
 class FUNCTION(object):
@@ -143,6 +142,25 @@ class ArgumentList(ListOp):
         for node in self.nodes:
             node.compile(ctx)
             ctx.emit(bytecode.LOAD_PARAM)
+
+
+class Array(ListOp):
+    def compile(self, ctx):
+        for element in self.nodes:
+            element.compile(ctx)
+        ctx.emit(bytecode.LOAD_ARRAY, len(self.nodes))
+
+
+class Member(Expression):
+    "this is for array[name]"
+    def __init__(self, left, expr):
+        self.left = left
+        self.expr = expr
+
+    def compile(self, ctx):
+        self.expr.compile(ctx)
+        self.left.compile(ctx)
+        ctx.emit(bytecode.LOAD_MEMBER)
 
 
 class ConstantInt(Node):
@@ -220,28 +238,61 @@ class Null(Expression):
         ctx.emit(bytecode.LOAD_NULL)
 
 
-class Variable(Node):
-    """ Variable reference
-    """
-    def __init__(self, varname):
-        self.varname = varname
+class VariableIdentifier(Expression):
+    def __init__(self, identifier):
+        self.identifier = identifier
+
+    def compile(self, ctx):
+        ctx.emit(bytecode.LOAD_VAR, ctx.register_var(self.identifier))
 
     def get_literal(self):
-        return self.varname
+        return self.identifier
+
+
+class Variable(Statement):
+    def __init__(self, body):
+        self.body = body
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.varname))
+        self.body.compile(ctx)
 
 
-class VariableDeclaration(Expression):
-    def __init__(self, identifier, expr=None):
-        self.identifier = identifier.get_literal()
-        self.expr = expr
+class Empty(Expression):
+    def compile(self, ctx):
+        pass
+
+
+class AssignmentOperation(Expression):
+    def __init__(self, left, right, operand):
+        self.left = left
+        self.identifier = left.get_literal()
+        self.right = right
+        if self.right is None:
+            self.right = Empty()
+        self.operand = operand
 
     def compile(self, ctx):
-        if self.expr is not None:
-            self.expr.compile(ctx)
-            ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+        self.right.compile(ctx)
+        ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+
+
+class MemberAssignmentOperation(Expression):
+    def __init__(self, left, right, operand):
+        self.left = left
+        self.right = right
+        if right is None:
+            self.right = Empty()
+
+        self.operand = operand
+
+        self.w_array = self.left.left
+        self.expr = self.left.expr
+
+    def compile(self, ctx):
+        self.right.compile(ctx)
+        self.expr.compile(ctx)
+        self.w_array.compile(ctx)
+        ctx.emit(bytecode.STORE_MEMBER)
 
 
 class If(Node):

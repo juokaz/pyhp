@@ -34,10 +34,3 @@ class TestMain(TestBase):
             $x = $x + 1;
         }""", capfd)
         assert out == "123456789"
-
-    def test_string_join(self, capfd):
-        out = self.run("""$hello = 'Hello';
-        $world = 'World';
-        $x = $hello . ' ' . $world;
-        print $x;""", capfd)
-        assert out == "Hello World"

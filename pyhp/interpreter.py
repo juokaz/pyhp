@@ -29,6 +29,12 @@ driver = jit.JitDriver(greens=['pc', 'code', 'bc'],
                        get_printable_location=printable_loc)
 
 
+class Property(object):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+
 class W_Root(object):
     pass
 
@@ -118,6 +124,34 @@ class W_StringObject(W_Root):
         return str(self.stringval)
 
 
+class W_Array(W_Root):
+    def __init__(self):
+        self.propdict = {}
+
+    def put(self, key, value):
+        assert(isinstance(key, str))
+        if key not in self.propdict:
+            self.propdict[key] = Property(key, value)
+        else:
+            self.propdict[key].value = value
+
+    def get(self, key):
+        assert(isinstance(key, str))
+        try:
+            return self.propdict[key].value
+        except KeyError:
+            return W_Null()
+
+    def str(self):
+        r = '['
+        for key, element in self.propdict.iteritems():
+            value = element.value.str()
+            r += '%s: %s' % (key, value) + ', '
+        r = r.strip(', ')
+        r += ']'
+        return r
+
+
 class W_Boolean(W_Root):
     _immutable_fields_ = ['boolval']
 
@@ -203,6 +237,22 @@ def execute(frame, bc):
             frame.push(W_Boolean(bool(arg)))
         elif c == bytecode.LOAD_PARAM:
             frame.push_arg(frame.pop())  # push to the argument-stack
+        elif c == bytecode.LOAD_ARRAY:
+            array = W_Array()
+            for i in range(arg):
+                index = str(arg - 1 - i)
+                array.put(index, frame.pop())
+            frame.push(array)
+        elif c == bytecode.LOAD_MEMBER:
+            array = frame.pop()
+            member = frame.pop().str()
+            value = array.get(member)
+            frame.push(value)
+        elif c == bytecode.STORE_MEMBER:
+            array = frame.pop()
+            index = frame.pop().str()
+            value = frame.pop()
+            array.put(index, value)
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
         elif c == bytecode.RETURN:

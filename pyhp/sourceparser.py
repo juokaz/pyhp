@@ -89,6 +89,7 @@ class Transformer(RPythonVisitor):
         '==': operations.Eq,
         '<': operations.Lt,
         '.': operations.StringJoin,
+        '[': operations.Member,
     }
 
     def __init__(self):
@@ -180,18 +181,6 @@ class Transformer(RPythonVisitor):
     def visit_printstatement(self, node):
         return operations.Print(self.dispatch(node.children[1]))
 
-    def visit_variabledeclaration(self, node):
-        variable = self.dispatch(node.children[0])
-        variable_name = variable.get_literal()
-        self.scopes.add_local(variable_name)
-        self.varlists[-1][variable_name] = None
-        if len(node.children) > 1:
-            expr = self.dispatch(node.children[1])
-        else:
-            expr = None
-
-        return operations.VariableDeclaration(variable, expr)
-
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
         nodelist = node.children[1:]
@@ -205,9 +194,25 @@ class Transformer(RPythonVisitor):
 
         return left
 
+    def visit_arrayliteral(self, node):
+        l = [self.dispatch(child) for child in node.children[1:]]
+        return operations.Array(l)
+
     def visit_block(self, node):
         l = [self.dispatch(child) for child in node.children[1:]]
         return operations.Block(l)
+
+    def visit_assignmentexpression(self, node):
+        left = self.dispatch(node.children[0])
+        operation = node.children[1].additional_info
+        right = self.dispatch(node.children[2])
+
+        if self.is_variable(left):
+            return operations.AssignmentOperation(left, right, operation)
+        elif self.is_member(left):
+            return operations.MemberAssignmentOperation(left, right, operation)
+        else:
+            raise FakeParseError("invalid lefthand expression")
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])
@@ -255,7 +260,7 @@ class Transformer(RPythonVisitor):
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
-        return operations.Variable(name)
+        return operations.VariableIdentifier(name)
 
     def string(self, node):
         return operations.ConstantString(node.additional_info)
@@ -268,6 +273,15 @@ class Transformer(RPythonVisitor):
             return None, i+1
         else:
             return self.dispatch(node.children[i]), i+2
+
+    def is_variable(self, obj):
+        from pyhp.operations import VariableIdentifier
+        return isinstance(obj, VariableIdentifier)
+
+    def is_member(self, obj):
+        from pyhp.operations import Member
+        return isinstance(obj, Member)
+
 
 transformer = Transformer()
 
