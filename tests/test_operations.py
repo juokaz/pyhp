@@ -34,3 +34,10 @@ class TestMain(TestBase):
             $x = $x + 1;
         }""", capfd)
         assert out == "123456789"
+
+    def test_for(self, capfd):
+        out = self.run("""
+        for ($x = 1; $x < 10; $x++) {
+            print $x;
+        }""", capfd)
+        assert out == "123456789"

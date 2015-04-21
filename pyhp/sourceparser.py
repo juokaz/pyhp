@@ -260,6 +260,26 @@ class Transformer(RPythonVisitor):
         else:
             raise NotImplementedError("Unknown while version %s" % (itertype,))
 
+    def visit_regularfor(self, node):
+        i = 1
+        setup, i = self.get_next_expr(node, i)
+        condition, i = self.get_next_expr(node, i)
+        if isinstance(condition, operations.Null):
+            condition = operations.Boolean(True)
+        update, i = self.get_next_expr(node, i)
+        body, i = self.get_next_expr(node, i)
+
+        if setup is None:
+            setup = operations.Empty()
+        if condition is None:
+            condition = operations.Boolean(True)
+        if update is None:
+            update = operations.Empty()
+        if body is None:
+            body = operations.Empty()
+
+        return operations.For(setup, condition, update, body)
+
     def visit_returnstatement(self, node):
         if len(node.children) > 0:
             value = self.dispatch(node.children[0])

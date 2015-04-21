@@ -62,11 +62,15 @@ ifstatement : ["if"] ["("] expression [")"] statement  ["else"] statement
 
 iterationstatement
     : whiles
+    | regularfor
     ;
 
 whiles
     : "while" ["("] expression [")"] statement
     ;
+
+regularfor
+    : "for" ["("] expression? ";" expression? ";" expression? ")" statement;
 
 printstatement: "print" expression ;
 
