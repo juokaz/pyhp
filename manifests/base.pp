@@ -35,7 +35,7 @@ node default {
     exec{ "copy_libffi-dev":
         command => "cp /usr/include/x86_64-linux-gnu/ffi*  /usr/include/libffi/",
         creates => "/usr/include/libffi/ffi.h",
-        require => File["/usr/include/libffi"]
+        require => [File["/usr/include/libffi"], Package["libffi-dev"]]
     }
 
     file { "/usr/lib/libffi":
@@ -45,7 +45,7 @@ node default {
     exec{ "copy_libffi":
         command => "cp /usr/lib/x86_64-linux-gnu/libffi.so.6  /usr/lib/libffi/",
         creates => "/usr/lib/libffi/libffi.so.6",
-        require => File["/usr/lib/libffi"]
+        require => [File["/usr/lib/libffi"], Package["libffi-dev"]]
     }
 
     exec{ "retrieve_pypy":
