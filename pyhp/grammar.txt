@@ -114,10 +114,21 @@ argumentlist    : assignmentexpression [","] >argumentlist<
 lefthandsideexpression  : <callexpression>
                         | <newexpression>
                         ;
-joinop: ".";
-stringjoinexpression  : lefthandsideexpression (>joinop< lefthandsideexpression)+
+
+postfixexpression   : lefthandsideexpression "++"
+                    | lefthandsideexpression "--"
                     | <lefthandsideexpression>
                     ;
+
+unaryexpression : "++" unaryexpression
+                | "--" unaryexpression
+                | "!" unaryexpression
+                | <postfixexpression>
+                ;
+joinop: ".";
+stringjoinexpression  : unaryexpression (>joinop< unaryexpression)+
+                      | <unaryexpression>
+                      ;
 
 multop: "*" | "/" | "%";
 multiplicativeexpression    : stringjoinexpression (>multop< stringjoinexpression)+
@@ -128,7 +139,7 @@ additiveexpression  : multiplicativeexpression (>addop< multiplicativeexpression
                     | <multiplicativeexpression>
                     ;
 
-relationalop: "<" | ">" | "<=" | ">=" | "instanceof" | "in";
+relationalop: "<" | ">" | "<=" | ">=" | "instanceof";
 relationalexpression    : additiveexpression (>relationalop< relationalexpression)+
                         | <additiveexpression>
                         ;

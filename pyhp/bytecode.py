@@ -5,7 +5,10 @@ bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'LOAD_BOOLEAN',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
              'BINARY_EQ', 'BINARY_GE', 'BINARY_LT', 'RETURN', 'PRINT',
              'BINARY_STRINGJOIN',
-             'LOAD_PARAM', 'CALL']
+             'LOAD_PARAM', 'CALL',
+
+             'ADD', 'SUB', 'MUL', 'DIV', 'INCR', 'DECR', 'MOD',
+             ]
 
 BytecodesMap = {}
 
@@ -69,7 +72,8 @@ class CompilerContext(object):
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['code', 'constants[*]', 'variables[*]', 'functions[*]', 'numvars']
+    _immutable_fields_ = ['code', 'constants[*]', 'variables[*]',
+                          'functions[*]', 'numvars']
 
     def __init__(self, code, constants, variables, functions):
         self.code = code

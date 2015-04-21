@@ -54,6 +54,18 @@ class W_IntObject(W_Root):
             raise Exception("wrong type")
         return W_IntObject(self.intval - other.intval)
 
+    def incr(self, n=1):
+        if isinstance(n, W_IntObject):
+            n = n.intval
+        self.intval += n
+        return self
+
+    def decr(self, n=1):
+        if isinstance(n, W_IntObject):
+            n = n.intval
+        self.intval -= n
+        return self
+
     def lt(self, other):
         if not isinstance(other, W_IntObject):
             raise Exception("wrong type")
@@ -285,6 +297,20 @@ def execute(frame, bc):
             right = frame.pop()
             left = frame.pop()
             frame.push(left.append(right))
+        elif c == bytecode.INCR:
+            left = frame.pop()
+            frame.push(left.incr())
+        elif c == bytecode.DECR:
+            left = frame.pop()
+            frame.push(left.decr())
+        elif c == bytecode.ADD:
+            left = frame.pop()
+            right = frame.pop()
+            frame.push(left.incr(right))
+        elif c == bytecode.SUB:
+            left = frame.pop()
+            right = frame.pop()
+            frame.push(left.decr(right))
         elif c == bytecode.JUMP_IF_FALSE:
             if not frame.pop().is_true():
                 pc = arg

@@ -205,6 +205,20 @@ class Transformer(RPythonVisitor):
 
         return left
 
+    def _dispatch_assignment(self, left, atype, prepost):
+        if self.is_variable(left):
+            return operations.AssignmentOperation(left, None, atype)
+        elif self.is_member(left):
+            return operations.MemberAssignmentOperation(left, None, atype)
+        else:
+            raise FakeParseError("invalid lefthand expression")
+
+    def visit_postfixexpression(self, node):
+        op = node.children[1]
+        child = self.dispatch(node.children[0])
+        # all postfix expressions are assignments
+        return self._dispatch_assignment(child, op.additional_info, 'post')
+
     def visit_arrayliteral(self, node):
         l = [self.dispatch(child) for child in node.children[1:]]
         return operations.Array(l)

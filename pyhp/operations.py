@@ -1,5 +1,6 @@
 from pyhp import bytecode
 from constants import unescapedict
+from rpython.rlib.unroll import unrolling_iterable
 
 
 class Node(object):
@@ -269,7 +270,46 @@ class Empty(Expression):
         pass
 
 
-class AssignmentOperation(Expression):
+OPERANDS = {
+    '+=': bytecode.ADD,
+    '-=': bytecode.SUB,
+    '++': bytecode.INCR,
+    '--': bytecode.DECR,
+}
+
+OPERATIONS = unrolling_iterable(OPERANDS.items())
+
+
+class BaseAssignment(Expression):
+    noops = ['=']
+
+    def has_operation(self):
+        return self.operand not in self.noops
+
+    def compile(self, ctx):
+        if self.has_operation():
+            self.left.compile(ctx)
+            self.right.compile(ctx)
+            self.compile_operation(ctx)
+        else:
+            self.right.compile(ctx)
+
+        self.compile_store(ctx)
+
+    def compile_operation(self, ctx):
+        # calls to bytecode.emit have to be very very very static
+        op = self.operand
+        for key, value in OPERATIONS:
+            if op == key:
+                ctx.emit(value)
+                return
+        assert 0
+
+    def compile_store(self, ctx):
+        raise NotImplementedError
+
+
+class AssignmentOperation(BaseAssignment):
     def __init__(self, left, right, operand):
         self.left = left
         self.identifier = left.get_literal()
@@ -278,12 +318,11 @@ class AssignmentOperation(Expression):
             self.right = Empty()
         self.operand = operand
 
-    def compile(self, ctx):
-        self.right.compile(ctx)
+    def compile_store(self, ctx):
         ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
 
 
-class MemberAssignmentOperation(Expression):
+class MemberAssignmentOperation(BaseAssignment):
     def __init__(self, left, right, operand):
         self.left = left
         self.right = right
@@ -295,8 +334,7 @@ class MemberAssignmentOperation(Expression):
         self.w_array = self.left.left
         self.expr = self.left.expr
 
-    def compile(self, ctx):
-        self.right.compile(ctx)
+    def compile_store(self, ctx):
         self.expr.compile(ctx)
         self.w_array.compile(ctx)
         ctx.emit(bytecode.STORE_MEMBER)

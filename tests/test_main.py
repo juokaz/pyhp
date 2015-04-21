@@ -37,13 +37,6 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "Hello world"
 
-    def test_string_join(self, capfd):
-        out = self.run("""$hello = 'Hello';
-        $world = 'World';
-        $x = $hello . ' ' . $world;
-        print $x;""", capfd)
-        assert out == "Hello World"
-
     def test_string_double_quotes(self, capfd):
         out = self.run("""$x = "Hello world";
         print $x;""", capfd)
