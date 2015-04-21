@@ -17,7 +17,7 @@ from pyhp.bytecode import compile_ast
 from pyhp import bytecode
 from rpython.rlib import jit
 
-from utils import printf
+from utils import printf, replace
 
 
 def printable_loc(pc, code, bc):
@@ -54,16 +54,18 @@ class W_IntObject(W_Root):
             raise Exception("wrong type")
         return W_IntObject(self.intval - other.intval)
 
-    def incr(self, n=1):
+    def incr(self, n=None):
         if isinstance(n, W_IntObject):
-            n = n.intval
-        self.intval += n
+            self.intval += n.intval
+        else:
+            self.intval += 1
         return self
 
-    def decr(self, n=1):
+    def decr(self, n=None):
         if isinstance(n, W_IntObject):
-            n = n.intval
-        self.intval -= n
+            self.intval -= n.intval
+        else:
+            self.intval -= 1
         return self
 
     def lt(self, other):
@@ -133,8 +135,8 @@ class W_StringObject(W_Root):
             raise Exception("wrong type")
         return W_StringObject(self.stringval + other.stringval)
 
-    def replace(self, search, replace):
-        return W_StringObject(self.stringval.replace(search, replace))
+    def replace(self, search, replace_with):
+        return W_StringObject(replace(self.stringval, search, replace_with))
 
     def get_variables(self):
         return self.variables

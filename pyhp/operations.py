@@ -1,7 +1,6 @@
 from pyhp import bytecode
 from constants import unescapedict
 from rpython.rlib.unroll import unrolling_iterable
-import re
 
 
 class Node(object):
@@ -203,7 +202,7 @@ class ConstantString(Node):
     """
     def __init__(self, stringval):
         self.stringval = self.string_unquote(stringval)
-        self.variables = self.get_variables(stringval)
+        self.variables = self.get_variables(self.stringval)
 
     def compile(self, ctx):
         for variable in self.variables:
@@ -217,11 +216,8 @@ class ConstantString(Node):
         return string[0] == "'"
 
     def get_variables(self, string):
-        variables = []
-        if not self.is_single_quoted(string):
-            VARIABLENAME = '\$[a-zA-Z_][a-zA-Z0-9_]*'
-            for variable in re.findall(VARIABLENAME, string):
-                variables.append(variable)
+        # TODO implement this using regular expressions
+        variables = [x for x in string.split(' ') if x.startswith('$')]
         return variables
 
     def string_unquote(self, string):
@@ -270,14 +266,6 @@ class VariableIdentifier(Expression):
 
     def get_literal(self):
         return self.identifier
-
-
-class Variable(Statement):
-    def __init__(self, body):
-        self.body = body
-
-    def compile(self, ctx):
-        self.body.compile(ctx)
 
 
 class Empty(Expression):
