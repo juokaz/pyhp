@@ -257,7 +257,7 @@ class VariableIdentifier(Expression):
         self.identifier = identifier
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.identifier))
+        ctx.emit(bytecode.LOAD_VAR, ctx.register_var(self.identifier))
 
     def get_literal(self):
         return self.identifier
@@ -271,15 +271,18 @@ class Variable(Statement):
         self.body.compile(ctx)
 
 
-class VariableDeclaration(Expression):
-    def __init__(self, identifier, expr=None):
-        self.identifier = identifier.get_literal()
-        self.expr = expr
+class AssignmentOperation(Expression):
+    def __init__(self, left, right, operand):
+        self.left = left
+        self.identifier = left.get_literal()
+        self.right = right
+        if self.right is None:
+            self.right = Empty(pos)
+        self.operand = operand
 
     def compile(self, ctx):
-        if self.expr is not None:
-            self.expr.compile(ctx)
-            ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+        self.right.compile(ctx)
+        ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
 
 
 class MemberAssignmentOperation(Expression):

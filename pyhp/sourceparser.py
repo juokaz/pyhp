@@ -181,18 +181,6 @@ class Transformer(RPythonVisitor):
     def visit_printstatement(self, node):
         return operations.Print(self.dispatch(node.children[1]))
 
-    def visit_variabledeclaration(self, node):
-        variable = self.dispatch(node.children[0])
-        variable_name = variable.get_literal()
-        self.scopes.add_local(variable_name)
-        self.varlists[-1][variable_name] = None
-        if len(node.children) > 1:
-            expr = self.dispatch(node.children[1])
-        else:
-            expr = None
-
-        return operations.VariableDeclaration(variable, expr)
-
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
         nodelist = node.children[1:]

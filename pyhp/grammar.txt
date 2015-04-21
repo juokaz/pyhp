@@ -28,7 +28,6 @@ functionbody    : <sourceelements>
                 ;
 
 statement : <block>
-          | <variabledeclaration> [";"]
           | <expressionstatement> [";"]
           | <ifstatement>
           | <iterationstatement>
@@ -47,9 +46,6 @@ returnstatement : ["return"] expression?
                 ;
 
 expressionstatement : expression
-                    ;
-
-variabledeclaration : variable >initialiser<?
                     ;
 
 initialiser : ["="] assignmentexpression
