@@ -1,7 +1,7 @@
 import py
 from rpython.rlib.parsing.ebnfparse import parse_ebnf, make_parse_function
-from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.parsing.parsing import ParseError
+from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
@@ -326,18 +326,3 @@ class Transformer(RPythonVisitor):
     def is_member(self, obj):
         from pyhp.operations import Member
         return isinstance(obj, Member)
-
-
-transformer = Transformer()
-
-
-def parse(source):
-    """ Parse the source code and produce an AST
-    """
-    try:
-        t = _parse(source)
-    except ParseError, e:
-        print e.nice_error_message(source=source)
-        raise
-    ast = ToAST().transform(t)
-    return transformer.dispatch(ast)

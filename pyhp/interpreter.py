@@ -12,8 +12,6 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 """
 
-from pyhp.sourceparser import parse
-from pyhp.bytecode import compile_ast
 from pyhp import bytecode
 from rpython.rlib import jit
 
@@ -373,10 +371,3 @@ def execute(frame, bc):
             frame.vars[arg] = frame.pop()
         else:
             raise Exception("Unkown operation %s" % bytecode.bytecodes[c])
-
-
-def interpret(source):
-    bc = compile_ast(parse(source))
-    frame = Frame(bc)
-    execute(frame, bc)
-    return frame  # for tests and later introspection

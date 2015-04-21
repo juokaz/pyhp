@@ -1,5 +1,5 @@
 import py, re, tempfile, os, sys
-from pyhp.main import main
+from pyhp.main import run
 
 class TestBase(object):
     def setup_method(self, meth):
@@ -10,7 +10,7 @@ class TestBase(object):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
         phpfile = tmpdir.join(self.tmpname + '.php')
         phpfile.write(code)
-        r = main([None, str(phpfile)])
+        r = run(str(phpfile))
         out, err = capfd.readouterr()
         assert r == expected_exitcode
         assert not err
