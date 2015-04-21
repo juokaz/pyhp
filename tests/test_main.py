@@ -45,6 +45,11 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "[1, 2, 3]"
 
+    def test_array_old_syntax(self, capfd):
+        out = self.run("""$x = array(1, 2, 3);
+        print $x;""", capfd)
+        assert out == "[1, 2, 3]"
+
     def test_array_access(self, capfd):
         out = self.run("""$x = [1, 2, 3];
         print $x[1];""", capfd)
