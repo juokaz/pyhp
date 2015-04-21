@@ -302,6 +302,7 @@ def execute(frame, bc):
             # reverse args index to preserve order
             for i in range(len(method.params)):
                 index = len(method.params) - 1 - i
+                assert index >= 0
                 new_frame.vars[index] = frame.pop_arg()
 
             res = execute(new_frame, new_bc)
@@ -310,6 +311,7 @@ def execute(frame, bc):
             item = frame.pop()
             printf(item.str())
         elif c == bytecode.ASSIGN:
+            assert arg >= 0
             frame.vars[arg] = frame.pop()
         else:
             raise Exception("Unkown operation %s" % bytecode.bytecodes[c])

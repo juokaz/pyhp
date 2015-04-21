@@ -30,7 +30,7 @@ Starting the VM
 Building the interpreter
 
     cd /var/www/pyhp
-    rpython targetpyhp.py
+    rpython -Ojit targetpyhp.py
 
 Running the interpreter
 

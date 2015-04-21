@@ -19,9 +19,33 @@ node default {
 
     package {
         "build-essential": ensure => installed;
-        "python3": ensure => installed;
-        "python3-dev": ensure => installed;
-        "python3-pip": ensure => installed;
+        "python": ensure => installed;
+        "python-dev": ensure => installed;
+        "python-pip": ensure => installed;
+    }
+
+    package {
+        "libffi-dev": ensure => installed;
+    }
+
+    file { "/usr/include/libffi":
+        ensure => "directory",
+    }
+
+    exec{ "copy_libffi-dev":
+        command => "cp /usr/include/x86_64-linux-gnu/ffi*  /usr/include/libffi/",
+        creates => "/usr/include/libffi/ffi.h",
+        require => File["/usr/include/libffi"]
+    }
+
+    file { "/usr/lib/libffi":
+        ensure => "directory",
+    }
+
+    exec{ "copy_libffi":
+        command => "cp /usr/lib/x86_64-linux-gnu/libffi.so.6  /usr/lib/libffi/",
+        creates => "/usr/lib/libffi/libffi.so.6",
+        require => File["/usr/lib/libffi"]
     }
 
     exec{ "retrieve_pypy":
@@ -71,8 +95,8 @@ node default {
     }
 
     exec { "python-dependencies":
-        command => "pip3 install -r requirements.txt",
+        command => "pip install -r requirements.txt",
         cwd => "/var/www/pyhp",
-        require => Package["python3-pip"],
+        require => Package["python-pip"],
     }
 }
