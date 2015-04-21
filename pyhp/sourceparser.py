@@ -195,7 +195,6 @@ class Transformer(RPythonVisitor):
         return left
 
     def visit_arrayliteral(self, node):
-        op = node.children[0]
         l = [self.dispatch(child) for child in node.children[1:]]
         return operations.Array(l)
 
@@ -208,14 +207,12 @@ class Transformer(RPythonVisitor):
         operation = node.children[1].additional_info
         right = self.dispatch(node.children[2])
 
-        if self.is_local_identifier(left):
-            return operations.LocalAssignmentOperation(left, right, operation)
-        elif self.is_identifier(left):
+        if self.is_variable(left):
             return operations.AssignmentOperation(left, right, operation)
         elif self.is_member(left):
             return operations.MemberAssignmentOperation(left, right, operation)
         else:
-            raise FakeParseError(pos, "invalid lefthand expression")
+            raise FakeParseError("invalid lefthand expression")
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])
@@ -277,17 +274,13 @@ class Transformer(RPythonVisitor):
         else:
             return self.dispatch(node.children[i]), i+2
 
-    def is_identifier(self, obj):
-        from pyhp.operations import Identifier, VariableIdentifier
-        return isinstance(obj, Identifier) or isinstance(obj, VariableIdentifier)
+    def is_variable(self, obj):
+        from pyhp.operations import VariableIdentifier
+        return isinstance(obj, VariableIdentifier)
 
     def is_member(self, obj):
-        from pyhp.operations import  Member
+        from pyhp.operations import Member
         return isinstance(obj, Member)
-
-    def is_local_identifier(self, obj):
-        from pyhp.operations import LocalIdentifier
-        return isinstance(obj, LocalIdentifier)
 
 
 transformer = Transformer()

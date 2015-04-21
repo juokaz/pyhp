@@ -123,13 +123,14 @@ class W_StringObject(W_Root):
     def str(self):
         return str(self.stringval)
 
+
 class W_Array(W_Root):
     def __init__(self):
         self.propdict = {}
 
     def put(self, key, value):
         assert(isinstance(key, str))
-        if not key in self.propdict:
+        if key not in self.propdict:
             self.propdict[key] = Property(key, value)
         else:
             self.propdict[key].value = value
@@ -143,9 +144,9 @@ class W_Array(W_Root):
 
     def str(self):
         r = '['
-        for key in sorted(self.propdict):
-            value = self.propdict[key].value.str()
-            r += value + ', '
+        for key, element in self.propdict.iteritems():
+            value = element.value.str()
+            r += '%s: %s' % (key, value) + ', '
         r = r.strip(', ')
         r += ']'
         return r

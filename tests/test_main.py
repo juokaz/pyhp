@@ -43,12 +43,12 @@ class TestMain(TestBase):
     def test_array(self, capfd):
         out = self.run("""$x = [1, 2, 3];
         print $x;""", capfd)
-        assert out == "[1, 2, 3]"
+        assert out == "[1: 2, 0: 1, 2: 3]"
 
     def test_array_old_syntax(self, capfd):
         out = self.run("""$x = array(1, 2, 3);
         print $x;""", capfd)
-        assert out == "[1, 2, 3]"
+        assert out == "[1: 2, 0: 1, 2: 3]"
 
     def test_array_access(self, capfd):
         out = self.run("""$x = [1, 2, 3];
@@ -59,5 +59,5 @@ class TestMain(TestBase):
         out = self.run("""$x = [1, 2, 3];
         $x[1] = 5;
         print $x;""", capfd)
-        assert out == "[1, 5, 3]"
+        assert out == "[1: 5, 0: 1, 2: 3]"
 

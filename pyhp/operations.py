@@ -238,20 +238,6 @@ class Null(Expression):
         ctx.emit(bytecode.LOAD_NULL)
 
 
-class LocalIdentifier(Expression):
-    def __init__(self, identifier, local):
-        self.identifier = identifier
-        self.local = local
-
-    def compile(self, ctx):
-        ctx.emit('LOAD_LOCAL', self.local)
-
-    def get_literal(self):
-        return self.identifier
-
-    def get_local(self):
-        return self.local
-
 class VariableIdentifier(Expression):
     def __init__(self, identifier):
         self.identifier = identifier
@@ -271,13 +257,18 @@ class Variable(Statement):
         self.body.compile(ctx)
 
 
+class Empty(Expression):
+    def compile(self, ctx):
+        pass
+
+
 class AssignmentOperation(Expression):
     def __init__(self, left, right, operand):
         self.left = left
         self.identifier = left.get_literal()
         self.right = right
         if self.right is None:
-            self.right = Empty(pos)
+            self.right = Empty()
         self.operand = operand
 
     def compile(self, ctx):
@@ -290,7 +281,7 @@ class MemberAssignmentOperation(Expression):
         self.left = left
         self.right = right
         if right is None:
-            self.right = Empty(pos)
+            self.right = Empty()
 
         self.operand = operand
 

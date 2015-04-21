@@ -63,13 +63,14 @@ class TestFunctions(TestBase):
         assert out == "hello"
 
     def test_function_call_local_vars(self, capfd):
-        out = self.run("""function test($x) {
-            return $x + 1;
+        out = self.run("""function test() {
+            $i = 5;
+            return $i + 1;
         }
 
         $i = 1;
-        $i = test($i);
+        $i = test();
 
         print $i;
         """, capfd)
-        assert out == "2"
+        assert out == "6"
