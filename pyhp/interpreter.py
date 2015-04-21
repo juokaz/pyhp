@@ -17,7 +17,8 @@ from pyhp.bytecode import compile_ast
 from pyhp import bytecode
 from rpython.rlib import jit
 
-from utils import printf, replace
+from rpython.rlib.rstring import replace
+from utils import printf
 
 
 def printable_loc(pc, code, bc):
