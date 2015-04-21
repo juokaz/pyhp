@@ -89,6 +89,7 @@ class Transformer(RPythonVisitor):
         '==': operations.Eq,
         '<': operations.Lt,
         '.': operations.StringJoin,
+        '[': operations.Member,
     }
 
     def __init__(self):
@@ -205,9 +206,28 @@ class Transformer(RPythonVisitor):
 
         return left
 
+    def visit_arrayliteral(self, node):
+        op = node.children[0]
+        l = [self.dispatch(child) for child in node.children[1:]]
+        return operations.Array(l)
+
     def visit_block(self, node):
         l = [self.dispatch(child) for child in node.children[1:]]
         return operations.Block(l)
+
+    def visit_assignmentexpression(self, node):
+        left = self.dispatch(node.children[0])
+        operation = node.children[1].additional_info
+        right = self.dispatch(node.children[2])
+
+        if self.is_local_identifier(left):
+            return operations.LocalAssignmentOperation(left, right, operation)
+        elif self.is_identifier(left):
+            return operations.AssignmentOperation(left, right, operation)
+        elif self.is_member(left):
+            return operations.MemberAssignmentOperation(left, right, operation)
+        else:
+            raise FakeParseError(pos, "invalid lefthand expression")
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])
@@ -255,7 +275,7 @@ class Transformer(RPythonVisitor):
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
-        return operations.Variable(name)
+        return operations.VariableIdentifier(name)
 
     def string(self, node):
         return operations.ConstantString(node.additional_info)
@@ -268,6 +288,19 @@ class Transformer(RPythonVisitor):
             return None, i+1
         else:
             return self.dispatch(node.children[i]), i+2
+
+    def is_identifier(self, obj):
+        from pyhp.operations import Identifier, VariableIdentifier
+        return isinstance(obj, Identifier) or isinstance(obj, VariableIdentifier)
+
+    def is_member(self, obj):
+        from pyhp.operations import  Member
+        return isinstance(obj, Member)
+
+    def is_local_identifier(self, obj):
+        from pyhp.operations import LocalIdentifier
+        return isinstance(obj, LocalIdentifier)
+
 
 transformer = Transformer()
 

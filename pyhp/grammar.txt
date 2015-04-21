@@ -72,12 +72,23 @@ printstatement: "print" expression ;
 primaryexpression   : <identifier>
                     | <variable>
                     | <literal>
+                    | <arrayliteral>
                     ;
 
-memberexpression    : primaryexpression
-                    | functionexpression
+arrayliteral    : "[" >elementlist< ["]"]
+                | "[" >elementlist< ["," "]"]
+                ;
+
+elementlist : assignmentexpression ([","] assignmentexpression)*
+            ;
+
+memberexpression    : primaryexpression >memberexpressiona<+
+                    | functionexpression >memberexpressiona<+
                     | <primaryexpression>
                     | <functionexpression>
+                    ;
+
+memberexpressiona   : "[" expression ["]"]
                     ;
 
 newexpression   : <memberexpression>
