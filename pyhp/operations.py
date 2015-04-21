@@ -243,7 +243,7 @@ class VariableIdentifier(Expression):
         self.identifier = identifier
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.register_var(self.identifier))
+        ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.identifier))
 
     def get_literal(self):
         return self.identifier
