@@ -338,7 +338,6 @@ class For(Statement):
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
-        ctx.emit(bytecode.DISCARD_TOP)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
         if_opcode.args = [len(ctx.data)]
 
