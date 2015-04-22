@@ -154,8 +154,20 @@ equalityexpression  : relationalexpression (>equalityop< relationalexpression)+
                     | <relationalexpression>
                     ;
 
-assignmentexpression    : lefthandsideexpression >assignmentoperator< assignmentexpression
+logicalandexpression    : equalityexpression ("&&" equalityexpression)+
                         | <equalityexpression>
+                        ;
+
+logicalorexpression : logicalandexpression ("||" logicalandexpression)+
+                    | <logicalandexpression>
+                    ;
+
+conditionalexpression   : logicalorexpression "?" assignmentexpression [":"] assignmentexpression
+                        | <logicalorexpression>
+                        ;
+
+assignmentexpression    : lefthandsideexpression >assignmentoperator< assignmentexpression
+                        | <conditionalexpression>
                         ;
 
 assignmentoperator  : "=" | "\*=" | "\/=" | "\%=" | "\+=" | "\-=" | "<<="
@@ -181,7 +193,9 @@ booleanliteral  : "true"
                 | "false"
                 ;
 
-numericliteral  : <DECIMALLITERAL>
+numericliteral  : DECIMALLITERAL
+                | "-" DECIMALLITERAL
+                | "+" DECIMALLITERAL
                 ;
 
 DECIMALLITERAL  : "(((0|[1-9][0-9]*)(\.[0-9]*)?)|(\.[0-9]+))([eE][\+\-]?[0-9]*)?"

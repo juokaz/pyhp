@@ -306,6 +306,8 @@ class If(Node):
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.true_branch.compile(ctx)
         if_opcode.args = [len(ctx.data)]
+        if self.else_branch is not None:
+            self.else_branch.compile(ctx)
 
 
 class WhileBase(Statement):
@@ -379,10 +381,13 @@ def create_binary_op(name):
         def compile(self, ctx):
             self.left.compile(ctx)
             self.right.compile(ctx)
-            b_name = 'BINARY_%s' % name.upper()
+            b_name = name.upper()
             ctx.emit_string(b_name)
     BinaryOp.__name__ = name
     return BinaryOp
+
+And = create_binary_op('AND')  # +
+Or = create_binary_op('OR')  # +
 
 Plus = create_binary_op('ADD')  # +
 Mult = create_binary_op('MUL')  # *
@@ -391,7 +396,7 @@ Division = create_binary_op('DIV')  # /
 Sub = create_binary_op('SUB')  # -
 
 Eq = create_binary_op('EQ')  # ==
+Gt = create_binary_op('GT')  # >
 Ge = create_binary_op('GE')  # >=
 Lt = create_binary_op('LT')  # <
-
-StringJoin = create_binary_op('STRINGJOIN')  # .
+Le = create_binary_op('LE')  # <=

@@ -111,10 +111,14 @@ class Transformer(RPythonVisitor):
         '*': operations.Mult,
         '/': operations.Division,
         '%': operations.Mod,
+        '>': operations.Gt,
         '>=': operations.Ge,
-        '==': operations.Eq,
         '<': operations.Lt,
-        '.': operations.StringJoin,
+        '<=': operations.Le,
+        '.': operations.Plus,
+        '&&': operations.And,
+        '||': operations.Or,
+        '==': operations.Eq,
         '[': operations.Member,
     }
 
@@ -204,10 +208,13 @@ class Transformer(RPythonVisitor):
             result = self.BINOP_TO_CLS[op.additional_info](left, right)
             left = result
         return left
+    visit_logicalorexpression = binaryop
+    visit_logicalandexpression = binaryop
     visit_stringjoinexpression = binaryop
     visit_relationalexpression = binaryop
     visit_equalityexpression = binaryop
     visit_additiveexpression = binaryop
+    visit_multiplicativeexpression = binaryop
     visit_expression = binaryop
     visit_memberexpression = binaryop
 
@@ -221,6 +228,20 @@ class Transformer(RPythonVisitor):
             return operations.Null()
     visit_nullliteral = literalop
     visit_booleanliteral = literalop
+
+    def visit_numericliteral(self, node):
+        number = ""
+        for node in node.children:
+            number += node.additional_info
+        try:
+            f = float(number)
+            i = ovfcheck_float_to_int(f)
+            if i != f:
+                return operations.ConstantFloat(f)
+            else:
+                return operations.ConstantInt(i)
+        except (ValueError, OverflowError):
+            return operations.ConstantFloat(float(node.additional_info))
 
     def visit_expressionstatement(self, node):
         return operations.ExprStatement(self.dispatch(node.children[0]))
@@ -326,18 +347,6 @@ class Transformer(RPythonVisitor):
         else:
             value = None
         return operations.Return(value)
-
-    def visit_DECIMALLITERAL(self, node):
-        try:
-
-            f = float(node.additional_info)
-            i = ovfcheck_float_to_int(f)
-            if i != f:
-                return operations.ConstantFloat(f)
-            else:
-                return operations.ConstantInt(i)
-        except (ValueError, OverflowError):
-            return operations.ConstantFloat(float(node.additional_info))
 
     def visit_IDENTIFIERNAME(self, node):
         name = node.additional_info

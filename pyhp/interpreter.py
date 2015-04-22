@@ -18,7 +18,10 @@ from rpython.rlib import jit
 from pyhp.utils import printf
 
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_Boolean
+    W_Null, W_Array, W_Boolean, W_FloatObject
+from pyhp.datatypes import plus, increment, decrement, sub, mult, division
+from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
+    compare_eq
 
 
 def printable_loc(pc, code, bc):
@@ -147,6 +150,8 @@ def execute(frame, bc):
             frame.push(stringval)
         elif c == bytecode.LOAD_INTVAL:
             frame.push(W_IntObject(args[0]))
+        elif c == bytecode.LOAD_FLOATVAL:
+            frame.push(W_FloatObject(args[0]))
         elif c == bytecode.LOAD_VAR:
             variable = frame.get_var(args[0], args[1])
             if variable is None:
@@ -187,47 +192,58 @@ def execute(frame, bc):
                 return frame.pop()
             else:
                 return W_Null()
-        elif c == bytecode.BINARY_ADD:
+        elif c == bytecode.LT:
             right = frame.pop()
             left = frame.pop()
-            w_res = left.add(right)
-            frame.push(w_res)
-        elif c == bytecode.BINARY_LT:
+            frame.push(compare_lt(left, right))
+        elif c == bytecode.LE:
             right = frame.pop()
             left = frame.pop()
-            frame.push(left.lt(right))
-        elif c == bytecode.BINARY_GE:
+            frame.push(compare_le(left, right))
+        elif c == bytecode.GT:
             right = frame.pop()
             left = frame.pop()
-            frame.push(left.ge(right))
-        elif c == bytecode.BINARY_EQ:
+            frame.push(compare_gt(left, right))
+        elif c == bytecode.GE:
             right = frame.pop()
             left = frame.pop()
-            frame.push(left.eq(right))
-        elif c == bytecode.BINARY_SUB:
+            frame.push(compare_ge(left, right))
+        elif c == bytecode.EQ:
             right = frame.pop()
             left = frame.pop()
-            frame.push(left.sub(right))
-        elif c == bytecode.BINARY_STRINGJOIN:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(left.append(right))
+            frame.push(compare_eq(left, right))
         elif c == bytecode.INCR:
             left = frame.pop()
-            frame.push(left.incr())
+            frame.push(increment(left))
         elif c == bytecode.DECR:
             left = frame.pop()
-            frame.push(left.decr())
+            frame.push(decrement(left))
         elif c == bytecode.ADD:
-            left = frame.pop()
             right = frame.pop()
-            frame.push(left.incr(right))
+            left = frame.pop()
+            frame.push(plus(left, right))
         elif c == bytecode.SUB:
-            left = frame.pop()
             right = frame.pop()
-            frame.push(left.decr(right))
+            left = frame.pop()
+            frame.push(sub(left, right))
+        elif c == bytecode.MUL:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(mult(left, right))
+        elif c == bytecode.DIV:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(division(left, right))
+        elif c == bytecode.AND:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left and right)
+        elif c == bytecode.OR:
+            right = frame.pop()
+            left = frame.pop()
+            frame.push(left or right)
         elif c == bytecode.JUMP_IF_FALSE:
-            if not frame.pop().is_true():
+            if not frame.pop():
                 pc = args[0]
         elif c == bytecode.JUMP_BACKWARD:
             pc = args[0]

@@ -9,6 +9,17 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "1"
 
+    def test_if_and(self, capfd):
+        out = self.run("""
+        $x = 1;
+        $y = 2;
+        if ($x >= 1 && $y < 2) {
+            print $x;
+        } else {
+            print $y;
+        }""", capfd)
+        assert out == "2"
+
     def test_if_equal(self, capfd):
         out = self.run("""
         $x = 1;
@@ -41,3 +52,8 @@ class TestMain(TestBase):
             print $x;
         }""", capfd)
         assert out == "123456789"
+
+    def test_div(self, capfd):
+        out = self.run("""$x = 6 / 2;
+        print $x;""", capfd)
+        assert out == "3"

@@ -49,6 +49,16 @@ class TestDatatypes(TestBase):
         print $x;""", capfd)
         assert out == "true"
 
+    def test_float(self, capfd):
+        out = self.run("""$x = -1.3;
+        print $x;""", capfd)
+        assert out == "-1.3"
+
+    def test_float_short(self, capfd):
+        out = self.run("""$x = .3;
+        print $x;""", capfd)
+        assert out == "0.3"
+
     def test_array(self, capfd):
         out = self.run("""$x = [1, 2, 3];
         print $x;""", capfd)

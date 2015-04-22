@@ -1,5 +1,7 @@
-from rpython.rlib.rsre.rsre_re import findall, sub
+from rpython.rlib.rsre.rsre_re import findall, sub as re_sub
 from rpython.rlib.rstring import replace
+from rpython.rlib.rarithmetic import ovfcheck
+from rpython.rlib.objectmodel import specialize
 
 
 class Property(object):
@@ -17,44 +19,8 @@ class W_IntObject(W_Root):
         assert(isinstance(intval, int))
         self.intval = intval
 
-    def add(self, other):
-        if not isinstance(other, W_IntObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.intval + other.intval)
-
-    def sub(self, other):
-        if not isinstance(other, W_IntObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.intval - other.intval)
-
-    def incr(self, n=None):
-        if isinstance(n, W_IntObject):
-            self.intval += n.intval
-        else:
-            self.intval += 1
-        return self
-
-    def decr(self, n=None):
-        if isinstance(n, W_IntObject):
-            self.intval -= n.intval
-        else:
-            self.intval -= 1
-        return self
-
-    def lt(self, other):
-        if not isinstance(other, W_IntObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.intval < other.intval)
-
-    def ge(self, other):
-        if not isinstance(other, W_IntObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.intval >= other.intval)
-
-    def eq(self, other):
-        if not isinstance(other, W_IntObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.intval == other.intval)
+    def to_number(self):
+        return float(self.intval)
 
     def is_true(self):
         return self.intval != 0
@@ -62,39 +28,23 @@ class W_IntObject(W_Root):
     def str(self):
         return str(self.intval)
 
+    def __repr__(self):
+        return 'W_IntObject(%s)' % (self.intval,)
+
 
 class W_FloatObject(W_Root):
     def __init__(self, floatval):
         assert(isinstance(floatval, float))
         self.floatval = floatval
 
-    def add(self, other):
-        if not isinstance(other, W_FloatObject):
-            raise Exception("wrong type")
-        return W_FloatObject(self.floatval + other.floatval)
-
-    def sub(self, other):
-        if not isinstance(other, W_FloatObject):
-            raise Exception("wrong type")
-        return W_FloatObject(self.floatval - other.floatval)
-
-    def lt(self, other):
-        if not isinstance(other, W_FloatObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.floatval < other.floatval)
-
-    def ge(self, other):
-        if not isinstance(other, W_FloatObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.floatval >= other.floatval)
-
-    def eq(self, other):
-        if not isinstance(other, W_FloatObject):
-            raise Exception("wrong type")
-        return W_IntObject(self.floatval == other.floatval)
+    def to_number(self):
+        return self.floatval
 
     def str(self):
         return str(self.floatval)
+
+    def __repr__(self):
+        return 'W_FloatObject(%s)' % (self.floatval,)
 
 
 class W_StringObject(W_Root):
@@ -105,11 +55,6 @@ class W_StringObject(W_Root):
         self.variables = []
         if not self.is_single_quoted(stringval):
             self.variables = self.extract_variables()
-
-    def append(self, other):
-        if not isinstance(other, W_StringObject):
-            raise Exception("wrong type")
-        return W_StringObject(self.stringval + other.stringval)
 
     def replace(self, search, replace_with):
         return W_StringObject(replace(self.stringval, search, replace_with))
@@ -140,11 +85,12 @@ class W_StringObject(W_Root):
         variables_ = []
         # remove curly braces around variables
         for variable in variables:
-            self.stringval = replace(self.stringval, '{' + variable + '}', variable)
+            self.stringval = replace(self.stringval, '{' + variable + '}',
+                                     variable)
 
             # is this an array access?
             indexes = findall(ARRAYINDEX, variable)
-            identifier = sub(ARRAYINDEX, '', variable)
+            identifier = re_sub(ARRAYINDEX, '', variable)
 
             variables_.append((variable, identifier, indexes))
 
@@ -216,3 +162,135 @@ class W_Boolean(W_Root):
 class W_Null(W_Root):
     def str(self):
         return "null"
+
+
+def isint(w):
+    return isinstance(w, W_IntObject)
+
+
+def isstr(w):
+    return isinstance(w, W_StringObject)
+
+
+def isfloat(w):
+    return isinstance(w, W_FloatObject)
+
+
+def plus(left, right):
+    if isstr(left) or isstr(right):
+        sleft = left.str()
+        sright = right.str()
+        return W_StringObject(sleft + sright)
+    # hot path
+    if isint(left) and isint(right):
+        ileft = left.intval
+        iright = right.intval
+        try:
+            return W_IntObject(ovfcheck(ileft + iright))
+        except OverflowError:
+            return W_FloatObject(float(ileft) + float(iright))
+    else:
+        fleft = left.to_number()
+        fright = right.to_number()
+        return W_FloatObject(fleft + fright)
+
+
+def increment(nleft, constval=1):
+    if isint(nleft):
+        return W_IntObject(nleft.intval + constval)
+    else:
+        return plus(nleft, W_IntObject(constval))
+
+
+def decrement(nleft, constval=1):
+    if isint(nleft):
+        return W_IntObject(nleft.intval - constval)
+    else:
+        return sub(nleft, W_IntObject(constval))
+
+
+def sub(left, right):
+    if isint(left) and isint(right):
+        # XXX fff
+        ileft = left.intval
+        iright = right.intval
+        try:
+            return W_IntObject(ovfcheck(ileft - iright))
+        except OverflowError:
+            return W_FloatObject(float(ileft) - float(iright))
+    fleft = left.to_number()
+    fright = right.to_number()
+    return W_FloatObject(fleft - fright)
+
+
+def mult(left, right):
+    if isint(left) and isint(right):
+        # XXXX test & stuff
+        ileft = left.intval
+        iright = right.intval
+        try:
+            return W_IntObject(ovfcheck(ileft * iright))
+        except OverflowError:
+            return W_FloatObject(float(ileft) * float(iright))
+    fleft = left.to_number()
+    fright = right.to_number()
+    return W_FloatObject(fleft * fright)
+
+
+def division(left, right):
+    if isint(left) and isint(right):
+        # XXXX test & stuff
+        ileft = left.intval
+        iright = right.intval
+        try:
+            return W_IntObject(ovfcheck(ileft / iright))
+        except OverflowError:
+            return W_FloatObject(float(ileft) / float(iright))
+    fleft = left.to_number()
+    fright = right.to_number()
+    return W_FloatObject(fleft / fright)
+
+
+@specialize.argtype(0, 1)
+def _compare_gt(x, y):
+    return x > y
+
+
+@specialize.argtype(0, 1)
+def _compare_ge(x, y):
+    return x >= y
+
+
+@specialize.argtype(0, 1)
+def _compare_eq(x, y):
+    return x == y
+
+
+def _base_compare(x, y, _compare):
+    if isint(x) and isint(y):
+        return _compare(x.intval, y.intval)
+
+    if isfloat(x) and isfloat(y):
+        n1 = x.to_number()
+        n2 = x.to_number()
+        return _compare(n1, n2)
+
+
+def compare_gt(x, y):
+    return _base_compare(x, y, _compare_gt)
+
+
+def compare_ge(x, y):
+    return _base_compare(x, y, _compare_ge)
+
+
+def compare_lt(x, y):
+    return _base_compare(y, x, _compare_gt)
+
+
+def compare_le(x, y):
+    return _base_compare(y, x, _compare_ge)
+
+
+def compare_eq(x, y):
+    return _base_compare(y, x, _compare_eq)

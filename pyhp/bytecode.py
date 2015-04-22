@@ -3,11 +3,11 @@ bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_FUNCTION',
              'LOAD_STRINGVAL',
              'LOAD_ARRAY', 'LOAD_MEMBER', 'STORE_MEMBER',
              'ASSIGN', 'DISCARD_TOP',
-             'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
-             'BINARY_EQ', 'BINARY_GE', 'BINARY_LT', 'RETURN', 'PRINT',
-             'BINARY_STRINGJOIN',
+             'JUMP_IF_FALSE', 'JUMP_BACKWARD',
+             'RETURN', 'PRINT',
              'LOAD_PARAM', 'CALL',
 
+             'EQ', 'GT', 'GE', 'LT', 'LE', 'AND', 'OR',
              'ADD', 'SUB', 'MUL', 'DIV', 'INCR', 'DECR', 'MOD',
              ]
 

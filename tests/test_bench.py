@@ -1,6 +1,20 @@
 from tests import TestBase
 
 class TestBench(TestBase):
+    def test_simple(self, capfd):
+        out = self.run("""function simple() {
+          $a = 0;
+          for ($i = 0; $i < 100; $i++)
+            $a++;
+
+          $thisisanotherlongname = 0;
+          for ($thisisalongname = 0; $thisisalongname < 100; $thisisalongname++)
+            $thisisanotherlongname++;
+        }
+
+        simple();""", capfd)
+        assert out == ""
+
     def test_simpleucall(self, capfd):
         out = self.run("""function hallo($a) {
         }
@@ -24,6 +38,47 @@ class TestBench(TestBase):
 
         simpleudcall();""", capfd)
         assert out == ""
+
+    def test_mandel(self, capfd):
+        out = self.run("""function mandel() {
+          $w1=5;
+          $h1=10;
+          $recen=-.45;
+          $imcen=0.0;
+          $r=0.7;
+          $s=0;  $rec=0;  $imc=0;  $re=0;  $im=0;  $re2=0;  $im2=0;
+          $x=0;  $y=0;  $w2=0;  $h2=0;  $color=0;
+          $s=2*$r/$w1;
+          $w2=40;
+          $h2=12;
+          for ($y=0 ; $y<=$w1; $y=$y+1) {
+            $imc=$s*($y-$h2)+$imcen;
+            for ($x=0 ; $x<=$h1; $x=$x+1) {
+              $rec=$s*($x-$w2)+$recen;
+              $re=$rec;
+              $im=$imc;
+              $color=1000;
+              $re2=$re*$re;
+              $im2=$im*$im;
+              while( ((($re2+$im2)<1000000) && $color>0)) {
+                $im=$re*$im*2+$imc;
+                $re=$re2-$im2+$rec;
+                $re2=$re*$re;
+                $im2=$im*$im;
+                $color=$color-1;
+              }
+              if ( $color==0 ) {
+                print "_";
+              } else {
+                print "#";
+              }
+            }
+            print "<br>";
+          }
+        }
+
+        mandel();""", capfd)
+        assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"
 
     def test_ackermann(self, capfd):
         out = self.run("""function Ack($m, $n) {
@@ -58,7 +113,7 @@ class TestBench(TestBase):
         }
 
         ary3(10);""", capfd)
-        assert out == "512 5120\n"
+        assert out == "10 100\n"
 
     def test_nestedloop(self, capfd):
         out = self.run("""function nestedloop($n) {
