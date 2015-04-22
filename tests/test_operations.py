@@ -28,6 +28,12 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "1"
 
+    def test_inline_if(self, capfd):
+        out = self.run("""
+        $x = 1;
+        print $x < 2 ? 1 : 0;""", capfd)
+        assert out == "1"
+
     def test_while(self, capfd):
         out = self.run("""
         $x = 1;

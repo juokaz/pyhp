@@ -309,6 +309,12 @@ class Transformer(RPythonVisitor):
             elseblock = None
         return operations.If(condition, ifblock, elseblock)
 
+    def visit_conditionalexpression(self, node):
+        condition = self.dispatch(node.children[0])
+        truepart = self.dispatch(node.children[2])
+        falsepart = self.dispatch(node.children[3])
+        return operations.If(condition, truepart, falsepart)
+
     def visit_iterationstatement(self, node):
         return self.dispatch(node.children[0])
 

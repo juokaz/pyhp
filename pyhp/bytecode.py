@@ -3,7 +3,7 @@ bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_FUNCTION',
              'LOAD_STRINGVAL',
              'LOAD_ARRAY', 'LOAD_MEMBER', 'STORE_MEMBER',
              'ASSIGN', 'DISCARD_TOP',
-             'JUMP_IF_FALSE', 'JUMP_BACKWARD',
+             'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'JUMP',
              'RETURN', 'PRINT',
              'LOAD_PARAM', 'CALL',
 

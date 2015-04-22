@@ -305,9 +305,11 @@ class If(Node):
         self.cond.compile(ctx)
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.true_branch.compile(ctx)
+        true_opcode = ctx.emit(bytecode.JUMP, 0)
         if_opcode.args = [len(ctx.data)]
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
+        true_opcode.args = [len(ctx.data)]
 
 
 class WhileBase(Statement):

@@ -242,6 +242,8 @@ def execute(frame, bc):
             right = frame.pop()
             left = frame.pop()
             frame.push(left or right)
+        elif c == bytecode.JUMP:
+            pc = args[0]
         elif c == bytecode.JUMP_IF_FALSE:
             if not frame.pop():
                 pc = args[0]

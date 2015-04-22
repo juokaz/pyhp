@@ -115,6 +115,19 @@ class TestBench(TestBase):
         ary3(10);""", capfd)
         assert out == "10 100\n"
 
+    def test_fibo(self, capfd):
+        out = self.run("""function fibo_r($n){
+            return(($n < 2) ? 1 : fibo_r($n - 2) + fibo_r($n - 1));
+        }
+
+        function fibo($n) {
+          $r = fibo_r($n);
+          print "$r\n";
+        }
+
+        fibo(10);""", capfd)
+        assert out == "89\n"
+
     def test_nestedloop(self, capfd):
         out = self.run("""function nestedloop($n) {
           $x = 0;
