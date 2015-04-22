@@ -22,7 +22,6 @@ class SymbolsMap(object):
         self.symbols_id = {}
 
     def add(self, name):
-        assert(isinstance(name, basestring))
         if name not in self.symbols_id:
             self.symbols_id[name] = len(self.symbols)
             self.symbols.append(name)
@@ -70,11 +69,13 @@ class Scope(object):
         return idx
 
     def finalize(self):
-        return FinalScope(self.symbols, self.functions, self.variables, self.globals)
+        return FinalScope(self.symbols, self.functions, self.variables,
+                          self.globals)
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]', 'globals[*]']
+    _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]',
+                          'globals[*]']
 
     def __init__(self, symbols, functions, variables, globals):
         self.symbols = symbols
@@ -138,7 +139,6 @@ class Transformer(RPythonVisitor):
     def visit_sourceelements(self, node):
         self.funclists.append({})
         nodes = []
-        globals = []
         for child in node.children:
             node = self.dispatch(child)
             if node is None:
@@ -176,7 +176,8 @@ class Transformer(RPythonVisitor):
         if declaration:
             funcindex = self.declare_symbol(identifier.get_literal())
 
-        funcobj = operations.Function(identifier, funcindex, p, functionbody, final_scope)
+        funcobj = operations.Function(identifier, funcindex, p, functionbody,
+                                      final_scope)
 
         if declaration:
             self.declare_function(identifier.get_literal(), funcobj)

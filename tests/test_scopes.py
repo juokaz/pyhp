@@ -1,6 +1,19 @@
 from tests import TestBase
 
 class TestScopes(TestBase):
+    def test_function_call_local_vars(self, capfd):
+        out = self.run("""function test() {
+            $i = 5;
+            return $i + 1;
+        }
+
+        $i = 1;
+        $i = test();
+
+        print $i;
+        """, capfd)
+        assert out == "6"
+
     def test_function_out_of_scope(self, capfd):
         try:
             out = self.run("""function test() {

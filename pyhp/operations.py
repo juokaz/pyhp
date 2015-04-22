@@ -1,5 +1,4 @@
 from pyhp import bytecode
-from constants import unescapedict
 from rpython.rlib.unroll import unrolling_iterable
 
 
@@ -382,7 +381,7 @@ def create_binary_op(name):
             self.left.compile(ctx)
             self.right.compile(ctx)
             b_name = 'BINARY_%s' % name.upper()
-            ctx.emit(bytecode.BytecodesMap[b_name])
+            ctx.emit_string(b_name)
     BinaryOp.__name__ = name
     return BinaryOp
 

@@ -61,16 +61,3 @@ class TestFunctions(TestBase):
 
         hello();""", capfd)
         assert out == "hello"
-
-    def test_function_call_local_vars(self, capfd):
-        out = self.run("""function test() {
-            $i = 5;
-            return $i + 1;
-        }
-
-        $i = 1;
-        $i = test();
-
-        print $i;
-        """, capfd)
-        assert out == "6"
