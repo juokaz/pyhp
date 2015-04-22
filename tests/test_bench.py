@@ -40,6 +40,26 @@ class TestBench(TestBase):
         ackermann(1);""", capfd)
         assert out == "Ack(3,1): 13\n"
 
+    def test_ary3(self, capfd):
+        out = self.run("""function ary3($n) {
+          $X = [];
+          $Y = [];
+          for ($i=0; $i<$n; $i++) {
+            $X[$i] = $i + 1;
+            $Y[$i] = 0;
+          }
+          for ($k=0; $k<10; $k++) {
+            for ($i=$n-1; $i>=0; $i--) {
+              $Y[$i] += $X[$i];
+            }
+          }
+          $last = $n-1;
+          print "$Y[0] $Y[$last]\n";
+        }
+
+        ary3(10);""", capfd)
+        assert out == "512 5120\n"
+
     def test_nestedloop(self, capfd):
         out = self.run("""function nestedloop($n) {
           $x = 0;

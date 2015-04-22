@@ -1,4 +1,4 @@
-from rpython.rlib.rsre.rsre_re import findall
+from rpython.rlib.rsre.rsre_re import findall, sub
 from rpython.rlib.rstring import replace
 
 
@@ -104,7 +104,7 @@ class W_StringObject(W_Root):
 
         self.variables = []
         if not self.is_single_quoted(stringval):
-            self.variables = self.extract_variables(self.stringval)
+            self.variables = self.extract_variables()
 
     def append(self, other):
         if not isinstance(other, W_StringObject):
@@ -123,9 +123,32 @@ class W_StringObject(W_Root):
     def is_single_quoted(self, string):
         return string[0] == "'"
 
-    def extract_variables(self, string):
+    def extract_variables(self):
         VARIABLENAME = "\$[a-zA-Z_][a-zA-Z0-9_]*"
-        return findall(VARIABLENAME, string)
+
+        # array index regex matching the index and the brackets
+        ARRAYINDEX = "\[(?:[0-9]+|" + VARIABLENAME + ")\]"
+
+        # match variables and array access
+        VARIABLE = "(" + VARIABLENAME + "(?:" + ARRAYINDEX + ")*)"
+        CURLYVARIABLE = "{?" + VARIABLE + "}?"
+        variables = findall(CURLYVARIABLE, self.stringval)
+
+        # array index regex matching just the index
+        ARRAYINDEX = "\[([0-9]+|" + VARIABLENAME + ")\]"
+
+        variables_ = []
+        # remove curly braces around variables
+        for variable in variables:
+            self.stringval = replace(self.stringval, '{' + variable + '}', variable)
+
+            # is this an array access?
+            indexes = findall(ARRAYINDEX, variable)
+            identifier = sub(ARRAYINDEX, '', variable)
+
+            variables_.append((variable, identifier, indexes))
+
+        return variables_
 
     def string_unquote(self, string):
         # dont unquote if already unquoted

@@ -131,10 +131,18 @@ def execute(frame, bc):
         if c == bytecode.LOAD_STRINGVAL:
             stringval = W_StringObject(args[0])
             for variable in stringval.get_variables():
-                index = bc.index_for_symbol(variable)
+                search, identifier, indexes = variable
+                index = bc.index_for_symbol(identifier)
                 assert index >= 0
-                replace = frame.get_var(index, variable).str()
-                stringval = stringval.replace(variable, replace)
+                value = frame.get_var(index, identifier)
+                for key in indexes:
+                    if key[0] == '$':
+                        index = bc.index_for_symbol(key)
+                        assert index >= 0
+                        key = frame.get_var(index, identifier).str()
+                    value = value.get(key)
+                replace = value.str()
+                stringval = stringval.replace(search, replace)
 
             frame.push(stringval)
         elif c == bytecode.LOAD_INTVAL:
