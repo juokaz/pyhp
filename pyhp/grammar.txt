@@ -80,6 +80,7 @@ primaryexpression   : <identifier>
                     | <variable>
                     | <literal>
                     | <arrayliteral>
+                    | "(" <expression> ")"
                     ;
 
 arrayliteral    : "[" >elementlist< ["]"]

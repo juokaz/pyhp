@@ -74,18 +74,3 @@ class TestFunctions(TestBase):
         print $i;
         """, capfd)
         assert out == "6"
-
-    def test_function_global(self, capfd):
-        out = self.run("""function test() {
-            global $a, $c;
-            return $a + $c + 1;
-        }
-
-        $a = 1;
-        $b = 2;
-        $c = 3;
-        $i = test();
-
-        print $i;
-        """, capfd)
-        assert out == "5"

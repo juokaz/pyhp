@@ -22,7 +22,7 @@ def parse(source):
 def bytecode(ast):
     """ Compile the AST into a bytecode
     """
-    bc = compile_ast(ast)
+    bc = compile_ast(ast, ast.scope)
     return bc
 
 

@@ -15,6 +15,7 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 from pyhp import bytecode
 from rpython.rlib import jit
 
+from rpython.rlib.rsre.rsre_re import findall
 from rpython.rlib.rstring import replace
 from utils import printf
 
@@ -22,7 +23,7 @@ from utils import printf
 def printable_loc(pc, code, bc):
     return str(pc) + " " + bytecode.bytecodes[ord(code[pc])]
 
-driver = jit.JitDriver(greens=['pc', 'code', 'bc'],
+driver = jit.JitDriver(greens=['pc', 'opcodes', 'bc'],
                        reds=['frame'],
                        virtualizables=['frame'],
                        get_printable_location=printable_loc)
@@ -124,10 +125,13 @@ class W_FloatObject(W_Root):
 
 
 class W_StringObject(W_Root):
-    def __init__(self, stringval, variables=[]):
+    def __init__(self, stringval):
         assert(isinstance(stringval, str))
-        self.stringval = stringval
-        self.variables = variables
+        self.stringval = self.string_unquote(stringval)
+
+        self.variables = []
+        if not self.is_single_quoted(stringval):
+            self.variables = self.extract_variables(self.stringval)
 
     def append(self, other):
         if not isinstance(other, W_StringObject):
@@ -142,6 +146,32 @@ class W_StringObject(W_Root):
 
     def str(self):
         return str(self.stringval)
+
+    def is_single_quoted(self, string):
+        return string[0] == "'"
+
+    def extract_variables(self, string):
+        VARIABLENAME = "\$[a-zA-Z_][a-zA-Z0-9_]*"
+        return findall(VARIABLENAME, string)
+
+    def string_unquote(self, string):
+        # dont unquote if already unquoted
+        if string[0] not in ["'", '"']:
+            return string
+
+        # XXX I don't think this works, it's very unlikely IMHO
+        #     test it
+        temp = []
+        stop = len(string)-1
+        # XXX proper error
+        assert stop >= 0
+        last = ""
+
+        internalstring = string[1:stop]
+
+        for c in internalstring:
+            temp.append(c)
+        return ''.join(temp)
 
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)
@@ -194,16 +224,51 @@ class W_Null(W_Root):
 
 
 class Frame(object):
-    _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
+    _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars[*]']
 
-    def __init__(self, bc):
+    def __init__(self, bc, parent=None):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)
-        self.valuestack = [None] * 3  # safe estimate!
-        self.vars = [None] * bc.numvars
+        self.valuestack = [None] * 100  # safe estimate!
+        self.vars = [None] * 100
         self.valuestack_pos = 0
 
         self.arg_pos = 0
-        self.argstack = [None] * 3  # safe estimate!
+        self.argstack = [None] * 10  # safe estimate!
+
+        self.bc = bc
+        self.parent = parent
+
+    def is_parent_vissible(self, name):
+        symbols = self.bc.symbols
+        # a global variable
+        if name in symbols.globals:
+            return True
+
+        if self.parent is not None and name in self.parent.bc.symbols.functions:
+            return True
+
+        return False
+
+    def get_var(self, index, name):
+        variable = self.vars[index]
+
+        if variable is not None:
+            return variable
+
+        # if the current cuntext has access to a global variable read that
+        if self.parent is not None and self.is_parent_vissible(name):
+            return self.parent.get_var(index, name)
+
+        return None
+
+    def set_var(self, index, value):
+        name = self.bc.get_name(index)
+        # if it is a parent (global) variable write to that instead
+        if self.parent is not None and self.is_parent_vissible(name):
+            self.parent.set_var(index, value)
+            return
+
+        self.vars[index] = value
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
@@ -235,47 +300,54 @@ class Frame(object):
 
         return result
 
+    def __repr__(self):
+        return "Frame %s" % (self.vars)
+
 
 def execute(frame, bc):
-    code = bc.code
+    opcodes = bc.opcodes
     pc = 0
     while True:
         # required hint indicating this is the top of the opcode dispatch
-        driver.jit_merge_point(pc=pc, code=code, bc=bc, frame=frame)
+        driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc, frame=frame)
 
-        if pc >= len(code):
+        if pc >= len(opcodes):
             return W_Null()
 
-        c = ord(code[pc])
-        arg = ord(code[pc + 1])
-        pc += 2
-        if c == bytecode.LOAD_CONSTANT:
-            w_constant = bc.constants[arg]
+        opcode = opcodes[pc]
+        c = opcode.bytecode
+        args = opcode.args
 
-            # Strings need all placeholders replaced with the actual values
-            if isinstance(w_constant, W_StringObject):
-                variables = w_constant.get_variables()
+        pc += 1
 
-                for i in range(len(variables)):
-                    index = len(variables) - 1 - i
-                    assert index >= 0
-                    variable = variables[index]
-                    replace = frame.pop().str()
-                    w_constant = w_constant.replace(variable, replace)
+        if c == bytecode.LOAD_STRINGVAL:
+            stringval = W_StringObject(args[0])
+            for variable in stringval.get_variables():
+                index = bc.index_for_symbol(variable)
+                assert index >= 0
+                replace = frame.get_var(index, variable).str()
+                stringval = stringval.replace(variable, replace)
 
-            frame.push(w_constant)
+            frame.push(stringval)
+        elif c == bytecode.LOAD_INTVAL:
+            frame.push(W_IntObject(args[0]))
         elif c == bytecode.LOAD_VAR:
-            frame.push(frame.vars[arg])
+            variable = frame.get_var(args[0], args[1])
+            if variable is None:
+                raise Exception("Variable %s (%s) is not set" % (args[0], args[1]))
+            frame.push(variable)
+        elif c == bytecode.LOAD_FUNCTION:
+            frame.push(args[0])
         elif c == bytecode.LOAD_NULL:
             frame.push(W_Null())
         elif c == bytecode.LOAD_BOOLEAN:
-            frame.push(W_Boolean(bool(arg)))
+            frame.push(W_Boolean(args[0]))
         elif c == bytecode.LOAD_PARAM:
             frame.push_arg(frame.pop())  # push to the argument-stack
         elif c == bytecode.LOAD_ARRAY:
             array = W_Array()
-            for i in range(arg):
-                index = str(arg - 1 - i)
+            for i in range(args[0]):
+                index = str(args[0] - 1 - i)
                 array.put(index, frame.pop())
             frame.push(array)
         elif c == bytecode.LOAD_MEMBER:
@@ -288,6 +360,9 @@ def execute(frame, bc):
             index = frame.pop().str()
             value = frame.pop()
             array.put(index, value)
+        elif c == bytecode.ASSIGN:
+            assert args[0] >= 0
+            frame.set_var(args[0], frame.pop())
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
         elif c == bytecode.RETURN:
@@ -336,38 +411,46 @@ def execute(frame, bc):
             frame.push(left.decr(right))
         elif c == bytecode.JUMP_IF_FALSE:
             if not frame.pop().is_true():
-                pc = arg
+                pc = args[0]
         elif c == bytecode.JUMP_BACKWARD:
-            pc = arg
+            pc = args[0]
             # required hint indicating this is the end of a loop
-            driver.can_enter_jit(pc=pc, code=code, bc=bc, frame=frame)
+            driver.can_enter_jit(pc=pc, opcodes=opcodes, bc=bc, frame=frame)
         elif c == bytecode.CALL:
-            method = bc.functions[arg]
-            method.body.globals = [None]*bc.numvars  # XXX
+            method = frame.pop()
+
+            if not hasattr(method, 'body'):
+                raise Exception("Unsupported function variable %s" % method)
 
             new_bc = method.body
-            new_frame = Frame(new_bc)
+            parent = frame
+            # do not create a recursive scope
+            # results in deep nesting when a function is calling itself
+            if frame.parent is not None:
+                parent = frame.parent
+            new_frame = Frame(new_bc, parent)
+
+            params_length = len(method.params)
+            params = [None] * params_length
 
             # reverse args index to preserve order
-            for i in range(len(method.params)):
-                index = len(method.params) - 1 - i
+            for i in range(params_length):
+                index = params_length - 1 - i
                 assert index >= 0
-                new_frame.vars[index] = frame.pop_arg()
+                params[index] = frame.pop_arg()
 
-            for i in range(len(method.globals)):
-                index = len(method.globals) - 1 - i
+            param_index = 0
+            # reverse args index to preserve order
+            for variable in method.params:
+                index = new_bc.index_for_symbol(variable)
                 assert index >= 0
-                value_index = bc.variables.index(method.globals[i])
-                assert value_index >= 0
-                new_frame.vars[index] = frame.vars[value_index]
+                new_frame.vars[index] = params[param_index]
+                param_index += 1
 
             res = execute(new_frame, new_bc)
             frame.push(res)
         elif c == bytecode.PRINT:
             item = frame.pop()
             printf(item.str())
-        elif c == bytecode.ASSIGN:
-            assert arg >= 0
-            frame.vars[arg] = frame.pop()
         else:
             raise Exception("Unkown operation %s" % bytecode.bytecodes[c])

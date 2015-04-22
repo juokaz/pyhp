@@ -48,8 +48,9 @@ class SourceElements(Statement):
 
 
 class Program(Statement):
-    def __init__(self, body):
+    def __init__(self, body, scope):
         self.body = body
+        self.scope = scope
 
     def compile(self, ctx):
         self.body.compile(ctx)
@@ -72,72 +73,64 @@ class ExprStatement(Node):
 
 
 class FUNCTION(object):
-    def __init__(self, name, params, globals=[], body=None):
+    def __init__(self, name, params, body=None):
         assert isinstance(name, str)
 
         self.name = name
         self.params = params
-        self.globals = globals
         self.body = body
+
+    def __repr__(self):
+        return 'FUNCTION(%s)' % (self.name,)
 
 
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, params, globals=None, body=None):
+    def __init__(self, name, index, params, body, scope):
         self.name = name.get_literal()
+        self.index = index
         self.params = params
-        self.globals = globals
         self.body = body
+        self.scope = scope
 
     def compile(self, ctx):
-        method = FUNCTION(self.name, self.params, self.globals)
-        ctx.register_function(method)
+        method = FUNCTION(self.name, self.params)
 
         ctx2 = bytecode.CompilerContext()
-        ctx2.functions = ctx.functions[:]
-        ctx2.function_id = ctx.function_id
-        # no variables from the parent context can be accessed
-        ctx2.names = []
-        ctx2.names_id = {}
-
-        for param in self.params:
-            ctx2.register_var(param)
-
-        for variable in self.globals:
-            ctx2.register_var(variable)
 
         if self.body:
             self.body.compile(ctx2)
 
-        method.body = ctx2.create_bytecode()
+        method.body = ctx2.create_bytecode(self.scope)
+
+        ctx.emit(bytecode.LOAD_FUNCTION, method)
+        ctx.emit(bytecode.ASSIGN, self.index)
 
 
 class Call(Node):
     def __init__(self, left, params):
-        self.func = left.get_literal()
+        self.left = left
         self.params = params
 
     def compile(self, ctx):
-        id, method = ctx.resolve_function(self.func)
-        numargs = len(method.params)
-        if numargs != len(self.params.nodes):
-            raise Exception(
-                self.func+' expects %d arguments got %d' %
-                (numargs, len(self.params.nodes))
-            )
-
         self.params.compile(ctx)
+        self.left.compile(ctx)
 
-        ctx.emit(bytecode.CALL, id)
+        ctx.emit(bytecode.CALL)
 
 
 class Identifier(Expression):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, identifier, index):
+        assert index >= 0
+        self.identifier = identifier
+        self.index = index
 
     def get_literal(self):
-        return self.name
+        return self.identifier
+
+    def compile(self, ctx):
+        ctx.emit(bytecode.LOAD_VAR, self.index, self.identifier)
 
 
 class ArgumentList(ListOp):
@@ -178,10 +171,7 @@ class ConstantInt(Node):
         self.intval = intval
 
     def compile(self, ctx):
-        # convert the integer to W_IntObject already here
-        from pyhp.interpreter import W_IntObject
-        w = W_IntObject(self.intval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+        ctx.emit(bytecode.LOAD_INTVAL, self.intval)
 
 
 class ConstantFloat(Node):
@@ -191,60 +181,17 @@ class ConstantFloat(Node):
         self.floatval = floatval
 
     def compile(self, ctx):
-        # convert the float to W_FloatObject already here
-        from pyhp.interpreter import W_FloatObject
-        w = W_FloatObject(self.floatval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+        ctx.emit(bytecode.LOAD_FLOATVAL, self.floatval)
 
 
 class ConstantString(Node):
     """ Represent a constant
     """
     def __init__(self, stringval):
-        self.stringval = self.string_unquote(stringval)
-
-        self.variables = []
-        if not self.is_single_quoted(stringval):
-            self.variables = self.get_variables(self.stringval)
+        self.stringval = stringval
 
     def compile(self, ctx):
-        for variable in self.variables:
-            ctx.emit(bytecode.LOAD_VAR, ctx.get_var(variable))
-        # convert the string to W_StringObject already here
-        from pyhp.interpreter import W_StringObject
-        w = W_StringObject(self.stringval, self.variables)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
-
-    def is_single_quoted(self, string):
-        return string[0] == "'"
-
-    def get_variables(self, string):
-        # TODO implement this using regular expressions
-        variables = [x for x in string.split(' ') if x.startswith('$')]
-        return variables
-
-    def string_unquote(self, string):
-        # XXX I don't think this works, it's very unlikely IMHO
-        #     test it
-        temp = []
-        stop = len(string)-1
-        # XXX proper error
-        assert stop >= 0
-        last = ""
-
-        internalstring = string[1:stop]
-
-        for c in internalstring:
-            if last == "\\":
-                # Lookup escape sequence. Ignore the backslash for
-                # unknown escape sequences (like SM)
-                unescapeseq = unescapedict.get(last+c, c)
-                temp.append(unescapeseq)
-                c = ' '  # Could be anything
-            elif c != "\\":
-                temp.append(c)
-            last = c
-        return ''.join(temp)
+        ctx.emit(bytecode.LOAD_STRINGVAL, self.stringval)
 
 
 class Boolean(Expression):
@@ -261,14 +208,15 @@ class Null(Expression):
 
 
 class VariableIdentifier(Expression):
-    def __init__(self, identifier):
+    def __init__(self, identifier, index):
         self.identifier = identifier
-
-    def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.identifier))
+        self.index = index
 
     def get_literal(self):
         return self.identifier
+
+    def compile(self, ctx):
+        ctx.emit(bytecode.LOAD_VAR, self.index, self.identifier)
 
 
 class Empty(Expression):
@@ -318,14 +266,14 @@ class BaseAssignment(Expression):
 class AssignmentOperation(BaseAssignment):
     def __init__(self, left, right, operand):
         self.left = left
-        self.identifier = left.get_literal()
+        self.index = left.index
         self.right = right
         if self.right is None:
             self.right = Empty()
         self.operand = operand
 
     def compile_store(self, ctx):
-        ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+        ctx.emit(bytecode.ASSIGN, self.index)
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -356,10 +304,9 @@ class If(Node):
 
     def compile(self, ctx):
         self.cond.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.true_branch.compile(ctx)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        if_opcode.args = [len(ctx.data)]
 
 
 class WhileBase(Statement):
@@ -372,11 +319,10 @@ class While(WhileBase):
     def compile(self, ctx):
         pos = len(ctx.data)
         self.condition.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        if_opcode.args = [len(ctx.data)]
 
 
 class For(Statement):
@@ -390,12 +336,12 @@ class For(Statement):
         self.setup.compile(ctx)
         pos = len(ctx.data)
         self.condition.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
+        ctx.emit(bytecode.DISCARD_TOP)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        if_opcode.args = [len(ctx.data)]
 
 
 class Print(Node):

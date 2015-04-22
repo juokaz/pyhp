@@ -1,5 +1,7 @@
 
-bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_NULL', 'LOAD_BOOLEAN',
+bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_FUNCTION',
+             'LOAD_NULL', 'LOAD_BOOLEAN', 'LOAD_INTVAL', 'LOAD_FLOATVAL',
+             'LOAD_STRINGVAL',
              'LOAD_ARRAY', 'LOAD_MEMBER', 'STORE_MEMBER',
              'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'BINARY_ADD', 'BINARY_SUB',
@@ -17,86 +19,63 @@ for i, bytecode in enumerate(bytecodes):
     BytecodesMap[bytecode] = i
 
 
+class Opcode(object):
+    def __init__(self, bytecode, *args):
+        self.bytecode = bytecode
+        self.args = args
+
+    def __repr__(self):
+        bc = bytecodes[self.bytecode]
+
+        if self.args:
+            args = ""
+            for arg in self.args:
+                args += str(arg) + ", "
+            args = args.strip(", ")
+            return "%s %s" % (bc, args)
+        else:
+            return bc
+
 class CompilerContext(object):
     def __init__(self):
         self.data = []
-        self.constants = []
-        self.names = []
-        self.names_id = {}
 
-        self.functions = []
-        self.function_id = {}
+    def emit(self, bc, *args):
+        opcode = Opcode(bc, *args)
+        self.data.append(opcode)
+        return opcode
 
-    def register_constant(self, v):
-        self.constants.append(v)
-        return len(self.constants) - 1
-
-    def register_var(self, name):
-        try:
-            return self.names_id[name]
-        except KeyError:
-            self.names_id[name] = len(self.names)
-            self.names.append(name)
-            return len(self.names) - 1
-
-    def get_var(self, name):
-        if name in self.names_id:
-            return self.names_id[name]
-        else:
-            raise NameError('Variable `'+name+'` is not defined')
-
-    def register_function(self, func):
-        name = func.name.lower()
-        if name in self.function_id:
-            raise NameError('Function `%s` is already defined' % name)
-        else:
-            self.function_id[name] = [len(self.functions)]
-            self.functions.append(func)
-            return len(self.functions) - 1
-
-    def resolve_function(self, name):
-        name = name.lower()
-        try:
-            ids = self.function_id[name]
-            return (ids[0], self.functions[ids[0]])
-        except KeyError:
-            raise NameError('Function `'+name+'` is not defined')
-
-    def emit(self, bc, arg=0):
-        self.data.append(chr(bc))
-        self.data.append(chr(arg))
-
-    def create_bytecode(self):
-        return ByteCode("".join(self.data), self.constants[:],
-                        self.names[:], self.functions[:])
+    def create_bytecode(self, symbols):
+        return ByteCode(self.data, symbols)
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['code', 'constants[*]', 'variables[*]',
-                          'functions[*]', 'numvars']
+    _immutable_fields_ = ['opcodes[*]', 'symbols']
 
-    def __init__(self, code, constants, variables, functions):
-        self.code = code
-        self.constants = constants
-        self.variables = variables
-        self.functions = functions
-        self.numvars = len(variables)
+    def __init__(self, opcodes, symbols):
+        self.opcodes = opcodes
+        self.symbols = symbols
 
-        # print 'Bytecode: '
-        # print self.dump()
+        #print 'Bytecode: '
+        #print self
 
-    def dump(self):
+    def index_for_symbol(self, symbol):
+        return self.symbols.get_index(symbol)
+
+    def get_name(self, index):
+        return self.symbols.get_name(index)
+
+    def __repr__(self):
         lines = []
-        i = 0
-        for i in range(0, len(self.code), 2):
-            c = self.code[i]
-            c2 = self.code[i + 1]
-            lines.append(bytecodes[ord(c)] + " " + str(ord(c2)))
+        index = 0
+        for opcode in self.opcodes:
+            lines.append("%s: %s" % (index, opcode))
+            index += 1
         return '\n'.join(lines)
 
 
-def compile_ast(astnode):
+def compile_ast(astnode, symbols):
     c = CompilerContext()
     astnode.compile(c)
     c.emit(BytecodesMap['RETURN'])
-    return c.create_bytecode()
+    return c.create_bytecode(symbols)

@@ -16,58 +16,83 @@ except ParseError, e:
 _parse = make_parse_function(regexs, rules, eof=True)
 
 
-class Scope(object):
+class SymbolsMap(object):
     def __init__(self):
-        self.local_variables = []
+        self.symbols = []
+        self.symbols_id = {}
 
-    def __repr__(self):
-        return 'Scope ' + repr(self.local_variables)
-
-    def add_local(self, variable):
-        if not self.is_local(variable) is True:
-            self.local_variables.append(variable)
-
-    def is_local(self, variable):
-        return variable in self.local_variables
-
-    def get_local(self, variable):
-        return self.local_variables.index(variable)
-
-
-class Scopes(object):
-    def __init__(self):
-        self.scopes = []
-
-    def current_scope(self):
-        if not self.scopes:
-            return None
+    def add(self, name):
+        assert(isinstance(name, basestring))
+        if name not in self.symbols_id:
+            self.symbols_id[name] = len(self.symbols)
+            self.symbols.append(name)
+            idx = len(self.symbols) - 1
         else:
-            return self.scopes[-1]
+            idx = self.symbols_id[name]
 
-    def new_scope(self):
-        self.scopes.append(Scope())
+        assert isinstance(idx, int)
+        assert idx >= 0
+        return idx
 
-    def end_scope(self):
-        self.scopes.pop()
+    def get_index(self, name):
+        return self.symbols_id[name]
 
-    def variables(self):
-        if self.scope_present():
-            return self.current_scope().local_variables
-        return []
+    def get_name(self, index):
+        return self.symbols[index]
 
-    def is_local(self, variable):
-        return self.scope_present() is True \
-            and self.current_scope().is_local(variable) is True
 
-    def scope_present(self):
-        return self.current_scope() is not None
+class Scope(object):
+    def __init__(self, symbols_map):
+        self.symbols = symbols_map
+        self.functions = []
+        self.variables = []
+        self.globals = []
 
-    def add_local(self, variable):
-        if self.scope_present():
-            self.current_scope().add_local(variable)
+    def add_symbol(self, name):
+        return self.symbols.add(name)
 
-    def get_local(self, variable):
-        return self.current_scope().get_local(variable)
+    def add_variable(self, name):
+        idx = self.add_symbol(name)
+
+        self.variables.append(name)
+        return idx
+
+    def add_global(self, name):
+        idx = self.add_symbol(name)
+
+        self.globals.append(name)
+        return idx
+
+    def add_function(self, name):
+        idx = self.add_symbol(name)
+
+        self.functions.append(name)
+        return idx
+
+    def finalize(self):
+        return FinalScope(self.symbols, self.functions, self.variables, self.globals)
+
+
+class FinalScope(object):
+    _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]', 'globals[*]']
+
+    def __init__(self, symbols, functions, variables, globals):
+        self.symbols = symbols
+        self.functions = functions[:]
+        self.variables = variables[:]
+        self.globals = globals[:]
+
+    def get_index(self, name):
+        return self.symbols.get_index(name)
+
+    def get_name(self, name):
+        return self.symbols.get_name(name)
+
+    def get_symbols(self):
+        return self.symbols
+
+    def len(self):
+        return len(self.symbols)
 
 
 class FakeParseError(Exception):
@@ -93,31 +118,45 @@ class Transformer(RPythonVisitor):
     }
 
     def __init__(self):
-        self.varlists = []
+        # one symbols map per whole application to avoid index colisions
+        self.root_symbols_map = SymbolsMap()
         self.funclists = []
-        self.scopes = Scopes()
+        self.scopes = []
+        self.depth = -1
 
     def visit_main(self, node):
+        self.enter_scope()
         body = self.dispatch(node.children[0])
-        return operations.Program(body)
+        scope = self.current_scope()
+        final_scope = scope.finalize()
+        return operations.Program(body, final_scope)
 
     def visit_arguments(self, node):
         nodes = [self.dispatch(child) for child in node.children[1:]]
         return operations.ArgumentList(nodes)
 
     def visit_sourceelements(self, node):
-        self.varlists.append({})
         self.funclists.append({})
         nodes = []
+        globals = []
         for child in node.children:
             node = self.dispatch(child)
-            if node is not None:
-                nodes.append(node)
+            if node is None:
+                continue
+
+            if isinstance(node, operations.Global):
+                for node in node.nodes:
+                    self.declare_global(node.get_literal())
+                continue
+
+            nodes.append(node)
+
         func_decl = self.funclists.pop()
         return operations.SourceElements(func_decl, nodes)
 
     def functioncommon(self, node, declaration=True):
-        self.scopes.new_scope()
+        self.enter_scope()
+
         i = 0
         identifier, i = self.get_next_expr(node, i)
 
@@ -128,20 +167,20 @@ class Transformer(RPythonVisitor):
 
         functionbody, i = self.get_next_expr(node, i)
 
-        global_variables = None
-        if functionbody:
-            for node in functionbody.nodes:
-                if isinstance(node, operations.Global):
-                    global_variables = node
+        scope = self.current_scope()
+        final_scope = scope.finalize()
 
-        g = []
-        if global_variables is not None:
-            g = [pident.get_literal() for pident in global_variables.nodes]
+        self.exit_scope()
 
-        funcobj = operations.Function(identifier, p, g, functionbody)
+        funcindex = -1
         if declaration:
-            self.funclists[-1][identifier.get_literal()] = funcobj
-        self.scopes.end_scope()
+            funcindex = self.declare_symbol(identifier.get_literal())
+
+        funcobj = operations.Function(identifier, funcindex, p, functionbody, final_scope)
+
+        if declaration:
+            self.declare_function(identifier.get_literal(), funcobj)
+
         return funcobj
 
     def visit_functiondeclaration(self, node):
@@ -301,11 +340,13 @@ class Transformer(RPythonVisitor):
 
     def visit_IDENTIFIERNAME(self, node):
         name = node.additional_info
-        return operations.Identifier(name)
+        index = self.declare_symbol(name)
+        return operations.Identifier(name, index)
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
-        return operations.VariableIdentifier(name)
+        index = self.declare_variable(name)
+        return operations.VariableIdentifier(name, index)
 
     def string(self, node):
         return operations.ConstantString(node.additional_info)
@@ -326,3 +367,40 @@ class Transformer(RPythonVisitor):
     def is_member(self, obj):
         from pyhp.operations import Member
         return isinstance(obj, Member)
+
+    def enter_scope(self):
+        self.depth = self.depth + 1
+
+        new_scope = Scope(self.root_symbols_map)
+        self.scopes.append(new_scope)
+
+    def declare_symbol(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_symbol(s)
+        return idx
+
+    def declare_variable(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_variable(s)
+        return idx
+
+    def declare_global(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_global(s)
+        return idx
+
+    def declare_function(self, symbol, funcobj):
+        s = symbol
+        self.funclists[-1][s] = funcobj
+        idx = self.scopes[-1].add_function(s)
+        return idx
+
+    def exit_scope(self):
+        self.depth = self.depth - 1
+        self.scopes.pop()
+
+    def current_scope(self):
+        try:
+            return self.scopes[-1]
+        except IndexError:
+            return None
