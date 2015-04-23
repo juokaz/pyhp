@@ -6,6 +6,7 @@ from pyhp.sourceparser import _parse, ToAST, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.stdlib import stdlib
 
+
 def parse(source):
     """ Parse the source code and produce an AST
     """

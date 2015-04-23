@@ -53,9 +53,6 @@ class ByteCode(object):
         self.symbols = symbols
         self.parameters = symbols.parameters[:]
 
-        # print 'Bytecode: '
-        # print self
-
     def index_for_symbol(self, symbol):
         return self.symbols.get_index(symbol)
 
@@ -100,4 +97,6 @@ def compile_ast(ast, symbols):
     if ast is not None:
         ast.compile(bc)
     bc.emit_string('RETURN')
+    # print 'Bytecode: '
+    # print bc
     return bc

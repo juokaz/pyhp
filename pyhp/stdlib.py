@@ -1,11 +1,13 @@
 from pyhp.datatypes import NativeFunction
 
+
 def strlen(string):
     return string.len()
 
 functions = [
     NativeFunction('strlen', strlen)
 ]
+
 
 class Scope(object):
     def __init__(self, functions):
@@ -22,6 +24,7 @@ class Scope(object):
             if function.name == name:
                 return function
         raise Exception("Function %s not found" % name)
+
 
 class StdLib(object):
     def __init__(self, functions):

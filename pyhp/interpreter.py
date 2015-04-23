@@ -35,12 +35,12 @@ driver = jit.JitDriver(greens=['pc', 'opcodes', 'bc'],
 
 
 class Frame(object):
-    _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars[*]']
+    _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars']
 
     def __init__(self, scope, parent_frame=None):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)
-        self.valuestack = [None] * 100  # safe estimate!
-        self.vars = [None] * 100
+        self.valuestack = [None] * 50  # safe estimate!
+        self.vars = {}
         self.valuestack_pos = 0
 
         self.scope = scope
@@ -69,7 +69,8 @@ class Frame(object):
         return False
 
     def get_var(self, index, name):
-        variable = self.vars[index]
+        assert index >= 0
+        variable = self.vars.get(index)
 
         if variable is not None:
             return variable
@@ -81,6 +82,8 @@ class Frame(object):
         return None
 
     def set_var(self, index, name, value):
+        assert index >= 0
+
         # if it is a parent (global) variable write to that instead
         if self.is_visible(name):
             self.parent_frame.set_var(index, name, value)
@@ -90,7 +93,11 @@ class Frame(object):
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
-        assert pos >= 0
+
+        # prevent stack overflow
+        len_stack = len(self.valuestack)
+        assert pos >= 0 and len_stack > pos
+
         self.valuestack[pos] = v
         self.valuestack_pos = pos + 1
 

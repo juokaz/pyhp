@@ -31,3 +31,70 @@ class TestMain(TestBase):
         $x = 1;
         print $x;""", capfd)
         assert out == "1"
+
+    def test_discards_function_result_in_a_loop(self, capfd):
+        out = self.run("""function test() {
+
+        }
+        for ($x = 1; $x < 200; $x++) {
+            test();
+        }""", capfd)
+        assert out == ""
+
+    def test_discards_function_result(self, capfd):
+        out = self.run("""function test() {
+
+        }
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test();
+        test(); test(); test(); test(); test(); """, capfd)
+        assert out == ""
+
+    def test_discards_expression_result(self, capfd):
+        out = self.run("""1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
+        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1; """, capfd)
+        assert out == ""

@@ -3,6 +3,7 @@ from rpython.rlib.rstring import replace
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
 
+
 class NativeFunction(object):
     def __init__(self, name, method):
         self.name = name
@@ -10,6 +11,7 @@ class NativeFunction(object):
 
     def call(self, arguments):
         return self.method(arguments)
+
 
 class Property(object):
     def __init__(self, name, value):

@@ -16,6 +16,9 @@ class Node(object):
     def __ne__(self, other):
         return not self == other
 
+    def __repr__(self):
+        return self.__class__.__name__
+
 
 class Statement(Node):
     pass
@@ -70,6 +73,12 @@ class ExprStatement(Node):
 
     def compile(self, ctx):
         self.expr.compile(ctx)
+
+        # TODO is there a better way?
+        # discard the result if any of the expressions are being called
+        # without an assignment operation
+        if not isinstance(self.expr, BaseAssignment):
+            ctx.emit(bytecode.DISCARD_TOP)
 
 
 class FUNCTION(object):
