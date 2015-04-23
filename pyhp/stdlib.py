@@ -1,11 +1,19 @@
 from pyhp.datatypes import NativeFunction
+from pyhp.datatypes import isint, isstr
+from pyhp.datatypes import W_IntObject, W_StringObject
 
 
 def strlen(string):
-    return string.len()
+    assert(isstr(string))
+    return W_IntObject(string.len())
+
+def dechex(number):
+    assert(isint(number))
+    return W_StringObject(hex(number.get_int()))
 
 functions = [
-    NativeFunction('strlen', strlen)
+    NativeFunction('strlen', strlen),
+    NativeFunction('dechex', dechex)
 ]
 
 

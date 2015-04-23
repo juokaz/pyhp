@@ -18,7 +18,7 @@ from rpython.rlib import jit
 from pyhp.utils import printf
 
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_Boolean, W_FloatObject, NativeFunction
+    W_Null, W_Array, W_Boolean, W_FloatObject, NativeFunction, W_Root
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
@@ -255,7 +255,11 @@ def execute(frame, bc):
         elif c == bytecode.JUMP:
             pc = args[0]
         elif c == bytecode.JUMP_IF_FALSE:
-            if not frame.pop():
+            value = frame.pop()
+            true = value
+            if isinstance(value, W_Root):
+                true = value.is_true()
+            if not true:
                 pc = args[0]
         elif c == bytecode.JUMP_BACKWARD:
             pc = args[0]

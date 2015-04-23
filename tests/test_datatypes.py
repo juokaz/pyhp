@@ -64,6 +64,11 @@ class TestDatatypes(TestBase):
         print $x;""", capfd)
         assert out == "[1: 2, 0: 1, 2: 3]"
 
+    def test_nested_array(self, capfd):
+        out = self.run("""$x = [1, 2, [3, 4, 5]];
+        print $x;""", capfd)
+        assert out == "[1: 2, 0: 1, 2: [1: 4, 0: 3, 2: 5]]"
+
     def test_array_old_syntax(self, capfd):
         out = self.run("""$x = array(1, 2, 3);
         print $x;""", capfd)
@@ -73,6 +78,11 @@ class TestDatatypes(TestBase):
         out = self.run("""$x = [1, 2, 3];
         print $x[1];""", capfd)
         assert out == "2"
+
+    def test_nested_array_access(self, capfd):
+        out = self.run("""$x = [1, 2, [3, 4, 5]];
+        print $x[2][1];""", capfd)
+        assert out == "4"
 
     def test_array_write(self, capfd):
         out = self.run("""$x = [1, 2, 3];

@@ -43,6 +43,14 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "1"
 
+    def test_while_assignment(self, capfd):
+        out = self.run("""
+        $x = 2;
+        while ($x--) {
+            print $x;
+        }""", capfd)
+        assert out == "10"
+
     def test_while_lt(self, capfd):
         out = self.run("""
         $x = 1;

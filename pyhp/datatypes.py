@@ -31,6 +31,9 @@ class W_IntObject(W_Root):
     def to_number(self):
         return float(self.intval)
 
+    def get_int(self):
+        return self.intval
+
     def is_true(self):
         return self.intval != 0
 
@@ -124,7 +127,7 @@ class W_StringObject(W_Root):
         return ''.join(temp)
 
     def len(self):
-        return W_IntObject(len(self.stringval))
+        return len(self.stringval)
 
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)
@@ -143,10 +146,7 @@ class W_Array(W_Root):
 
     def get(self, key):
         assert(isinstance(key, str))
-        try:
-            return self.propdict[key].value
-        except KeyError:
-            return W_Null()
+        return self.propdict[key].value
 
     def str(self):
         r = '['
