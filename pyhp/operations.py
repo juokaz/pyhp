@@ -1,4 +1,3 @@
-from pyhp import bytecode
 from pyhp.bytecode import compile_ast
 from rpython.rlib.unroll import unrolling_iterable
 
@@ -79,7 +78,7 @@ class ExprStatement(Node):
         # without an assignment operation
         if not isinstance(self.expr, BaseAssignment) \
                 or self.expr.has_operation():
-            ctx.emit(bytecode.DISCARD_TOP)
+            ctx.emit('DISCARD_TOP')
 
 
 class FUNCTION(object):
@@ -107,8 +106,8 @@ class Function(Node):
 
         method = FUNCTION(self.identifier, body)
 
-        ctx.emit(bytecode.LOAD_FUNCTION, method)
-        ctx.emit(bytecode.ASSIGN, self.index, self.identifier)
+        ctx.emit('LOAD_FUNCTION', method)
+        ctx.emit('ASSIGN', self.index, self.identifier)
 
 
 class Call(Node):
@@ -120,7 +119,7 @@ class Call(Node):
         self.params.compile(ctx)
         self.left.compile(ctx)
 
-        ctx.emit(bytecode.CALL)
+        ctx.emit('CALL')
 
 
 class Identifier(Expression):
@@ -133,21 +132,21 @@ class Identifier(Expression):
         return self.identifier
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, self.index, self.identifier)
+        ctx.emit('LOAD_VAR', self.index, self.identifier)
 
 
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
             node.compile(ctx)
-        ctx.emit(bytecode.LOAD_LIST, len(self.nodes))
+        ctx.emit('LOAD_LIST', len(self.nodes))
 
 
 class Array(ListOp):
     def compile(self, ctx):
         for element in self.nodes:
             element.compile(ctx)
-        ctx.emit(bytecode.LOAD_ARRAY, len(self.nodes))
+        ctx.emit('LOAD_ARRAY', len(self.nodes))
 
 
 class Global(ListOp):
@@ -164,7 +163,7 @@ class Member(Expression):
     def compile(self, ctx):
         self.expr.compile(ctx)
         self.left.compile(ctx)
-        ctx.emit(bytecode.LOAD_MEMBER)
+        ctx.emit('LOAD_MEMBER')
 
 
 class ConstantInt(Node):
@@ -174,7 +173,7 @@ class ConstantInt(Node):
         self.intval = intval
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_INTVAL, self.intval)
+        ctx.emit('LOAD_INTVAL', self.intval)
 
 
 class ConstantFloat(Node):
@@ -184,7 +183,7 @@ class ConstantFloat(Node):
         self.floatval = floatval
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_FLOATVAL, self.floatval)
+        ctx.emit('LOAD_FLOATVAL', self.floatval)
 
 
 class ConstantString(Node):
@@ -194,7 +193,7 @@ class ConstantString(Node):
         self.stringval = stringval
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_STRINGVAL, self.stringval)
+        ctx.emit('LOAD_STRINGVAL', self.stringval)
 
 
 class Boolean(Expression):
@@ -202,12 +201,12 @@ class Boolean(Expression):
         self.bool = boolval
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_BOOLEAN, self.bool)
+        ctx.emit('LOAD_BOOLEAN', self.bool)
 
 
 class Null(Expression):
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_NULL)
+        ctx.emit('LOAD_NULL')
 
 
 class VariableIdentifier(Expression):
@@ -219,7 +218,7 @@ class VariableIdentifier(Expression):
         return self.identifier
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, self.index, self.identifier)
+        ctx.emit('LOAD_VAR', self.index, self.identifier)
 
 
 class Empty(Expression):
@@ -228,11 +227,11 @@ class Empty(Expression):
 
 
 OPERANDS = {
-    '+=': bytecode.ADD,
-    '-=': bytecode.SUB,
-    '++': bytecode.INCR,
-    '--': bytecode.DECR,
-    '.=': bytecode.ADD,
+    '+=': 'ADD',
+    '-=': 'SUB',
+    '++': 'INCR',
+    '--': 'DECR',
+    '.=': 'ADD',
 }
 
 OPERATIONS = unrolling_iterable(OPERANDS.items())
@@ -249,18 +248,18 @@ class BaseAssignment(Expression):
         if self.has_operation():
             self.left.compile(ctx)
             if self.post:
-                ctx.emit(bytecode.DUP)
+                ctx.emit('DUP')
             self.right.compile(ctx)
             self.compile_operation(ctx)
             if not self.post:
-                ctx.emit(bytecode.DUP)
+                ctx.emit('DUP')
         else:
             self.right.compile(ctx)
 
         self.compile_store(ctx)
 
     def compile_operation(self, ctx):
-        # calls to bytecode.emit have to be very very very static
+        # calls to 'emit' have to be very very very static
         op = self.operand
         for key, value in OPERATIONS:
             if op == key:
@@ -283,7 +282,7 @@ class AssignmentOperation(BaseAssignment):
         self.post = post
 
     def compile_store(self, ctx):
-        ctx.emit(bytecode.ASSIGN, self.index, self.left.get_literal())
+        ctx.emit('ASSIGN', self.index, self.left.get_literal())
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -302,7 +301,7 @@ class MemberAssignmentOperation(BaseAssignment):
     def compile_store(self, ctx):
         self.expr.compile(ctx)
         self.w_array.compile(ctx)
-        ctx.emit(bytecode.STORE_MEMBER)
+        ctx.emit('STORE_MEMBER')
 
 
 class If(Node):
@@ -315,13 +314,13 @@ class If(Node):
 
     def compile(self, ctx):
         self.cond.compile(ctx)
-        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
+        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
         self.true_branch.compile(ctx)
-        true_opcode = ctx.emit(bytecode.JUMP, 0)
-        if_opcode.args = [len(ctx)]
+        true_opcode = ctx.emit('JUMP', 0)
+        if_opcode.where = len(ctx)
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
-        true_opcode.args = [len(ctx)]
+        true_opcode.where = len(ctx)
 
 
 class WhileBase(Statement):
@@ -334,10 +333,10 @@ class While(WhileBase):
     def compile(self, ctx):
         pos = len(ctx)
         self.condition.compile(ctx)
-        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
+        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
         self.body.compile(ctx)
-        ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        if_opcode.args = [len(ctx)]
+        ctx.emit('JUMP', pos)
+        if_opcode.where = len(ctx)
 
 
 class For(Statement):
@@ -351,7 +350,7 @@ class For(Statement):
         self.setup.compile(ctx)
         pos = len(ctx)
         self.condition.compile(ctx)
-        if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
+        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
 
@@ -360,10 +359,10 @@ class For(Statement):
         # without an assignment operation
         if isinstance(self.update, BaseAssignment) \
                 and self.update.has_operation():
-            ctx.emit(bytecode.DISCARD_TOP)
+            ctx.emit('DISCARD_TOP')
 
-        ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        if_opcode.args = [len(ctx)]
+        ctx.emit('JUMP', pos)
+        if_opcode.where = len(ctx)
 
 
 class Print(Node):
@@ -372,7 +371,7 @@ class Print(Node):
 
     def compile(self, ctx):
         self.expr.compile(ctx)
-        ctx.emit(bytecode.PRINT)
+        ctx.emit('PRINT')
 
 
 class Return(Statement):
@@ -382,7 +381,7 @@ class Return(Statement):
     def compile(self, ctx):
         if self.expr is not None:
             self.expr.compile(ctx)
-        ctx.emit(bytecode.RETURN)
+        ctx.emit('RETURN')
 
 
 class Block(Statement):
@@ -404,7 +403,7 @@ def create_binary_op(name):
             self.left.compile(ctx)
             self.right.compile(ctx)
             b_name = name.upper()
-            ctx.emit_string(b_name)
+            ctx.emit(b_name)
     BinaryOp.__name__ = name
     return BinaryOp
 

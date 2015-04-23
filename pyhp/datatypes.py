@@ -128,7 +128,7 @@ class W_StringObject(W_Root):
                 # unknown escape sequences (like SM)
                 unescapeseq = unescapedict.get(last+c, c)
                 temp.append(unescapeseq)
-                c = ' ' # Could be anything
+                c = ' '  # Could be anything
             elif c != "\\":
                 temp.append(c)
             last = c

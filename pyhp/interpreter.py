@@ -12,16 +12,9 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 """
 
-from pyhp import bytecode
 from rpython.rlib import jit
 
-from pyhp.utils import printf
-
-from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_Boolean, W_FloatObject, NativeFunction, W_Root
-from pyhp.datatypes import plus, increment, decrement, sub, mult, division
-from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
-    compare_eq
+from pyhp.datatypes import W_Null
 
 
 def printable_loc(pc, code, bc):
@@ -49,7 +42,8 @@ class Frame(object):
     def create_new_frame(self, scope):
         if isinstance(self.parent_frame, Frame):
             parent_frame = self.parent_frame
-        parent_frame = self
+        else:
+            parent_frame = self
 
         return Frame(scope, parent_frame)
 
@@ -121,171 +115,31 @@ class Frame(object):
 def execute(frame, bc):
     opcodes = bc.opcodes
     pc = 0
+    result = None
     while True:
         # required hint indicating this is the top of the opcode dispatch
         driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc, frame=frame)
 
         if pc >= len(opcodes):
-            return W_Null()
+            break
 
         opcode = opcodes[pc]
-        c = opcode.bytecode
-        args = opcode.args
+        result = opcode.eval(frame)
 
-        pc += 1
+        if result is not None:
+            break
 
-        if c == bytecode.LOAD_STRINGVAL:
-            stringval = W_StringObject(args[0])
-            for variable in stringval.get_variables():
-                search, identifier, indexes = variable
-                index = bc.index_for_symbol(identifier)
-                assert index >= 0
-                value = frame.get_var(index, identifier)
-                for key in indexes:
-                    if key[0] == '$':
-                        index = bc.index_for_symbol(key)
-                        assert index >= 0
-                        key = frame.get_var(index, identifier).str()
-                    value = value.get(key)
-                replace = value.str()
-                stringval = stringval.replace(search, replace)
-
-            frame.push(stringval)
-        elif c == bytecode.LOAD_INTVAL:
-            frame.push(W_IntObject(args[0]))
-        elif c == bytecode.LOAD_FLOATVAL:
-            frame.push(W_FloatObject(args[0]))
-        elif c == bytecode.LOAD_VAR:
-            variable = frame.get_var(args[0], args[1])
-            if variable is None:
-                print frame
-                raise Exception("Variable %s (%s) is not set" %
-                                (args[0], args[1]))
-            frame.push(variable)
-        elif c == bytecode.LOAD_FUNCTION:
-            frame.push(args[0])
-        elif c == bytecode.LOAD_NULL:
-            frame.push(W_Null())
-        elif c == bytecode.LOAD_BOOLEAN:
-            frame.push(W_Boolean(args[0]))
-        elif c == bytecode.LOAD_LIST:
-            arguments = [None] * args[0]
-            for i in range(args[0]):
-                index = args[0] - 1 - i
-                arguments[index] = frame.pop()
-            frame.push(arguments)
-        elif c == bytecode.LOAD_ARRAY:
-            array = W_Array()
-            for i in range(args[0]):
-                index = str(args[0] - 1 - i)
-                array.put(index, frame.pop())
-            frame.push(array)
-        elif c == bytecode.LOAD_MEMBER:
-            array = frame.pop()
-            member = frame.pop().str()
-            value = array.get(member)
-            frame.push(value)
-        elif c == bytecode.STORE_MEMBER:
-            array = frame.pop()
-            index = frame.pop().str()
-            value = frame.pop()
-            array.put(index, value)
-        elif c == bytecode.ASSIGN:
-            frame.set_var(args[0], args[1], frame.pop())
-        elif c == bytecode.DISCARD_TOP:
-            frame.pop()
-        elif c == bytecode.DUP:
-            frame.push(frame.top())
-        elif c == bytecode.RETURN:
-            if frame.valuestack_pos > 0:
-                return frame.pop()
-            else:
-                return W_Null()
-        elif c == bytecode.LT:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(compare_lt(left, right))
-        elif c == bytecode.LE:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(compare_le(left, right))
-        elif c == bytecode.GT:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(compare_gt(left, right))
-        elif c == bytecode.GE:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(compare_ge(left, right))
-        elif c == bytecode.EQ:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(compare_eq(left, right))
-        elif c == bytecode.INCR:
-            left = frame.pop()
-            frame.push(increment(left))
-        elif c == bytecode.DECR:
-            left = frame.pop()
-            frame.push(decrement(left))
-        elif c == bytecode.ADD:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(plus(left, right))
-        elif c == bytecode.SUB:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(sub(left, right))
-        elif c == bytecode.MUL:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(mult(left, right))
-        elif c == bytecode.DIV:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(division(left, right))
-        elif c == bytecode.AND:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(left and right)
-        elif c == bytecode.OR:
-            right = frame.pop()
-            left = frame.pop()
-            frame.push(left or right)
-        elif c == bytecode.JUMP:
-            pc = args[0]
-        elif c == bytecode.JUMP_IF_FALSE:
-            value = frame.pop()
-            true = value
-            if isinstance(value, W_Root):
-                true = value.is_true()
-            if not true:
-                pc = args[0]
-        elif c == bytecode.JUMP_BACKWARD:
-            pc = args[0]
-            # required hint indicating this is the end of a loop
-            driver.can_enter_jit(pc=pc, opcodes=opcodes, bc=bc, frame=frame)
-        elif c == bytecode.CALL:
-            method = frame.pop()
-            params = frame.pop()
-
-            if isinstance(method, NativeFunction):
-                res = method.call(*params)
-            else:
-                new_bc = method.body
-                new_frame = frame.create_new_frame(new_bc.symbols)
-
-                param_index = 0
-                # reverse args index to preserve order
-                for variable in new_bc.params():
-                    index = new_bc.index_for_symbol(variable)
-                    assert index >= 0
-                    new_frame.vars[index] = params[param_index]
-                    param_index += 1
-
-                res = execute(new_frame, new_bc)
-            frame.push(res)
-        elif c == bytecode.PRINT:
-            item = frame.pop()
-            printf(item.str())
+        if hasattr(opcode, 'do_jump'):
+            new_pc = opcode.do_jump(frame, pc)
+            if new_pc < pc:
+                driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc,
+                                       frame=frame)
+            pc = new_pc
+            continue
         else:
-            raise Exception("Unkown operation %s" % bytecode.bytecodes[c])
+            pc += 1
+
+    if result is None:
+        result = W_Null()
+
+    return result

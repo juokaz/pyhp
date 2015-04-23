@@ -1,6 +1,6 @@
 from pyhp.datatypes import NativeFunction
 from pyhp.datatypes import isint, isstr
-from pyhp.datatypes import W_IntObject, W_FloatObject, W_StringObject, W_Array
+from pyhp.datatypes import W_IntObject, W_StringObject, W_Array
 
 import time
 

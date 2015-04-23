@@ -9,7 +9,7 @@ escapes = [
     r'\b',
     r'\"',
     r'\\',
-    r'\u'] #don't know what to do with these
+    r'\u']  # don't know what to do with these
 
 codes = [
     '\n',
