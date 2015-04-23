@@ -104,6 +104,60 @@ class TestBench(TestBase):
         ackermann(1);""", capfd)
         assert out == "Ack(3,1): 13\n"
 
+    def test_ary(self, capfd):
+        out = self.run("""function ary($n) {
+          $X = [];
+          $Y = [];
+          for ($i=0; $i<$n; $i++) {
+            $X[$i] = $i;
+          }
+          for ($i=$n-1; $i>=0; $i--) {
+            $Y[$i] = $X[$i];
+          }
+          $last = $n-1;
+          print "$Y[$last]\n";
+        }
+
+        ary(10);""", capfd)
+        assert out == "9\n"
+
+    def test_ary2(self, capfd):
+        out = self.run("""function ary2($n) {
+          $X = [];
+          $Y = [];
+          for ($i=0; $i<$n;) {
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+            $X[$i] = $i; ++$i;
+          }
+          for ($i=$n-1; $i>=0;) {
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+            $Y[$i] = $X[$i]; --$i;
+          }
+          $last = $n-1;
+          print "$Y[$last]\n";
+        }
+
+        ary2(10);""", capfd)
+        assert out == "9\n"
+
     def test_ary3(self, capfd):
         out = self.run("""function ary3($n) {
           $X = [];

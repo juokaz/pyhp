@@ -223,6 +223,13 @@ class Transformer(RPythonVisitor):
     visit_expression = binaryop
     visit_memberexpression = binaryop
 
+    def visit_unaryexpression(self, node):
+        op = node.children[0]
+        child = self.dispatch(node.children[1])
+        if op.additional_info in ['++', '--']:
+            return self._dispatch_assignment(child, op.additional_info, 'pre')
+        return self.UNOP_TO_CLS[op.additional_info](child)
+
     def literalop(self, node):
         value = node.children[0].additional_info
         if value == "true":
@@ -272,10 +279,12 @@ class Transformer(RPythonVisitor):
         return left
 
     def _dispatch_assignment(self, left, atype, prepost):
+        is_post = prepost == 'post'
         if self.is_variable(left):
-            return operations.AssignmentOperation(left, None, atype)
+            return operations.AssignmentOperation(left, None, atype, is_post)
         elif self.is_member(left):
-            return operations.MemberAssignmentOperation(left, None, atype)
+            return operations.MemberAssignmentOperation(left, None, atype,
+                                                        is_post)
         else:
             raise FakeParseError("invalid lefthand expression")
 

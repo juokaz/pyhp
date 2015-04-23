@@ -77,7 +77,8 @@ class ExprStatement(Node):
         # TODO is there a better way?
         # discard the result if any of the expressions are being called
         # without an assignment operation
-        if not isinstance(self.expr, BaseAssignment):
+        if not isinstance(self.expr, BaseAssignment) \
+                or self.expr.has_operation():
             ctx.emit(bytecode.DISCARD_TOP)
 
 
@@ -238,6 +239,7 @@ OPERATIONS = unrolling_iterable(OPERANDS.items())
 
 class BaseAssignment(Expression):
     noops = ['=']
+    post = False
 
     def has_operation(self):
         return self.operand not in self.noops
@@ -245,8 +247,12 @@ class BaseAssignment(Expression):
     def compile(self, ctx):
         if self.has_operation():
             self.left.compile(ctx)
+            if self.post:
+                ctx.emit(bytecode.DUP)
             self.right.compile(ctx)
             self.compile_operation(ctx)
+            if not self.post:
+                ctx.emit(bytecode.DUP)
         else:
             self.right.compile(ctx)
 
@@ -266,20 +272,21 @@ class BaseAssignment(Expression):
 
 
 class AssignmentOperation(BaseAssignment):
-    def __init__(self, left, right, operand):
+    def __init__(self, left, right, operand, post=False):
         self.left = left
         self.index = left.index
         self.right = right
         if self.right is None:
             self.right = Empty()
         self.operand = operand
+        self.post = post
 
     def compile_store(self, ctx):
         ctx.emit(bytecode.ASSIGN, self.index, self.left.get_literal())
 
 
 class MemberAssignmentOperation(BaseAssignment):
-    def __init__(self, left, right, operand):
+    def __init__(self, left, right, operand, post=False):
         self.left = left
         self.right = right
         if right is None:
@@ -289,6 +296,7 @@ class MemberAssignmentOperation(BaseAssignment):
 
         self.w_array = self.left.left
         self.expr = self.left.expr
+        self.post = post
 
     def compile_store(self, ctx):
         self.expr.compile(ctx)
@@ -345,6 +353,14 @@ class For(Statement):
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
+
+        # TODO is there a better way?
+        # discard the result if any of the expressions are being called
+        # without an assignment operation
+        if isinstance(self.update, BaseAssignment) \
+                and self.update.has_operation():
+            ctx.emit(bytecode.DISCARD_TOP)
+
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
         if_opcode.args = [len(ctx)]
 

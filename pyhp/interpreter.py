@@ -109,6 +109,11 @@ class Frame(object):
         self.valuestack_pos = new_pos
         return v
 
+    def top(self):
+        pos = self.valuestack_pos - 1
+        assert pos >= 0
+        return self.valuestack[pos]
+
     def __repr__(self):
         return "Frame %s, parent %s" % (self.vars, self.parent_frame)
 
@@ -190,6 +195,8 @@ def execute(frame, bc):
             frame.set_var(args[0], args[1], frame.pop())
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
+        elif c == bytecode.DUP:
+            frame.push(frame.top())
         elif c == bytecode.RETURN:
             if frame.valuestack_pos > 0:
                 return frame.pop()
