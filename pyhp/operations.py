@@ -130,7 +130,7 @@ class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
             node.compile(ctx)
-            ctx.emit(bytecode.LOAD_PARAM)
+        ctx.emit(bytecode.LOAD_LIST, len(self.nodes))
 
 
 class Array(ListOp):

@@ -15,6 +15,15 @@ class TestBench(TestBase):
         simple();""", capfd)
         assert out == ""
 
+    def test_simplecall(self, capfd):
+        out = self.run("""function simplecall() {
+          for ($i = 0; $i < 100; $i++)
+            strlen("hallo");
+        }
+
+        simplecall();""", capfd)
+        assert out == ""
+
     def test_simpleucall(self, capfd):
         out = self.run("""function hallo($a) {
         }

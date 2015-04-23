@@ -3,6 +3,13 @@ from rpython.rlib.rstring import replace
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
 
+class NativeFunction(object):
+    def __init__(self, name, method):
+        self.name = name
+        self.method = method
+
+    def call(self, arguments):
+        return self.method(arguments)
 
 class Property(object):
     def __init__(self, name, value):
@@ -113,6 +120,9 @@ class W_StringObject(W_Root):
         for c in internalstring:
             temp.append(c)
         return ''.join(temp)
+
+    def len(self):
+        return W_IntObject(len(self.stringval))
 
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)

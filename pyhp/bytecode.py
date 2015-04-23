@@ -1,11 +1,11 @@
-bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_FUNCTION',
+bytecodes = ['LOAD_CONSTANT', 'LOAD_VAR', 'LOAD_FUNCTION', 'LOAD_LIST',
              'LOAD_NULL', 'LOAD_BOOLEAN', 'LOAD_INTVAL', 'LOAD_FLOATVAL',
              'LOAD_STRINGVAL',
              'LOAD_ARRAY', 'LOAD_MEMBER', 'STORE_MEMBER',
              'ASSIGN', 'DISCARD_TOP',
              'JUMP_IF_FALSE', 'JUMP_BACKWARD', 'JUMP',
              'RETURN', 'PRINT',
-             'LOAD_PARAM', 'CALL',
+             'CALL',
 
              'EQ', 'GT', 'GE', 'LT', 'LE', 'AND', 'OR',
              'ADD', 'SUB', 'MUL', 'DIV', 'INCR', 'DECR', 'MOD',
