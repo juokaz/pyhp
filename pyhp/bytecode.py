@@ -45,34 +45,11 @@ for i, bytecode in enumerate(bytecodes):
     opcodes.append(create_opcode(bytecode, i))
 
 
-class CompilerContext(object):
-    def __init__(self):
-        self.data = []
-
-    def emit(self, bc, *args):
-        opcode = opcodes[bc](*args)
-        self.data.append(opcode)
-        return opcode
-    emit._annspecialcase_ = 'specialize:arg(1)'
-
-    def emit_string(self, bc):
-        for opcode_class in opcodes:
-            if opcode_class.__name__ == bc:
-                opcode = opcode_class()
-                self.data.append(opcode)
-                return opcode
-
-        raise Exception('Bytecode %s not found' % bc)
-
-    def create_bytecode(self, symbols):
-        return ByteCode(self.data[:], symbols)
-
-
 class ByteCode(object):
     _immutable_fields_ = ['opcodes[*]', 'symbols']
 
-    def __init__(self, opcodes, symbols):
-        self.opcodes = opcodes
+    def __init__(self, symbols):
+        self.opcodes = []
         self.symbols = symbols
 
         # print 'Bytecode: '
@@ -87,6 +64,24 @@ class ByteCode(object):
     def functions(self):
         return self.symbols.functions
 
+    def emit(self, bc, *args):
+        opcode = opcodes[bc](*args)
+        self.opcodes.append(opcode)
+        return opcode
+    emit._annspecialcase_ = 'specialize:arg(1)'
+
+    def emit_string(self, bc):
+        for opcode_class in opcodes:
+            if opcode_class.__name__ == bc:
+                opcode = opcode_class()
+                self.opcodes.append(opcode)
+                return opcode
+
+        raise Exception('Bytecode %s not found' % bc)
+
+    def __len__(self):
+        return len(self.opcodes)
+
     def __repr__(self):
         lines = []
         index = 0
@@ -96,8 +91,9 @@ class ByteCode(object):
         return '\n'.join(lines)
 
 
-def compile_ast(astnode, symbols):
-    c = CompilerContext()
-    astnode.compile(c)
-    c.emit_string('RETURN')
-    return c.create_bytecode(symbols)
+def compile_ast(ast, symbols):
+    bc = ByteCode(symbols)
+    if ast is not None:
+        ast.compile(bc)
+    bc.emit_string('RETURN')
+    return bc

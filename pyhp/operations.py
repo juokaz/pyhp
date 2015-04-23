@@ -1,4 +1,5 @@
 from pyhp import bytecode
+from pyhp.bytecode import compile_ast
 from rpython.rlib.unroll import unrolling_iterable
 
 
@@ -72,7 +73,7 @@ class ExprStatement(Node):
 
 
 class FUNCTION(object):
-    def __init__(self, name, params, body=None):
+    def __init__(self, name, params, body):
         assert isinstance(name, str)
 
         self.name = name
@@ -94,14 +95,9 @@ class Function(Node):
         self.scope = scope
 
     def compile(self, ctx):
-        method = FUNCTION(self.name, self.params)
+        body = compile_ast(self.body, self.scope)
 
-        ctx2 = bytecode.CompilerContext()
-
-        if self.body:
-            self.body.compile(ctx2)
-
-        method.body = ctx2.create_bytecode(self.scope)
+        method = FUNCTION(self.name, self.params, body)
 
         ctx.emit(bytecode.LOAD_FUNCTION, method)
         ctx.emit(bytecode.ASSIGN, self.index)
@@ -306,10 +302,10 @@ class If(Node):
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.true_branch.compile(ctx)
         true_opcode = ctx.emit(bytecode.JUMP, 0)
-        if_opcode.args = [len(ctx.data)]
+        if_opcode.args = [len(ctx)]
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
-        true_opcode.args = [len(ctx.data)]
+        true_opcode.args = [len(ctx)]
 
 
 class WhileBase(Statement):
@@ -320,12 +316,12 @@ class WhileBase(Statement):
 
 class While(WhileBase):
     def compile(self, ctx):
-        pos = len(ctx.data)
+        pos = len(ctx)
         self.condition.compile(ctx)
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        if_opcode.args = [len(ctx.data)]
+        if_opcode.args = [len(ctx)]
 
 
 class For(Statement):
@@ -337,13 +333,13 @@ class For(Statement):
 
     def compile(self, ctx):
         self.setup.compile(ctx)
-        pos = len(ctx.data)
+        pos = len(ctx)
         self.condition.compile(ctx)
         if_opcode = ctx.emit(bytecode.JUMP_IF_FALSE, 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
         ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        if_opcode.args = [len(ctx.data)]
+        if_opcode.args = [len(ctx)]
 
 
 class Print(Node):
