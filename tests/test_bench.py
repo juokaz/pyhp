@@ -248,6 +248,22 @@ class TestBench(TestBase):
         matrix(1);""", capfd)
         assert out == "3355 13320 17865 23575\n"
 
+    def test_nestedloop(self, capfd):
+        out = self.run("""function nestedloop($n) {
+          $x = 0;
+          for ($a=0; $a<$n; $a++)
+            for ($b=0; $b<$n; $b++)
+              for ($c=0; $c<$n; $c++)
+                for ($d=0; $d<$n; $d++)
+                  for ($e=0; $e<$n; $e++)
+                    for ($f=0; $f<$n; $f++)
+                     $x++;
+          print "$x\n";
+        }
+
+        nestedloop(2);""", capfd)
+        assert out == "64\n"
+
     def test_sieve(self, capfd):
         out = self.run("""function sieve($n) {
           $count = 0;
@@ -269,18 +285,15 @@ class TestBench(TestBase):
         sieve(2);""", capfd)
         assert out == "Count: 5\n"
 
-    def test_nestedloop(self, capfd):
-        out = self.run("""function nestedloop($n) {
-          $x = 0;
-          for ($a=0; $a<$n; $a++)
-            for ($b=0; $b<$n; $b++)
-              for ($c=0; $c<$n; $c++)
-                for ($d=0; $d<$n; $d++)
-                  for ($e=0; $e<$n; $e++)
-                    for ($f=0; $f<$n; $f++)
-                     $x++;
-          print "$x\n";
+    def test_strcat(self, capfd):
+        out = self.run("""function strcat($n) {
+          $str = "";
+          while ($n-- > 0) {
+            $str .= "hello\n";
+          }
+          $len = strlen($str);
+          print "$len\n";
         }
 
-        nestedloop(2);""", capfd)
-        assert out == "64\n"
+        strcat(2);""", capfd)
+        assert out == "12\n"

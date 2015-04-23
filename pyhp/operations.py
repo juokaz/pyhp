@@ -232,6 +232,7 @@ OPERANDS = {
     '-=': bytecode.SUB,
     '++': bytecode.INCR,
     '--': bytecode.DECR,
+    '.=': bytecode.ADD,
 }
 
 OPERATIONS = unrolling_iterable(OPERANDS.items())
