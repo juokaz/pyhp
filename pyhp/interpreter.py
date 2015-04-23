@@ -37,7 +37,7 @@ driver = jit.JitDriver(greens=['pc', 'opcodes', 'bc'],
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars[*]']
 
-    def __init__(self, bc, parent=None):
+    def __init__(self, scope, global_env=None):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)
         self.valuestack = [None] * 100  # safe estimate!
         self.vars = [None] * 100
@@ -46,16 +46,20 @@ class Frame(object):
         self.arg_pos = 0
         self.argstack = [None] * 10  # safe estimate!
 
-        self.bc = bc
-        self.parent = parent
+        self.scope = scope
+        self.global_env = global_env
 
-    def is_parent_vissible(self, name):
-        symbols = self.bc.symbols
+    def get_global_env(self):
+        if self.global_env:
+            return self.global_env
+        return self
+
+    def is_parent_visible(self, name):
         # a global variable
-        if name in symbols.globals:
+        if name in self.scope.globals:
             return True
 
-        if self.parent is not None and name in self.parent.bc.functions():
+        if self.global_env is not None and name in self.global_env.scope.functions:
             return True
 
         return False
@@ -67,16 +71,15 @@ class Frame(object):
             return variable
 
         # if the current cuntext has access to a global variable read that
-        if self.parent is not None and self.is_parent_vissible(name):
-            return self.parent.get_var(index, name)
+        if self.global_env is not None and self.is_parent_visible(name):
+            return self.global_env.get_var(index, name)
 
         return None
 
-    def set_var(self, index, value):
-        name = self.bc.get_name(index)
+    def set_var(self, index, name, value):
         # if it is a parent (global) variable write to that instead
-        if self.parent is not None and self.is_parent_vissible(name):
-            self.parent.set_var(index, value)
+        if self.global_env is not None and self.is_parent_visible(name):
+            self.global_env.set_var(index, name, value)
             return
 
         self.vars[index] = value
@@ -184,7 +187,7 @@ def execute(frame, bc):
             array.put(index, value)
         elif c == bytecode.ASSIGN:
             assert args[0] >= 0
-            frame.set_var(args[0], frame.pop())
+            frame.set_var(args[0], args[1], frame.pop())
         elif c == bytecode.DISCARD_TOP:
             frame.pop()
         elif c == bytecode.RETURN:
@@ -258,14 +261,9 @@ def execute(frame, bc):
                 raise Exception("Unsupported function variable %s" % method)
 
             new_bc = method.body
-            parent = frame
-            # do not create a recursive scope
-            # results in deep nesting when a function is calling itself
-            if frame.parent is not None:
-                parent = frame.parent
-            new_frame = Frame(new_bc, parent)
+            new_frame = Frame(new_bc.symbols, frame.get_global_env())
 
-            params_length = len(method.params)
+            params_length = len(new_bc.params())
             params = [None] * params_length
 
             # reverse args index to preserve order
@@ -276,7 +274,7 @@ def execute(frame, bc):
 
             param_index = 0
             # reverse args index to preserve order
-            for variable in method.params:
+            for variable in new_bc.params():
                 index = new_bc.index_for_symbol(variable)
                 assert index >= 0
                 new_frame.vars[index] = params[param_index]

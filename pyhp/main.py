@@ -29,7 +29,7 @@ def bytecode(ast):
 def interpret(bc):
     """ Interpret bytecode and execute it
     """
-    frame = Frame(bc)
+    frame = Frame(bc.symbols)
     execute(frame, bc)
     return frame  # for tests and later introspection
 

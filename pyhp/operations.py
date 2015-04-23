@@ -73,11 +73,10 @@ class ExprStatement(Node):
 
 
 class FUNCTION(object):
-    def __init__(self, name, params, body):
+    def __init__(self, name, body):
         assert isinstance(name, str)
 
         self.name = name
-        self.params = params
         self.body = body
 
     def __repr__(self):
@@ -87,20 +86,19 @@ class FUNCTION(object):
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, index, params, body, scope):
-        self.name = name.get_literal()
+    def __init__(self, name, index, body, scope):
+        self.identifier = name.get_literal()
         self.index = index
-        self.params = params
         self.body = body
         self.scope = scope
 
     def compile(self, ctx):
         body = compile_ast(self.body, self.scope)
 
-        method = FUNCTION(self.name, self.params, body)
+        method = FUNCTION(self.identifier, body)
 
         ctx.emit(bytecode.LOAD_FUNCTION, method)
-        ctx.emit(bytecode.ASSIGN, self.index)
+        ctx.emit(bytecode.ASSIGN, self.index, self.identifier)
 
 
 class Call(Node):
@@ -268,7 +266,7 @@ class AssignmentOperation(BaseAssignment):
         self.operand = operand
 
     def compile_store(self, ctx):
-        ctx.emit(bytecode.ASSIGN, self.index)
+        ctx.emit(bytecode.ASSIGN, self.index, self.left.get_literal())
 
 
 class MemberAssignmentOperation(BaseAssignment):

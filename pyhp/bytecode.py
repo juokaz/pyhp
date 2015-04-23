@@ -46,11 +46,12 @@ for i, bytecode in enumerate(bytecodes):
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['opcodes[*]', 'symbols']
+    _immutable_fields_ = ['opcodes[*]', 'symbols', 'parameters[:]']
 
     def __init__(self, symbols):
         self.opcodes = []
         self.symbols = symbols
+        self.parameters = symbols.parameters[:]
 
         # print 'Bytecode: '
         # print self
@@ -63,6 +64,9 @@ class ByteCode(object):
 
     def functions(self):
         return self.symbols.functions
+
+    def params(self):
+        return self.parameters
 
     def emit(self, bc, *args):
         opcode = opcodes[bc](*args)

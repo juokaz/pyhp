@@ -46,6 +46,7 @@ class Scope(object):
         self.functions = []
         self.variables = []
         self.globals = []
+        self.parameters = []
 
     def add_symbol(self, name):
         return self.symbols.add(name)
@@ -62,6 +63,12 @@ class Scope(object):
         self.globals.append(name)
         return idx
 
+    def add_parameter(self, name):
+        idx = self.add_symbol(name)
+
+        self.parameters.append(name)
+        return idx
+
     def add_function(self, name):
         idx = self.add_symbol(name)
 
@@ -69,19 +76,20 @@ class Scope(object):
         return idx
 
     def finalize(self):
-        return FinalScope(self.symbols, self.functions, self.variables,
-                          self.globals)
+        return FinalScope(self.symbols, self.functions[:], self.variables[:],
+                          self.globals[:], self.parameters[:])
 
 
 class FinalScope(object):
     _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]',
-                          'globals[*]']
+                          'globals[*]', 'parameters[*]']
 
-    def __init__(self, symbols, functions, variables, globals):
+    def __init__(self, symbols, functions, variables, globals, parameters):
         self.symbols = symbols
-        self.functions = functions[:]
-        self.variables = variables[:]
-        self.globals = globals[:]
+        self.functions = functions
+        self.variables = variables
+        self.globals = globals
+        self.parameters = parameters
 
     def get_index(self, name):
         return self.symbols.get_index(name)
@@ -163,12 +171,7 @@ class Transformer(RPythonVisitor):
 
         i = 0
         identifier, i = self.get_next_expr(node, i)
-
-        p = []
         parameters, i = self.get_next_expr(node, i)
-        if parameters is not None:
-            p = [pident.get_literal() for pident in parameters.nodes]
-
         functionbody, i = self.get_next_expr(node, i)
 
         scope = self.current_scope()
@@ -180,7 +183,7 @@ class Transformer(RPythonVisitor):
         if declaration:
             funcindex = self.declare_symbol(identifier.get_literal())
 
-        funcobj = operations.Function(identifier, funcindex, p, functionbody,
+        funcobj = operations.Function(identifier, funcindex, functionbody,
                                       final_scope)
 
         if declaration:
@@ -194,6 +197,8 @@ class Transformer(RPythonVisitor):
 
     def visit_formalparameterlist(self, node):
         nodes = [self.dispatch(child) for child in node.children]
+        for node in nodes:
+            self.declare_parameter(node.identifier)
         return operations.ArgumentList(nodes)
 
     def visit_statementlist(self, node):
@@ -403,6 +408,11 @@ class Transformer(RPythonVisitor):
     def declare_global(self, symbol):
         s = symbol
         idx = self.scopes[-1].add_global(s)
+        return idx
+
+    def declare_parameter(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_parameter(s)
         return idx
 
     def declare_function(self, symbol, funcobj):
