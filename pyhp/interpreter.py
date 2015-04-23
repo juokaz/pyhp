@@ -191,7 +191,6 @@ def execute(frame, bc):
             value = frame.pop()
             array.put(index, value)
         elif c == bytecode.ASSIGN:
-            assert args[0] >= 0
             frame.set_var(args[0], args[1], frame.pop())
         elif c == bytecode.DISCARD_TOP:
             frame.pop()

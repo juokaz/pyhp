@@ -6,6 +6,11 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "1"
 
+    def test_echo(self, capfd):
+        out = self.run("""$x = 1;
+        echo $x;""", capfd)
+        assert out == "1"
+
     def test_running_comments(self, capfd):
         out = self.run("""// $x is a variable
         $x = 1;

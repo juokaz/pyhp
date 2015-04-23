@@ -2,6 +2,7 @@ from rpython.rlib.rsre.rsre_re import findall, sub as re_sub
 from rpython.rlib.rstring import replace
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
+from constants import unescapedict
 
 
 class NativeFunction(object):
@@ -113,17 +114,24 @@ class W_StringObject(W_Root):
         if string[0] not in ["'", '"']:
             return string
 
-        # XXX I don't think this works, it's very unlikely IMHO
-        #     test it
         temp = []
         stop = len(string)-1
         # XXX proper error
         assert stop >= 0
+        last = ""
 
         internalstring = string[1:stop]
 
         for c in internalstring:
-            temp.append(c)
+            if last == "\\":
+                # Lookup escape sequence. Ignore the backslash for
+                # unknown escape sequences (like SM)
+                unescapeseq = unescapedict.get(last+c, c)
+                temp.append(unescapeseq)
+                c = ' ' # Could be anything
+            elif c != "\\":
+                temp.append(c)
+            last = c
         return ''.join(temp)
 
     def len(self):
@@ -250,17 +258,13 @@ def mult(left, right):
 
 
 def division(left, right):
-    if isint(left) and isint(right):
-        # XXXX test & stuff
-        ileft = left.intval
-        iright = right.intval
-        try:
-            return W_IntObject(ovfcheck(ileft / iright))
-        except OverflowError:
-            return W_FloatObject(float(ileft) / float(iright))
     fleft = left.to_number()
     fright = right.to_number()
-    return W_FloatObject(fleft / fright)
+    result = fleft / fright
+    if int(result) == result:
+        return W_IntObject(int(result))
+    else:
+        return W_FloatObject(result)
 
 
 @specialize.argtype(0, 1)

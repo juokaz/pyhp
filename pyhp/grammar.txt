@@ -17,9 +17,6 @@ sourceelement   : <functiondeclaration>
 functiondeclaration : ["function"] identifier "(" formalparameterlist? ")" ["{"] functionbody? "}"
                     ;
 
-functionexpression  : ["function"] identifier "(" formalparameterlist? ")"
-                    ;
-
 formalparameterlist : variable [","] >formalparameterlist<
                     | variable
                     ;
@@ -72,7 +69,9 @@ whiles
 regularfor
     : "for" ["("] expression? ";" expression? ";" expression? ")" statement;
 
-printstatement: "print" expression ;
+printstatement: "print" expression
+              | "echo" expression
+              ;
 
 globalstatement: "global" globallist ;
 
@@ -92,9 +91,7 @@ elementlist : assignmentexpression ([","] assignmentexpression)*
             ;
 
 memberexpression    : primaryexpression >memberexpressiona<+
-                    | functionexpression >memberexpressiona<+
                     | <primaryexpression>
-                    | <functionexpression>
                     ;
 
 memberexpressiona   : "[" expression ["]"]

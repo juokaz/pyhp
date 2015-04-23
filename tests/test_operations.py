@@ -71,3 +71,8 @@ class TestMain(TestBase):
         out = self.run("""$x = 6 / 2;
         print $x;""", capfd)
         assert out == "3"
+
+    def test_float_div(self, capfd):
+        out = self.run("""$x = 2 / 10;
+        print $x;""", capfd)
+        assert out == "0.2"
