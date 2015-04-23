@@ -17,7 +17,6 @@ class TestFunctions(TestBase):
         }
 
         hello('Hello', 'world');""", capfd)
-        # todo arguments get inverted
         assert out == "Hello world"
 
     def test_function_call_return(self, capfd):

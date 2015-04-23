@@ -1,5 +1,6 @@
 from pyhp.bytecode import compile_ast
 from rpython.rlib.unroll import unrolling_iterable
+from pyhp.datatypes import ScriptFunction
 
 
 class Node(object):
@@ -81,17 +82,6 @@ class ExprStatement(Node):
             ctx.emit('DISCARD_TOP')
 
 
-class FUNCTION(object):
-    def __init__(self, name, body):
-        assert isinstance(name, str)
-
-        self.name = name
-        self.body = body
-
-    def __repr__(self):
-        return 'FUNCTION(%s)' % (self.name,)
-
-
 class Function(Node):
     """ A function
     """
@@ -104,7 +94,7 @@ class Function(Node):
     def compile(self, ctx):
         body = compile_ast(self.body, self.scope)
 
-        method = FUNCTION(self.identifier, body)
+        method = ScriptFunction(self.identifier, body)
 
         ctx.emit('LOAD_FUNCTION', method)
         ctx.emit('ASSIGN', self.index, self.identifier)
@@ -402,10 +392,21 @@ def create_binary_op(name):
         def compile(self, ctx):
             self.left.compile(ctx)
             self.right.compile(ctx)
-            b_name = name.upper()
-            ctx.emit(b_name)
+            ctx.emit(name)
     BinaryOp.__name__ = name
     return BinaryOp
+
+
+def create_unary_op(name):
+    class UnaryOp(Expression):
+        def __init__(self, expr):
+            self.expr = expr
+
+        def compile(self, ctx):
+            self.expr.compile(ctx)
+            ctx.emit(name)
+    UnaryOp.__name__ = name
+    return UnaryOp
 
 And = create_binary_op('AND')  # +
 Or = create_binary_op('OR')  # +
@@ -421,3 +422,5 @@ Gt = create_binary_op('GT')  # >
 Ge = create_binary_op('GE')  # >=
 Lt = create_binary_op('LT')  # <
 Le = create_binary_op('LE')  # <=
+
+Not = create_unary_op('NOT')

@@ -2,12 +2,18 @@ from pyhp.opcodes import opcodes
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['opcodes[*]', 'symbols', 'parameters[:]']
+    _immutable_fields_ = ['compiled_opcodes[*]', 'symbols', 'parameters[:]']
 
     def __init__(self, symbols):
         self.opcodes = []
         self.symbols = symbols
         self.parameters = symbols.parameters[:]
+
+    def compile(self):
+        self.compiled_opcodes = [o for o in self.opcodes]
+
+    def get_opcodes(self):
+        return self.compiled_opcodes
 
     def get_name(self, index):
         return self.symbols.get_name(index)
@@ -40,6 +46,7 @@ def compile_ast(ast, symbols):
     bc = ByteCode(symbols)
     if ast is not None:
         ast.compile(bc)
+    bc.compile()
     # print 'Bytecode: '
     # print bc
     return bc

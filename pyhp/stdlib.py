@@ -1,35 +1,50 @@
+from pyhp.scopes import StdlibScope
 from pyhp.datatypes import NativeFunction
 from pyhp.datatypes import isint, isstr
 from pyhp.datatypes import W_IntObject, W_StringObject, W_Array
 
 import time
+import math
 
 
-def strlen(string):
+def strlen(args):
+    string = args[0]
     assert(isstr(string))
     return W_IntObject(string.len())
 
 
-def str_repeat(string, repeat):
+def str_repeat(args):
+    string = args[0]
+    repeat = args[1]
     assert(isstr(string))
     assert(isint(repeat))
     repeated = string.str() * repeat.get_int()
     return W_StringObject(repeated)
 
 
-def dechex(number):
+def dechex(args):
+    number = args[0]
     assert(isint(number))
     return W_StringObject(hex(number.get_int()))
 
 
-def number_format(number, positions):
+def number_format(args):
+    number = args[0]
+    positions = args[1]
     assert(isint(positions))
-    template = "{:,.%sf}" % positions.get_int()
-    formatted = template.format(number.to_number())
+
+    number = number.to_number()
+    shift = int(math.pow(10, positions.get_int()))
+    usec = int(number * shift + 0.5) - int(number) * shift
+    sec = int(number)
+
+    formatted = "%s.%s" % (sec, usec)
     return W_StringObject(formatted)
 
 
-def array_range(start, finish):
+def array_range(args):
+    start = args[0]
+    finish = args[1]
     assert(isint(start))
     assert(isint(finish))
     array = W_Array()
@@ -38,9 +53,9 @@ def array_range(start, finish):
     return array
 
 
-def gettimeofday():
+def gettimeofday(args):
     seconds = time.time()
-    usec = int(round(seconds * 1000000)) - int(seconds) * 1000000
+    usec = int(seconds * 1000000) - int(seconds) * 1000000
     sec = int(seconds)
 
     array = W_Array()
@@ -57,36 +72,4 @@ functions = [
     NativeFunction('gettimeofday', gettimeofday),
 ]
 
-
-class Scope(object):
-    def __init__(self, functions):
-        self.functions = functions
-
-    def has_function(self, name):
-        for function in self.functions:
-            if function.name == name:
-                return True
-        return False
-
-    def get_function(self, name):
-        for function in self.functions:
-            if function.name == name:
-                return function
-        raise Exception("Function %s not found" % name)
-
-
-class StdLib(object):
-    def __init__(self, functions):
-        self.scope = Scope(functions)
-
-    def get_var(self, index, name):
-        return self.scope.get_function(name)
-
-    def is_visible(self, name):
-        # a global variable
-        if self.scope.has_function(name):
-            return True
-
-        return False
-
-stdlib = StdLib(functions)
+scope = StdlibScope(functions[:])

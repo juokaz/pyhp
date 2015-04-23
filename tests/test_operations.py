@@ -9,6 +9,14 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "1"
 
+    def test_if_not(self, capfd):
+        out = self.run("""
+        $x = false;
+        if (!$x) {
+            print $x;
+        }""", capfd)
+        assert out == "false"
+
     def test_if_and(self, capfd):
         out = self.run("""
         $x = 1;

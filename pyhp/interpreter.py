@@ -15,6 +15,7 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 from rpython.rlib import jit
 
 from pyhp.datatypes import W_Null
+from pyhp.opcodes import BaseJump
 
 
 def printable_loc(pc, code, bc):
@@ -30,24 +31,28 @@ driver = jit.JitDriver(greens=['pc', 'opcodes', 'bc'],
 class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars']
 
-    def __init__(self, scope, parent_frame=None):
+    def __init__(self, scope, parent_frame=None, global_scope=None):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)
         self.valuestack = [None] * 50  # safe estimate!
         self.vars = {}
         self.valuestack_pos = 0
 
         self.scope = scope
+        self.global_scope = global_scope
         self.parent_frame = parent_frame
 
     def create_new_frame(self, scope):
-        if isinstance(self.parent_frame, Frame):
+        if self.parent_frame is not None:
             parent_frame = self.parent_frame
         else:
             parent_frame = self
 
-        return Frame(scope, parent_frame)
+        return Frame(scope, parent_frame, self.global_scope)
 
     def is_visible(self, name):
+        if name in self.scope.functions:
+            return True
+
         if self.parent_frame is None:
             return False
 
@@ -55,19 +60,16 @@ class Frame(object):
         if name in self.scope.globals:
             return True
 
-        if name in self.parent_frame.scope.functions:
-            return True
-
         return self.parent_frame.is_visible(name)
-
-        return False
 
     def get_var(self, index, name):
         assert index >= 0
-        variable = self.vars.get(index)
 
-        if variable is not None:
-            return variable
+        if self.global_scope.has_identifier(name):
+            return self.global_scope.get(name)
+
+        if index in self.vars:
+            return self.vars[index]
 
         # if the current cuntext has access to a global variable read that
         if self.is_visible(name):
@@ -75,15 +77,20 @@ class Frame(object):
 
         return None
 
+    def get_variable_frame(self, name):
+        if name in self.scope.globals:
+            return self.parent_frame.get_variable_frame(name)
+
+        if name in self.scope.variables or self.scope.functions:
+            return self
+
+        raise Exception("Identifier %s not found in any frame" % name)
+
     def set_var(self, index, name, value):
         assert index >= 0
 
-        # if it is a parent (global) variable write to that instead
-        if self.is_visible(name):
-            self.parent_frame.set_var(index, name, value)
-            return
-
-        self.vars[index] = value
+        frame = self.get_variable_frame(name)
+        frame.vars[index] = value
 
     def push(self, v):
         pos = jit.hint(self.valuestack_pos, promote=True)
@@ -113,7 +120,7 @@ class Frame(object):
 
 
 def execute(frame, bc):
-    opcodes = bc.opcodes
+    opcodes = bc.get_opcodes()
     pc = 0
     result = None
     while True:
@@ -129,7 +136,7 @@ def execute(frame, bc):
         if result is not None:
             break
 
-        if hasattr(opcode, 'do_jump'):
+        if isinstance(opcode, BaseJump):
             new_pc = opcode.do_jump(frame, pc)
             if new_pc < pc:
                 driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc,

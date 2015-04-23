@@ -1,17 +1,8 @@
-from rpython.rlib.rsre.rsre_re import findall, sub as re_sub
+from rpython.rlib.rsre.rsre_re import findall
 from rpython.rlib.rstring import replace
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
 from constants import unescapedict
-
-
-class NativeFunction(object):
-    def __init__(self, name, method):
-        self.name = name
-        self.method = method
-
-    def call(self, *arguments):
-        return self.method(*arguments)
 
 
 class Property(object):
@@ -103,7 +94,10 @@ class W_StringObject(W_Root):
 
             # is this an array access?
             indexes = findall(ARRAYINDEX, variable)
-            identifier = re_sub(ARRAYINDEX, '', variable)
+
+            identifier = variable
+            for index in indexes:
+                identifier = replace(identifier, '[' + index + ']', '')
 
             variables_.append((variable, identifier, indexes))
 
@@ -166,6 +160,17 @@ class W_Array(W_Root):
         return r
 
 
+class W_List(W_Root):
+    def __init__(self, values=[]):
+        self.values = values
+
+    def to_list(self):
+        return self.values
+
+    def __str__(self):
+        return 'W_List(%s)' % (str([str(v) for v in self.values]))
+
+
 class W_Boolean(W_Root):
     _immutable_fields_ = ['boolval']
 
@@ -178,10 +183,38 @@ class W_Boolean(W_Root):
             return "true"
         return "false"
 
+    def is_true(self):
+        return self.boolval
+
 
 class W_Null(W_Root):
     def str(self):
         return "null"
+
+
+class Function(W_Root):
+    pass
+
+
+class NativeFunction(Function):
+    def __init__(self, name, method):
+        self.name = name
+        self.method = method
+
+    def call(self, arguments):
+        return self.method(arguments)
+
+    def __repr__(self):
+        return 'NativeFunction(%s)' % (self.name,)
+
+
+class ScriptFunction(Function):
+    def __init__(self, name, body):
+        self.name = name
+        self.body = body
+
+    def __repr__(self):
+        return 'ScriptFunction(%s)' % (self.name,)
 
 
 def isint(w):
@@ -194,6 +227,10 @@ def isstr(w):
 
 def isfloat(w):
     return isinstance(w, W_FloatObject)
+
+
+def isnumber(w):
+    return isint(w) or isfloat(w)
 
 
 def plus(left, right):
@@ -286,10 +323,12 @@ def _base_compare(x, y, _compare):
     if isint(x) and isint(y):
         return _compare(x.intval, y.intval)
 
-    if isfloat(x) and isfloat(y):
+    if isnumber(x) and isnumber(y):
         n1 = x.to_number()
         n2 = x.to_number()
         return _compare(n1, n2)
+
+    raise Exception('Incompatible types for comparison: %s %s' % (x, y))
 
 
 def compare_gt(x, y):

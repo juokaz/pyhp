@@ -1,10 +1,9 @@
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_Boolean, W_FloatObject, NativeFunction, W_Root
+    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, NativeFunction
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division
 
-from pyhp.interpreter import execute
 from pyhp.utils import printf
 
 
@@ -61,7 +60,7 @@ class LOAD_LIST(Opcode):
         for i in range(self.number):
             index = self.number - 1 - i
             arguments[index] = frame.pop()
-        frame.push(arguments)
+        frame.push(W_List(arguments))
 
 
 class LOAD_NULL(Opcode):
@@ -69,7 +68,7 @@ class LOAD_NULL(Opcode):
         frame.push(W_Null())
 
     def __str__(self):
-        return 'LOAD_NULL %s' % (self.value)
+        return 'LOAD_NULL'
 
 
 class LOAD_BOOLEAN(Opcode):
@@ -192,10 +191,7 @@ class BaseJump(Opcode):
 class JUMP_IF_FALSE(BaseJump):
     def do_jump(self, frame, pos):
         value = frame.pop()
-        true = value
-        if isinstance(value, W_Root):
-            true = value.is_true()
-        if not true:
+        if not value.is_true():
             return self.where
         return pos + 1
 
@@ -228,10 +224,10 @@ class PRINT(Opcode):
 class CALL(Opcode):
     def eval(self, frame):
         method = frame.pop()
-        params = frame.pop()
+        params = frame.pop().to_list()
 
         if isinstance(method, NativeFunction):
-            res = method.call(*params)
+            res = method.call(params)
         else:
             new_bc = method.body
             new_frame = frame.create_new_frame(new_bc.symbols)
@@ -244,57 +240,55 @@ class CALL(Opcode):
                 new_frame.vars[index] = params[param_index]
                 param_index += 1
 
+            from pyhp.interpreter import execute
             res = execute(new_frame, new_bc)
         frame.push(res)
 
 
-class EQ(Opcode):
+class BaseDecision(Opcode):
     def eval(self, frame):
         right = frame.pop()
         left = frame.pop()
-        frame.push(compare_eq(left, right))
+        res = self.decision(left, right)
+        frame.push(W_Boolean(res))
+
+    def decision(self, op1, op2):
+        raise NotImplementedError
 
 
-class GT(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(compare_gt(left, right))
+class EQ(BaseDecision):
+    def decision(self, left, right):
+        return compare_eq(left, right)
 
 
-class GE(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(compare_ge(left, right))
+class GT(BaseDecision):
+    def decision(self, left, right):
+        return compare_gt(left, right)
 
 
-class LT(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(compare_lt(left, right))
+class GE(BaseDecision):
+    def decision(self, left, right):
+        return compare_ge(left, right)
 
 
-class LE(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(compare_le(left, right))
+class LT(BaseDecision):
+    def decision(self, left, right):
+        return compare_lt(left, right)
 
 
-class AND(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(left and right)
+class LE(BaseDecision):
+    def decision(self, left, right):
+        return compare_le(left, right)
 
 
-class OR(Opcode):
-    def eval(self, frame):
-        right = frame.pop()
-        left = frame.pop()
-        frame.push(left or right)
+class AND(BaseDecision):
+    def decision(self, left, right):
+        return left.is_true() and right.is_true()
+
+
+class OR(BaseDecision):
+    def decision(self, left, right):
+        return left.is_true() or right.is_true()
 
 
 class ADD(Opcode):
@@ -325,13 +319,24 @@ class DIV(Opcode):
         frame.push(division(left, right))
 
 
-class INCR(Opcode):
+class BaseUnaryOperation(Opcode):
+    pass
+
+
+class NOT(BaseUnaryOperation):
+    def eval(self, frame):
+        val = frame.pop()
+        boolval = val.is_true()
+        frame.push(W_Boolean(not boolval))
+
+
+class INCR(BaseUnaryOperation):
     def eval(self, frame):
         left = frame.pop()
         frame.push(increment(left))
 
 
-class DECR(Opcode):
+class DECR(BaseUnaryOperation):
     def eval(self, frame):
         left = frame.pop()
         frame.push(decrement(left))

@@ -5,6 +5,7 @@ from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
+from pyhp.scopes import SymbolsMap, Scope
 
 grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
@@ -14,99 +15,6 @@ except ParseError, e:
     print e.nice_error_message(filename=grammar_file, source=grammar)
     raise
 _parse = make_parse_function(regexs, rules, eof=True)
-
-
-class SymbolsMap(object):
-    def __init__(self):
-        self.symbols = []
-        self.symbols_id = {}
-
-    def add(self, name):
-        if name not in self.symbols_id:
-            self.symbols_id[name] = len(self.symbols)
-            self.symbols.append(name)
-            idx = len(self.symbols) - 1
-        else:
-            idx = self.symbols_id[name]
-
-        assert isinstance(idx, int)
-        assert idx >= 0
-        return idx
-
-    def get_index(self, name):
-        return self.symbols_id[name]
-
-    def get_name(self, index):
-        return self.symbols[index]
-
-
-class Scope(object):
-    def __init__(self, symbols_map):
-        self.symbols = symbols_map
-        self.functions = []
-        self.variables = []
-        self.globals = []
-        self.parameters = []
-
-    def add_symbol(self, name):
-        return self.symbols.add(name)
-
-    def add_variable(self, name):
-        idx = self.add_symbol(name)
-
-        self.variables.append(name)
-        return idx
-
-    def add_global(self, name):
-        idx = self.add_symbol(name)
-
-        self.globals.append(name)
-        return idx
-
-    def add_parameter(self, name):
-        idx = self.add_symbol(name)
-
-        self.parameters.append(name)
-        return idx
-
-    def add_function(self, name):
-        idx = self.add_symbol(name)
-
-        self.functions.append(name)
-        return idx
-
-    def finalize(self):
-        return FinalScope(self.symbols, self.functions[:], self.variables[:],
-                          self.globals[:], self.parameters[:])
-
-
-class FinalScope(object):
-    _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]',
-                          'globals[*]', 'parameters[*]']
-
-    def __init__(self, symbols, functions, variables, globals, parameters):
-        self.symbols = symbols
-        self.functions = functions
-        self.variables = variables
-        self.globals = globals
-        self.parameters = parameters
-
-    def get_index(self, name):
-        return self.symbols.get_index(name)
-
-    def get_name(self, name):
-        return self.symbols.get_name(name)
-
-    def get_symbols(self):
-        return self.symbols
-
-    def len(self):
-        return len(self.symbols)
-
-
-class FakeParseError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
 
 
 class Transformer(RPythonVisitor):
@@ -128,6 +36,9 @@ class Transformer(RPythonVisitor):
         '||': operations.Or,
         '==': operations.Eq,
         '[': operations.Member,
+    }
+    UNOP_TO_CLS = {
+        '!': operations.Not,
     }
 
     def __init__(self):
@@ -286,7 +197,7 @@ class Transformer(RPythonVisitor):
             return operations.MemberAssignmentOperation(left, None, atype,
                                                         is_post)
         else:
-            raise FakeParseError("invalid lefthand expression")
+            raise Exception("invalid lefthand expression")
 
     def visit_postfixexpression(self, node):
         op = node.children[1]
@@ -312,7 +223,7 @@ class Transformer(RPythonVisitor):
         elif self.is_member(left):
             return operations.MemberAssignmentOperation(left, right, operation)
         else:
-            raise FakeParseError("invalid lefthand expression")
+            raise Exception("invalid lefthand expression")
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])

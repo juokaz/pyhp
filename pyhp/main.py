@@ -4,7 +4,7 @@ from rpython.rlib.parsing.parsing import ParseError
 from pyhp.interpreter import Frame, execute
 from pyhp.sourceparser import _parse, ToAST, Transformer
 from pyhp.bytecode import compile_ast
-from pyhp.stdlib import stdlib
+from pyhp.stdlib import scope as stdlibscope
 
 
 def parse(source):
@@ -30,7 +30,8 @@ def ast_to_bytecode(ast):
 def interpret(bc):
     """ Interpret bytecode and execute it
     """
-    frame = Frame(bc.symbols, stdlib)
+    frame = Frame(bc.symbols)
+    frame.global_scope = stdlibscope
     execute(frame, bc)
     return frame  # for tests and later introspection
 
