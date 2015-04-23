@@ -33,7 +33,7 @@ class ByteCode(object):
         for opcode in self.opcodes:
             lines.append("%s: %s" % (index, opcode))
             index += 1
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
 
 def compile_ast(ast, symbols):

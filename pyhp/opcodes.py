@@ -20,6 +20,9 @@ class Opcode(object):
         """
         raise NotImplementedError(self.get_name() + ".eval")
 
+    def __str__(self):
+        return self.get_name()
+
 
 class LOAD_CONSTANT(Opcode):
     pass
@@ -36,6 +39,9 @@ class LOAD_VAR(Opcode):
             raise Exception("Variable %s (%s) is not set" %
                             (self.index, self.name))
         frame.push(variable)
+
+    def __str__(self):
+        return 'LOAD_VAR %s, %s' % (self.index, self.name)
 
 
 class LOAD_FUNCTION(Opcode):
@@ -62,6 +68,9 @@ class LOAD_NULL(Opcode):
     def eval(self, frame):
         frame.push(W_Null())
 
+    def __str__(self):
+        return 'LOAD_NULL %s' % (self.value)
+
 
 class LOAD_BOOLEAN(Opcode):
     def __init__(self, value):
@@ -69,6 +78,9 @@ class LOAD_BOOLEAN(Opcode):
 
     def eval(self, frame):
         frame.push(self.value)
+
+    def __str__(self):
+        return 'LOAD_BOOLEAN %s' % (self.value)
 
 
 class LOAD_INTVAL(Opcode):
@@ -78,6 +90,9 @@ class LOAD_INTVAL(Opcode):
     def eval(self, frame):
         frame.push(self.value)
 
+    def __str__(self):
+        return 'LOAD_INTVAL %s' % (self.value)
+
 
 class LOAD_FLOATVAL(Opcode):
     def __init__(self, value):
@@ -85,6 +100,9 @@ class LOAD_FLOATVAL(Opcode):
 
     def eval(self, frame):
         frame.push(self.value)
+
+    def __str__(self):
+        return 'LOAD_FLOATVAL %s' % (self.value)
 
 
 class LOAD_STRINGVAL(Opcode):
@@ -108,6 +126,9 @@ class LOAD_STRINGVAL(Opcode):
             stringval = stringval.replace(search, replace)
 
         frame.push(stringval)
+
+    def __str__(self):
+        return 'LOAD_STRINGVAL %s' % (self.value)
 
 
 class LOAD_ARRAY(Opcode):
@@ -145,6 +166,9 @@ class ASSIGN(Opcode):
 
     def eval(self, frame):
         frame.set_var(self.index, self.name, frame.pop())
+
+    def __str__(self):
+        return 'ASSIGN %s, %s' % (self.index, self.name)
 
 
 class DISCARD_TOP(Opcode):

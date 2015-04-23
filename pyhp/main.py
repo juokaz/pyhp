@@ -20,7 +20,7 @@ def parse(source):
     return transformer.dispatch(ast)
 
 
-def bytecode(ast):
+def ast_to_bytecode(ast):
     """ Compile the AST into a bytecode
     """
     bc = compile_ast(ast, ast.scope)
@@ -35,13 +35,22 @@ def interpret(bc):
     return frame  # for tests and later introspection
 
 
-def run(filename):
+def read_file(filename):
     f = open_file_as_stream(filename)
     data = f.readall()
     f.close()
+    return data
 
+
+def bytecode(filename):
+    data = read_file(filename)
     ast = parse(data)
-    bc = bytecode(ast)
+    bc = ast_to_bytecode(ast)
+    return bc
+
+
+def run(filename):
+    bc = bytecode(filename)
     interpret(bc)
 
     return 0
