@@ -9,8 +9,8 @@ class NativeFunction(object):
         self.name = name
         self.method = method
 
-    def call(self, arguments):
-        return self.method(arguments)
+    def call(self, *arguments):
+        return self.method(*arguments)
 
 
 class Property(object):

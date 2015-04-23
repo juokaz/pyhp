@@ -248,6 +248,27 @@ class TestBench(TestBase):
         matrix(1);""", capfd)
         assert out == "3355 13320 17865 23575\n"
 
+    def test_sieve(self, capfd):
+        out = self.run("""function sieve($n) {
+          $count = 0;
+          while ($n-- > 0) {
+            $count = 0;
+            $flags = range (0,10);
+            for ($i=2; $i<11; $i++) {
+              if ($flags[$i] > 0) {
+                for ($k=$i+$i; $k <= 9; $k+=$i) {
+                  $flags[$k] = 0;
+                }
+                $count++;
+              }
+            }
+          }
+          print "Count: $count\n";
+        }
+
+        sieve(2);""", capfd)
+        assert out == "Count: 5\n"
+
     def test_nestedloop(self, capfd):
         out = self.run("""function nestedloop($n) {
           $x = 0;
