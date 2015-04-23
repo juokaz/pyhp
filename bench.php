@@ -2,18 +2,18 @@
 
 function simple() {
   $a = 0;
-  for ($i = 0; $i < 100; $i++)
+  for ($i = 0; $i < 1000000; $i++)
     $a++;
 
   $thisisanotherlongname = 0;
-  for ($thisisalongname = 0; $thisisalongname < 100; $thisisalongname++)
+  for ($thisisalongname = 0; $thisisalongname < 1000000; $thisisalongname++)
     $thisisanotherlongname++;
 }
 
 /****/
 
 function simplecall() {
-  for ($i = 0; $i < 100; $i++)
+  for ($i = 0; $i < 1000000; $i++)
     strlen("hallo");
 }
 
@@ -23,14 +23,14 @@ function hallo($a) {
 }
 
 function simpleucall() {
-  for ($i = 0; $i < 100; $i++)
+  for ($i = 0; $i < 1000000; $i++)
     hallo("hallo");
 }
 
 /****/
 
 function simpleudcall() {
-  for ($i = 0; $i < 100; $i++)
+  for ($i = 0; $i < 1000000; $i++)
     hallo2("hallo");
 }
 
@@ -40,8 +40,8 @@ function hallo2($a) {
 /****/
 
 function mandel() {
-  $w1=5;
-  $h1=10;
+  $w1=50;
+  $h1=150;
   $recen=-.45;
   $imcen=0.0;
   $r=0.7;
@@ -296,7 +296,7 @@ function mmult ($rows, $cols, $m1, $m2) {
 }
 
 function matrix($n) {
-  $SIZE = 10;
+  $SIZE = 30;
   $m1 = mkmatrix($SIZE, $SIZE);
   $m2 = mkmatrix($SIZE, $SIZE);
   while ($n--) {
@@ -403,28 +403,28 @@ mandel();
 $t = end_test($t, "mandel");
 //mandel2();
 //$t = end_test($t, "mandel2");
-ackermann(1);
+ackermann(7);
 $t = end_test($t, "ackermann(7)");
-ary(10);
+ary(50000);
 $t = end_test($t, "ary(50000)");
-ary2(10);
+ary2(50000);
 $t = end_test($t, "ary2(50000)");
-ary3(10);
+ary3(2000);
 $t = end_test($t, "ary3(2000)");
-fibo(5);
+fibo(30);
 $t = end_test($t, "fibo(30)");
-hash1(50);
+hash1(50000);
 $t = end_test($t, "hash1(50000)");
 //hash2(500);
 //$t = end_test($t, "hash2(500)");
 //heapsort(20000);
 //$t = end_test($t, "heapsort(20000)");
-matrix(10);
+matrix(20);
 $t = end_test($t, "matrix(20)");
-nestedloop(2);
+nestedloop(12);
 $t = end_test($t, "nestedloop(12)");
-sieve(2);
+sieve(30);
 $t = end_test($t, "sieve(30)");
-strcat(10);
+strcat(200000);
 $t = end_test($t, "strcat(200000)");
 total($t0, "Total");

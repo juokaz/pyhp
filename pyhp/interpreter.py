@@ -49,31 +49,29 @@ class Frame(object):
 
         return Frame(scope, parent_frame, self.global_scope)
 
-    def is_visible(self, name):
-        if name in self.scope.functions:
-            return True
-
-        if self.parent_frame is None:
-            return False
-
-        # a global variable
-        if name in self.scope.globals:
-            return True
-
-        return self.parent_frame.is_visible(name)
-
     def get_var(self, index, name):
         assert index >= 0
 
-        if self.global_scope.has_identifier(name):
-            return self.global_scope.get(name)
-
+        # if current frame has the variable defined
         if index in self.vars:
             return self.vars[index]
 
-        # if the current cuntext has access to a global variable read that
-        if self.is_visible(name):
-            return self.parent_frame.get_var(index, name)
+        is_function = name[0] != '$'
+
+        if is_function:
+            # if it's a function it might be defined in the parent frame
+            if self.parent_frame:
+                variable = self.parent_frame.get_var(index, name)
+                if variable:
+                    return variable
+
+            # or it might be a global function
+            if self.global_scope.has_identifier(name):
+                return self.global_scope.get(name)
+        else:
+            # a variable can be global
+            if name in self.scope.globals:
+                return self.parent_frame.get_var(index, name)
 
         return None
 
@@ -139,8 +137,8 @@ def execute(frame, bc):
         if isinstance(opcode, BaseJump):
             new_pc = opcode.do_jump(frame, pc)
             if new_pc < pc:
-                driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc,
-                                       frame=frame)
+                driver.can_enter_jit(pc=pc, opcodes=opcodes, bc=bc,
+                                     frame=frame)
             pc = new_pc
             continue
         else:

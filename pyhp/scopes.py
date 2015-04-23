@@ -91,19 +91,16 @@ class FinalScope(StaticScope):
 
 
 class StdlibScope(StaticScope):
-    _immutable_fields_ = ['functions[*]']
+    _immutable_fields_ = ['functions']
 
     def __init__(self, functions):
-        self.functions = functions
+        functions_ = {}
+        for function in functions:
+            functions_[function.name] = function
+        self.functions = functions_
 
     def has_identifier(self, name):
-        for function in self.functions:
-            if function.name == name:
-                return True
-        return False
+        return name in self.functions
 
     def get(self, name):
-        for function in self.functions:
-            if function.name == name:
-                return function
-        raise Exception("Name %s not found" % name)
+        return self.functions[name]
