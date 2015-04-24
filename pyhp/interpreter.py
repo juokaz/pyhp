@@ -18,12 +18,12 @@ from pyhp.datatypes import W_Null
 from pyhp.opcodes import BaseJump
 
 
-def printable_loc(pc, code, bc):
-    bytecode = bc.opcodes[pc]
+def printable_loc(pc, opcodes):
+    bytecode = opcodes[pc]
     return str(pc) + " " + str(bytecode)
 
-driver = jit.JitDriver(greens=['pc', 'opcodes', 'bc'],
-                       reds=['frame'],
+driver = jit.JitDriver(greens=['pc', 'opcodes'],
+                       reds=['frame', 'result'],
                        virtualizables=['frame'],
                        get_printable_location=printable_loc)
 
@@ -123,7 +123,8 @@ def execute(frame, bc):
     result = None
     while True:
         # required hint indicating this is the top of the opcode dispatch
-        driver.jit_merge_point(pc=pc, opcodes=opcodes, bc=bc, frame=frame)
+        driver.jit_merge_point(pc=pc, opcodes=opcodes, frame=frame,
+                               result=result)
 
         if pc >= len(opcodes):
             break
@@ -137,8 +138,8 @@ def execute(frame, bc):
         if isinstance(opcode, BaseJump):
             new_pc = opcode.do_jump(frame, pc)
             if new_pc < pc:
-                driver.can_enter_jit(pc=pc, opcodes=opcodes, bc=bc,
-                                     frame=frame)
+                driver.can_enter_jit(pc=new_pc, opcodes=opcodes,
+                                     frame=frame, result=result)
             pc = new_pc
             continue
         else:
