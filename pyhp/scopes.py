@@ -15,6 +15,17 @@ class SymbolsMap(object):
         assert idx >= 0
         return idx
 
+    def finalize(self):
+        return StaticSymbolsMap(self.symbols[:], self.symbols_id)
+
+
+class StaticSymbolsMap(object):
+    _immutable_fields_ = ['symbols[*]', 'symbols_id[*]']
+
+    def __init__(self, symbols, symbols_id):
+        self.symbols = symbols
+        self.symbols_id = symbols_id
+
     def get_index(self, name):
         return self.symbols_id[name]
 
@@ -58,8 +69,9 @@ class Scope(object):
         return idx
 
     def finalize(self):
-        return FinalScope(self.symbols, self.functions[:], self.variables[:],
-                          self.globals[:], self.parameters[:])
+        return FinalScope(self.symbols.finalize(), self.functions[:],
+                          self.variables[:], self.globals[:],
+                          self.parameters[:])
 
 
 class StaticScope(object):

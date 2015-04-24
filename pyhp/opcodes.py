@@ -252,7 +252,7 @@ class CALL(Opcode):
             res = method.call(params)
         else:
             new_bc = method.get_bytecode()
-            new_frame = frame.create_new_frame(new_bc.symbols)
+            new_frame = frame.create_new_frame(new_bc.get_symbols())
 
             param_index = 0
             # reverse args index to preserve order
@@ -262,8 +262,7 @@ class CALL(Opcode):
                 new_frame.vars[index] = params[param_index]
                 param_index += 1
 
-            from pyhp.interpreter import execute
-            res = execute(new_frame, new_bc)
+            res = new_bc.execute(new_frame)
         frame.push(res)
 
 
