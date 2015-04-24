@@ -12,10 +12,52 @@ class Property(object):
 
 
 class W_Root(object):
-    pass
+    _settled_ = True
+    _immutable_fields_ = ['_type_']
+    _type_ = ''
+
+    def is_true(self):
+        return False
+
+    def str(self):
+        return ''
+
+    def len(self):
+        return 0
+
+    def replace(self, search, replace_with):
+        pass
+
+    def get_variables(self):
+        pass
+
+    def to_number(self):
+        return 0.0
+
+    def get_int(self):
+        return 0
+
+    def put(self, key, value):
+        pass
+
+    def get(self, key):
+        pass
+
+    def to_list(self):
+        pass
+
+    def get_bytecode(self):
+        pass
 
 
-class W_IntObject(W_Root):
+class W_Number(W_Root):
+    def is_true(self):
+        return self.to_number() != 0
+
+
+class W_IntObject(W_Number):
+    _immutable_fields_ = ['intval']
+
     def __init__(self, intval):
         assert(isinstance(intval, int))
         self.intval = intval
@@ -26,9 +68,6 @@ class W_IntObject(W_Root):
     def get_int(self):
         return self.intval
 
-    def is_true(self):
-        return self.intval != 0
-
     def str(self):
         return str(self.intval)
 
@@ -36,7 +75,9 @@ class W_IntObject(W_Root):
         return 'W_IntObject(%s)' % (self.intval,)
 
 
-class W_FloatObject(W_Root):
+class W_FloatObject(W_Number):
+    _immutable_fields_ = ['floatval']
+
     def __init__(self, floatval):
         assert(isinstance(floatval, float))
         self.floatval = floatval
@@ -52,13 +93,16 @@ class W_FloatObject(W_Root):
 
 
 class W_StringObject(W_Root):
+    _immutable_fields_ = ['stringval', 'variables[*]']
+
     def __init__(self, stringval):
         assert(isinstance(stringval, str))
         self.stringval = self.string_unquote(stringval)
 
-        self.variables = []
         if not self.is_single_quoted(stringval):
             self.variables = self.extract_variables()
+        else:
+            self.variables = []
 
     def replace(self, search, replace_with):
         return W_StringObject(replace(self.stringval, search, replace_with))
@@ -161,6 +205,8 @@ class W_Array(W_Root):
 
 
 class W_List(W_Root):
+    _immutable_fields_ = ['values']
+
     def __init__(self, values=[]):
         self.values = values
 
@@ -197,6 +243,8 @@ class Function(W_Root):
 
 
 class NativeFunction(Function):
+    _immutable_fields_ = ['name', 'method']
+
     def __init__(self, name, method):
         self.name = name
         self.method = method
@@ -209,9 +257,14 @@ class NativeFunction(Function):
 
 
 class ScriptFunction(Function):
+    _immutable_fields_ = ['name', 'body']
+
     def __init__(self, name, body):
         self.name = name
         self.body = body
+
+    def get_bytecode(self):
+        return self.body
 
     def __repr__(self):
         return 'ScriptFunction(%s)' % (self.name,)
@@ -230,7 +283,7 @@ def isfloat(w):
 
 
 def isnumber(w):
-    return isint(w) or isfloat(w)
+    return isinstance(w, W_Number)
 
 
 def plus(left, right):
@@ -240,8 +293,8 @@ def plus(left, right):
         return W_StringObject(sleft + sright)
     # hot path
     if isint(left) and isint(right):
-        ileft = left.intval
-        iright = right.intval
+        ileft = left.get_int()
+        iright = right.get_int()
         try:
             return W_IntObject(ovfcheck(ileft + iright))
         except OverflowError:
@@ -254,14 +307,14 @@ def plus(left, right):
 
 def increment(nleft, constval=1):
     if isint(nleft):
-        return W_IntObject(nleft.intval + constval)
+        return W_IntObject(nleft.get_int() + constval)
     else:
         return plus(nleft, W_IntObject(constval))
 
 
 def decrement(nleft, constval=1):
     if isint(nleft):
-        return W_IntObject(nleft.intval - constval)
+        return W_IntObject(nleft.get_int() - constval)
     else:
         return sub(nleft, W_IntObject(constval))
 
@@ -269,8 +322,8 @@ def decrement(nleft, constval=1):
 def sub(left, right):
     if isint(left) and isint(right):
         # XXX fff
-        ileft = left.intval
-        iright = right.intval
+        ileft = left.get_int()
+        iright = right.get_int()
         try:
             return W_IntObject(ovfcheck(ileft - iright))
         except OverflowError:
@@ -283,8 +336,8 @@ def sub(left, right):
 def mult(left, right):
     if isint(left) and isint(right):
         # XXXX test & stuff
-        ileft = left.intval
-        iright = right.intval
+        ileft = left.get_int()
+        iright = right.get_int()
         try:
             return W_IntObject(ovfcheck(ileft * iright))
         except OverflowError:
@@ -321,7 +374,7 @@ def _compare_eq(x, y):
 
 def _base_compare(x, y, _compare):
     if isint(x) and isint(y):
-        return _compare(x.intval, y.intval)
+        return _compare(x.get_int(), y.get_int())
 
     if isnumber(x) and isnumber(y):
         n1 = x.to_number()

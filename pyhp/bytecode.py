@@ -2,7 +2,7 @@ from pyhp.opcodes import opcodes
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['compiled_opcodes[*]', 'symbols', 'parameters[:]']
+    _immutable_fields_ = ['compiled_opcodes[:]', 'symbols', 'parameters[:]']
 
     def __init__(self, symbols):
         self.opcodes = []

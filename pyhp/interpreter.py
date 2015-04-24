@@ -29,7 +29,8 @@ driver = jit.JitDriver(greens=['pc', 'opcodes'],
 
 
 class Frame(object):
-    _virtualizable_ = ['valuestack[*]', 'parent', 'valuestack_pos', 'vars']
+    _immutable_fields_ = ['parent', 'global_scope', 'scope']
+    _virtualizable_ = ['valuestack[:]', 'valuestack_pos', 'vars']
 
     def __init__(self, scope, parent_frame=None, global_scope=None):
         self = jit.hint(self, fresh_virtualizable=True, access_directly=True)

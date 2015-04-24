@@ -8,6 +8,8 @@ from pyhp.utils import printf
 
 
 class Opcode(object):
+    _settled_ = True
+
     def __init__(self):
         pass
 
@@ -28,6 +30,8 @@ class LOAD_CONSTANT(Opcode):
 
 
 class LOAD_VAR(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
     def __init__(self, index, name):
         self.index = index
         self.name = name
@@ -44,6 +48,8 @@ class LOAD_VAR(Opcode):
 
 
 class LOAD_FUNCTION(Opcode):
+    _immutable_fields_ = ['function']
+
     def __init__(self, function):
         self.function = function
 
@@ -52,6 +58,8 @@ class LOAD_FUNCTION(Opcode):
 
 
 class LOAD_LIST(Opcode):
+    _immutable_fields_ = ['number']
+
     def __init__(self, number):
         self.number = number
 
@@ -72,6 +80,8 @@ class LOAD_NULL(Opcode):
 
 
 class LOAD_BOOLEAN(Opcode):
+    _immutable_fields_ = ['value']
+
     def __init__(self, value):
         self.value = W_Boolean(value)
 
@@ -83,6 +93,8 @@ class LOAD_BOOLEAN(Opcode):
 
 
 class LOAD_INTVAL(Opcode):
+    _immutable_fields_ = ['value']
+
     def __init__(self, value):
         self.value = W_IntObject(value)
 
@@ -94,6 +106,8 @@ class LOAD_INTVAL(Opcode):
 
 
 class LOAD_FLOATVAL(Opcode):
+    _immutable_fields_ = ['value']
+
     def __init__(self, value):
         self.value = W_FloatObject(value)
 
@@ -105,6 +119,8 @@ class LOAD_FLOATVAL(Opcode):
 
 
 class LOAD_STRINGVAL(Opcode):
+    _immutable_fields_ = ['value']
+
     def __init__(self, value):
         self.value = W_StringObject(value)
 
@@ -131,6 +147,8 @@ class LOAD_STRINGVAL(Opcode):
 
 
 class LOAD_ARRAY(Opcode):
+    _immutable_fields_ = ['number']
+
     def __init__(self, number):
         self.number = number
 
@@ -159,6 +177,8 @@ class STORE_MEMBER(Opcode):
 
 
 class ASSIGN(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
     def __init__(self, index, name):
         self.index = index
         self.name = name
@@ -181,6 +201,8 @@ class DUP(Opcode):
 
 
 class BaseJump(Opcode):
+    _immutable_fields_ = ['where']
+
     def __init__(self, where):
         self.where = where
 
@@ -229,7 +251,7 @@ class CALL(Opcode):
         if isinstance(method, NativeFunction):
             res = method.call(params)
         else:
-            new_bc = method.body
+            new_bc = method.get_bytecode()
             new_frame = frame.create_new_frame(new_bc.symbols)
 
             param_index = 0

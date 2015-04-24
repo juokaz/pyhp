@@ -30,8 +30,7 @@ def ast_to_bytecode(ast):
 def interpret(bc):
     """ Interpret bytecode and execute it
     """
-    frame = Frame(bc.symbols)
-    frame.global_scope = stdlibscope
+    frame = Frame(bc.symbols, None, stdlibscope)
     execute(frame, bc)
     return frame  # for tests and later introspection
 
