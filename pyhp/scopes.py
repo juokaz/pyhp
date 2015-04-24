@@ -32,6 +32,9 @@ class StaticSymbolsMap(object):
     def get_name(self, index):
         return self.symbols[index]
 
+    def __len__(self):
+        return len(self.symbols)
+
 
 class Scope(object):
     def __init__(self, symbols_map):
@@ -98,7 +101,7 @@ class FinalScope(StaticScope):
     def get_symbols(self):
         return self.symbols
 
-    def len(self):
+    def __len__(self):
         return len(self.symbols)
 
 

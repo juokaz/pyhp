@@ -2,12 +2,14 @@ from rpython.rlib import jit
 
 
 class Frame(object):
-    _immutable_fields_ = ['parent', 'global_scope', 'scope']
-    _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars']
+    _settled_ = True
+    _immutable_fields_ = ['parent_frame', 'global_scope', 'scope', 'vars[*]']
+    _virtualizable_ = ['valuestack[*]', 'valuestack_pos']
 
     def __init__(self, scope, parent_frame=None, global_scope=None):
+        self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.valuestack = [None] * 50  # safe estimate!
-        self.vars = {}
+        self.vars = [None] * len(scope)
         self.valuestack_pos = 0
 
         self.scope = scope
@@ -26,8 +28,10 @@ class Frame(object):
         assert index >= 0
 
         # if current frame has the variable defined
-        if index in self.vars:
-            return self.vars[index]
+        variable = self.vars[index]
+
+        if variable is not None:
+            return variable
 
         is_function = name[0] != '$'
 
