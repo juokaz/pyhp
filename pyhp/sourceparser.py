@@ -17,6 +17,11 @@ except ParseError, e:
 _parse = make_parse_function(regexs, rules, eof=True)
 
 
+def parse(code):
+    t = _parse(code)
+    return ToAST().transform(t)
+
+
 class Transformer(RPythonVisitor):
     """ Transforms AST from the obscure format given to us by the ennfparser
     to something easier to work with

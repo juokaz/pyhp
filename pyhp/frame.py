@@ -1,5 +1,6 @@
 from rpython.rlib import jit
 
+
 class Frame(object):
     _immutable_fields_ = ['parent', 'global_scope', 'scope']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars']
@@ -87,4 +88,3 @@ class Frame(object):
 
     def __repr__(self):
         return "Frame %s, parent %s" % (self.vars, self.parent_frame)
-

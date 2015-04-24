@@ -4,6 +4,8 @@ from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
 from constants import unescapedict
 
+from rpython.rlib import jit
+
 
 class Property(object):
     def __init__(self, name, value):
@@ -238,30 +240,45 @@ class W_Null(W_Root):
         return "null"
 
 
-class Function(W_Root):
+class W_Function(W_Root):
     pass
 
 
-class NativeFunction(Function):
+class NativeFunction(W_Function):
     _immutable_fields_ = ['name', 'method']
 
     def __init__(self, name, method):
         self.name = name
         self.method = method
 
-    def call(self, arguments):
-        return self.method(arguments)
+    def call(self, params, frame):
+        return self.method(params)
 
     def __repr__(self):
         return 'NativeFunction(%s)' % (self.name,)
 
 
-class ScriptFunction(Function):
+class ScriptFunction(W_Function):
     _immutable_fields_ = ['name', 'body']
 
     def __init__(self, name, body):
         self.name = name
         self.body = body
+
+    def call(self, params, frame):
+        new_bc = self.body
+        jit.promote(new_bc)
+        new_frame = frame.create_new_frame(new_bc.get_symbols())
+
+        param_index = 0
+        # reverse args index to preserve order
+        for variable in new_bc.params():
+            index = new_frame.scope.get_index(variable)
+            assert index >= 0
+            new_frame.vars[index] = params[param_index]
+            param_index += 1
+
+        return new_bc.execute(new_frame)
 
     def get_bytecode(self):
         return self.body

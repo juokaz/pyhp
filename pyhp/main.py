@@ -2,20 +2,19 @@ from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib.parsing.parsing import ParseError
 
 from pyhp.frame import Frame
-from pyhp.sourceparser import _parse, ToAST, Transformer
+from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.stdlib import scope as stdlibscope
 
 
-def parse(source):
+def source_to_ast(source):
     """ Parse the source code and produce an AST
     """
     try:
-        t = _parse(source)
+        ast = parse(source)
     except ParseError, e:
         print e.nice_error_message(source=source)
         raise
-    ast = ToAST().transform(t)
     transformer = Transformer()
     return transformer.dispatch(ast)
 
@@ -44,7 +43,7 @@ def read_file(filename):
 
 def bytecode(filename):
     data = read_file(filename)
-    ast = parse(data)
+    ast = source_to_ast(data)
     bc = ast_to_bytecode(ast)
     return bc
 

@@ -1,5 +1,5 @@
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, NativeFunction
+    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division
@@ -248,21 +248,9 @@ class CALL(Opcode):
         method = frame.pop()
         params = frame.pop().to_list()
 
-        if isinstance(method, NativeFunction):
-            res = method.call(params)
-        else:
-            new_bc = method.get_bytecode()
-            new_frame = frame.create_new_frame(new_bc.get_symbols())
+        assert isinstance(method, W_Function)
 
-            param_index = 0
-            # reverse args index to preserve order
-            for variable in new_bc.params():
-                index = new_frame.scope.get_index(variable)
-                assert index >= 0
-                new_frame.vars[index] = params[param_index]
-                param_index += 1
-
-            res = new_bc.execute(new_frame)
+        res = method.call(params, frame)
         frame.push(res)
 
 
