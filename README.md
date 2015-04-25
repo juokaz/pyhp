@@ -23,20 +23,29 @@ by calling `compile()` on the tree
 
 ## Building
 
-Starting the VM
+### Starting the VM
 
     vagrant up
-
-Building the interpreter
-
+    vagrant ssh
     cd /var/www/pyhp
+
+### Building the interpreter
+
     rpython -Ojit targetpyhp.py
 
-Running the interpreter
+Emit the `-Ojit` to compile an interpreter without JIT support. Speeds up the build
+process by 5x, but the produced interpreter runs much slower.
 
-    ./targetpyhp-c example.php
+### Running the interpreter
 
-Run tests
+    ./pyhp-c fibonacci.php
+
+### Debugging the interpreter
+
+    PYPYLOG=jit-log-opt:jit.txt ./pyhp-c fibonacci.php
+    PYTHONPATH=$PYTHONPATH:/home/vagrant/pypy-src/ python ~/pypy-src/rpython/tool/logparser.py draw-time jit.txt --mainwidth=8000 filename.png
+
+### Run tests
 
     PYTHONPATH=$PYTHONPATH:/home/vagrant/pypy-src/ py.test tests
 
