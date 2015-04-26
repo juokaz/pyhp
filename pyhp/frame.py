@@ -4,13 +4,13 @@ from rpython.rlib import jit
 class BaseVarMap(object):
     _settled_ = True
 
-    def get(self, name, index):
+    def get(self, name):
         raise NotImplementedError
 
     def get_index(self, name):
         raise NotImplementedError
 
-    def set(self, name, index, value):
+    def set(self, name, value):
         raise NotImplementedError
 
 
@@ -22,36 +22,37 @@ class VarMap(BaseVarMap):
         self.parent = parent
 
     def get_index(self, name):
-        return self.scope.get_index(name)
+        index = self.scope.get_index(name)
+        return jit.promote(index)
 
-    def get(self, name, index):
+    def get(self, name):
         assert isinstance(name, str)
         if self.get_scope().has_global(name):
-            return self.parent.get(name, index)
+            return self.parent.get(name)
 
         if self.get_scope().has_variable(name) \
                 or self.get_scope().has_function(name):
-            return self.load(index)
+            return self.load(name)
 
-        return self.parent.get(name, index)
+        return self.parent.get(name)
 
-    def set(self, name, index, value):
+    def set(self, name, value):
         assert isinstance(name, str)
         if self.get_scope().has_global(name):
-            return self.parent.set(name, index, value)
+            return self.parent.set(name, value)
 
         if self.get_scope().has_variable(name) \
                 or self.get_scope().has_function(name):
-            return self.store(index, value)
+            return self.store(name, value)
 
-        return self.parent.set(name, index, value)
+        return self.parent.set(name, value)
 
-    def store(self, index, value):
-        jit.promote(index)
+    def store(self, name, value):
+        index = self.get_index(name)
         self.vars[index] = value
 
-    def load(self, index):
-        jit.promote(index)
+    def load(self, name):
+        index = self.get_index(name)
         return self.vars[index]
 
     def get_scope(self):
@@ -67,10 +68,10 @@ class GlobalVarMap(BaseVarMap):
             functions_[function.name] = function
         self.functions = functions_
 
-    def get(self, name, index):
+    def get(self, name):
         return self.functions[name]
 
-    def set(self, name, index, value):
+    def set(self, name, value):
         raise Exception("Global varmap cannot accept var sets")
 
 
@@ -101,15 +102,12 @@ class Frame(object):
                 param_index += 1
 
     def get_var(self, name, index=-1):
-        if index < 0:
-            index = self.get_index(name)
-
-        return self.varmap.get(name, index)
+        return self.varmap.get(name)
 
     def set_var(self, index, name, value):
         assert index >= 0
 
-        self.varmap.set(name, index, value)
+        self.varmap.set(name, value)
 
     def get_varmap(self):
         return self.varmap

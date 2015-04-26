@@ -40,8 +40,8 @@ class StaticSymbolsMap(object):
 
 
 class Scope(object):
-    def __init__(self, symbols_map):
-        self.symbols = symbols_map
+    def __init__(self):
+        self.symbols = SymbolsMap()
         self.functions = []
         self.variables = []
         self.globals = []

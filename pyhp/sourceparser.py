@@ -5,7 +5,7 @@ from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
-from pyhp.scopes import SymbolsMap, Scope
+from pyhp.scopes import Scope
 
 grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
@@ -47,8 +47,6 @@ class Transformer(RPythonVisitor):
     }
 
     def __init__(self):
-        # one symbols map per whole application to avoid index colisions
-        self.root_symbols_map = SymbolsMap()
         self.funclists = []
         self.scopes = []
         self.depth = -1
@@ -317,7 +315,7 @@ class Transformer(RPythonVisitor):
     def enter_scope(self):
         self.depth = self.depth + 1
 
-        new_scope = Scope(self.root_symbols_map)
+        new_scope = Scope()
         self.scopes.append(new_scope)
 
     def declare_symbol(self, symbol):
