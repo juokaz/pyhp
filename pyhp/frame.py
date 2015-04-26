@@ -11,11 +11,11 @@ class VarMap(object):
         self.parent = parent
 
     def store(self, index, value):
-        assert index >= 0
+        jit.promote(index)
         self.vars[index] = value
 
     def load(self, index):
-        assert index >= 0
+        jit.promote(index)
         return self.vars[index]
 
     def get_index(self, name):
@@ -42,7 +42,7 @@ class VarMap(object):
 
 class Frame(object):
     _settled_ = True
-    _immutable_fields_ = ['parent_frame', 'global_scope', 'scope', 'varmap']
+    _immutable_fields_ = ['valuestack', 'global_scope', 'varmap']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos']
 
     def __init__(self, varmap, global_scope=None):
@@ -99,6 +99,20 @@ class Frame(object):
         self.valuestack[pos] = None
         self.valuestack_pos = pos
         return v
+
+    @jit.unroll_safe
+    def pop_n(self, n):
+        if n < 1:
+            return []
+
+        r = []
+        i = n
+        while i > 0:
+            i -= 1
+            e = self.pop()
+            r = [e] + r
+
+        return r
 
     def top(self):
         pos = self.get_pos() - 1

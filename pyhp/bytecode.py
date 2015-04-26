@@ -15,12 +15,12 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 from pyhp.opcodes import opcodes
 from rpython.rlib import jit
 
-from pyhp.datatypes import W_Null
+from pyhp.datatypes import W_Null, W_Root
 from pyhp.opcodes import BaseJump
 
 
 def printable_loc(pc, bc):
-    bytecode = bc.get_opcode(pc)
+    bytecode = bc._get_opcode(pc)
     return str(pc) + " " + str(bytecode)
 
 driver = jit.JitDriver(greens=['pc', 'self'],
@@ -43,9 +43,6 @@ class ByteCode(object):
     def get_symbols(self):
         return self.symbols
 
-    def get_opcode(self, pc):
-        return self.compiled_opcodes[pc]
-
     def get_name(self, index):
         return self.symbols.get_name(index)
 
@@ -61,6 +58,15 @@ class ByteCode(object):
         return opcode
     emit._annspecialcase_ = 'specialize:arg(1)'
 
+    @jit.elidable
+    def _get_opcode(self, pc):
+        assert pc >= 0
+        return self.compiled_opcodes[pc]
+
+    @jit.elidable
+    def _opcode_count(self):
+        return len(self.compiled_opcodes)
+
     def execute(self, frame):
         pc = 0
         result = None
@@ -69,13 +75,13 @@ class ByteCode(object):
             driver.jit_merge_point(pc=pc, self=self, frame=frame,
                                    result=result)
 
-            if pc >= len(self.compiled_opcodes):
+            if pc >= self._opcode_count():
                 break
 
-            opcode = self.get_opcode(pc)
+            opcode = self._get_opcode(pc)
             result = opcode.eval(frame)
 
-            if result is not None:
+            if isinstance(result, W_Root):
                 break
 
             if isinstance(opcode, BaseJump):

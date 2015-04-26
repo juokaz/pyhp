@@ -1,10 +1,12 @@
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function
+    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function, W_ScriptFunction
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division
 
 from pyhp.utils import printf
+
+from rpython.rlib import jit
 
 
 class Opcode(object):
@@ -54,7 +56,7 @@ class LOAD_FUNCTION(Opcode):
         self.function = function
 
     def eval(self, frame):
-        frame.push(self.function)
+        frame.push(W_ScriptFunction(self.function))
 
 
 class LOAD_LIST(Opcode):
@@ -64,11 +66,8 @@ class LOAD_LIST(Opcode):
         self.number = number
 
     def eval(self, frame):
-        arguments = [None] * self.number
-        for i in range(self.number):
-            index = self.number - 1 - i
-            arguments[index] = frame.pop()
-        frame.push(W_List(arguments))
+        list_w = frame.pop_n(self.number)
+        frame.push(W_List(list_w))
 
 
 class LOAD_NULL(Opcode):
@@ -148,11 +147,12 @@ class LOAD_ARRAY(Opcode):
     def __init__(self, number):
         self.number = number
 
+    @jit.unroll_safe
     def eval(self, frame):
         array = W_Array()
-        for i in range(self.number):
-            index = str(self.number - 1 - i)
-            array.put(index, frame.pop())
+        list_w = frame.pop_n(self.number)
+        for index, el in enumerate(list_w):
+            array.put(str(index), el)
         frame.push(array)
 
 
@@ -242,11 +242,12 @@ class PRINT(Opcode):
 class CALL(Opcode):
     def eval(self, frame):
         method = frame.pop()
-        params = frame.pop().to_list()
+        params = frame.pop()
 
         assert isinstance(method, W_Function)
+        assert isinstance(params, W_List)
 
-        res = method.call(params, frame)
+        res = method.call(params.to_list(), frame)
         frame.push(res)
 
 

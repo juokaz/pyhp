@@ -1,6 +1,5 @@
 from pyhp.bytecode import compile_ast
 from rpython.rlib.unroll import unrolling_iterable
-from pyhp.datatypes import ScriptFunction
 
 
 class Node(object):
@@ -81,6 +80,16 @@ class ExprStatement(Node):
                 or self.expr.has_operation():
             ctx.emit('DISCARD_TOP')
 
+class FUNCTION(object):
+    _immutable_fields_ = ['name', 'body']
+
+    def __init__(self, name, body):
+        self.name = name
+        self.body = body
+
+    def run(self, frame):
+        return self.body.execute(frame)
+
 
 class Function(Node):
     """ A function
@@ -94,7 +103,7 @@ class Function(Node):
     def compile(self, ctx):
         body = compile_ast(self.body, self.scope)
 
-        method = ScriptFunction(self.identifier, body)
+        method = FUNCTION(self.identifier, body)
 
         ctx.emit('LOAD_FUNCTION', method)
         ctx.emit('ASSIGN', self.index, self.identifier)

@@ -209,9 +209,9 @@ class W_Array(W_Root):
 
 
 class W_List(W_Root):
-    _immutable_fields_ = ['values']
+    _immutable_fields_ = ['values[*]']
 
-    def __init__(self, values=[]):
+    def __init__(self, values):
         self.values = values
 
     def to_list(self):
@@ -260,31 +260,34 @@ class NativeFunction(W_Function):
         return 'NativeFunction(%s)' % (self.name,)
 
 
-class ScriptFunction(W_Function):
-    _immutable_fields_ = ['name', 'body']
+class W_ScriptFunction(W_Function):
+    _immutable_fields_ = ['name', 'funcobj', 'scope', 'params[*]']
 
-    def __init__(self, name, body):
-        self.name = name
-        self.body = body
+    def __init__(self, funcobj):
+        self.name = funcobj.name
+        self.funcobj = funcobj
+        self.scope = funcobj.body.get_symbols()
+        self.params = funcobj.body.params()
 
+    @jit.unroll_safe
     def call(self, params, frame):
-        new_bc = self.get_bytecode()
-        jit.promote(new_bc)
+        func = self.get_funcobj()
+        jit.promote(func)
 
-        varmap = VarMap(new_bc.symbols, frame.varmap)
+        varmap = VarMap(self.scope, frame.varmap)
 
         # set call arguments as variable values
         param_index = 0
-        for variable in new_bc.params():
+        for variable in self.params:
             index = varmap.get_index(variable)
             varmap.store(index, params[param_index])
             param_index += 1
 
         new_frame = Frame(varmap, frame.global_scope)
-        return new_bc.execute(new_frame)
+        return func.run(new_frame)
 
-    def get_bytecode(self):
-        return self.body
+    def get_funcobj(self):
+        return self.funcobj
 
     def __repr__(self):
         return 'ScriptFunction(%s)' % (self.name,)
