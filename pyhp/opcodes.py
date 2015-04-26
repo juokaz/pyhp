@@ -37,7 +37,7 @@ class LOAD_VAR(Opcode):
         self.name = name
 
     def eval(self, frame):
-        variable = frame.get_var(self.index, self.name)
+        variable = frame.get_var(self.name, self.index)
         if variable is None:
             raise Exception("Variable %s (%s) is not set" %
                             (self.index, self.name))
@@ -128,14 +128,10 @@ class LOAD_STRINGVAL(Opcode):
         stringval = self.value
         for variable in stringval.get_variables():
             search, identifier, indexes = variable
-            index = frame.scope.get_index(identifier)
-            assert index >= 0
-            value = frame.get_var(index, identifier)
+            value = frame.get_var(identifier)
             for key in indexes:
                 if key[0] == '$':
-                    index = frame.scope.get_index(key)
-                    assert index >= 0
-                    key = frame.get_var(index, identifier).str()
+                    key = frame.get_var(key).str()
                 value = value.get(key)
             replace = value.str()
             stringval = stringval.replace(search, replace)

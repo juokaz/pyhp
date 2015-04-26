@@ -1,3 +1,6 @@
+from rpython.rlib import jit
+
+
 class SymbolsMap(object):
     def __init__(self):
         self.symbols = []
@@ -92,11 +95,25 @@ class FinalScope(StaticScope):
         self.globals = globals
         self.parameters = parameters
 
+    @jit.elidable_promote("0")
     def get_index(self, name):
         return self.symbols.get_index(name)
 
+    @jit.elidable_promote("0")
     def get_name(self, name):
         return self.symbols.get_name(name)
+
+    @jit.elidable_promote("0")
+    def has_variable(self, name):
+        return name in self.variables
+
+    @jit.elidable_promote("0")
+    def has_global(self, name):
+        return name in self.globals
+
+    @jit.elidable_promote("0")
+    def has_function(self, name):
+        return name in self.functions
 
     def get_symbols(self):
         return self.symbols
@@ -114,8 +131,10 @@ class StdlibScope(StaticScope):
             functions_[function.name] = function
         self.functions = functions_
 
+    @jit.elidable_promote("0")
     def has_identifier(self, name):
         return name in self.functions
 
+    @jit.elidable_promote("0")
     def get(self, name):
         return self.functions[name]

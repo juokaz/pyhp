@@ -1,94 +1,112 @@
 from rpython.rlib import jit
 
+class VarMap(object):
+    _immutable_fields_ = ['vars[*]', 'scope', 'parent']
+
+    def __init__(self, scope, parent=None):
+        self.scope = scope
+        self.vars = [None] * len(scope)
+        if parent is not None and parent.parent is not None:
+            parent = parent.parent
+        self.parent = parent
+
+    def store(self, index, value):
+        assert index >= 0
+        self.vars[index] = value
+
+    def load(self, index):
+        assert index >= 0
+        return self.vars[index]
+
+    def get_index(self, name):
+        return self.get_scope().get_index(name)
+
+    def get_scope(self):
+        return self.scope
+
+    def get_parent(self):
+        return self.parent
+
+    def get_owning(self, name):
+        try:
+            if self.get_scope().has_global(name):
+                return self.get_parent().get_owning(name)
+
+            if self.get_scope().has_variable(name) or self.get_scope().has_function(name):
+                return self
+
+            return self.get_parent().get_owning(name)
+        except AttributeError:
+            return None
+
 
 class Frame(object):
     _settled_ = True
-    _immutable_fields_ = ['parent_frame', 'global_scope', 'scope', 'vars[*]']
+    _immutable_fields_ = ['parent_frame', 'global_scope', 'scope', 'varmap']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos']
 
-    def __init__(self, scope, parent_frame=None, global_scope=None):
+    def __init__(self, varmap, global_scope=None):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
-        self.valuestack = [None] * 50  # safe estimate!
-        self.vars = [None] * len(scope)
+        self.valuestack = [None] * 10  # safe estimate!
+        self.varmap = varmap
         self.valuestack_pos = 0
 
-        self.scope = scope
         self.global_scope = global_scope
-        self.parent_frame = parent_frame
 
-    def create_new_frame(self, scope):
-        if self.parent_frame is not None:
-            parent_frame = self.parent_frame
-        else:
-            parent_frame = self
+    def get_var(self, name, index=-1):
+        if index < 0:
+            index = self.get_index(name)
 
-        return Frame(scope, parent_frame, self.global_scope)
+        try:
+            varmap = self.get_owning(name)
 
-    def get_var(self, index, name):
-        assert index >= 0
-
-        # if current frame has the variable defined
-        variable = self.vars[index]
-
-        if variable is not None:
-            return variable
-
-        is_function = name[0] != '$'
-
-        if is_function:
-            # if it's a function it might be defined in the parent frame
-            if self.parent_frame:
-                variable = self.parent_frame.get_var(index, name)
-                if variable:
-                    return variable
-
-            # or it might be a global function
+            # if current frame has the variable defined
+            return varmap.load(index)
+        except AttributeError:
+             # or it might be a global function
             if self.global_scope.has_identifier(name):
                 return self.global_scope.get(name)
-        else:
-            # a variable can be global
-            if name in self.scope.globals:
-                return self.parent_frame.get_var(index, name)
 
         return None
-
-    def get_variable_frame(self, name):
-        if name in self.scope.globals:
-            return self.parent_frame.get_variable_frame(name)
-
-        if name in self.scope.variables or self.scope.functions:
-            return self
-
-        raise Exception("Identifier %s not found in any frame" % name)
 
     def set_var(self, index, name, value):
         assert index >= 0
 
-        frame = self.get_variable_frame(name)
-        frame.vars[index] = value
+        varmap = self.get_owning(name)
+        varmap.store(index, value)
+
+    @jit.elidable_promote("0")
+    def get_owning(self, name):
+        return self.varmap.get_owning(name)
+
+    def get_index(self, name):
+        return self.varmap.get_index(name)
 
     def push(self, v):
-        pos = jit.hint(self.valuestack_pos, promote=True)
+        pos = self.get_pos()
+        len_stack = len(self.valuestack)
 
         # prevent stack overflow
-        len_stack = len(self.valuestack)
         assert pos >= 0 and len_stack > pos
 
         self.valuestack[pos] = v
         self.valuestack_pos = pos + 1
 
     def pop(self):
-        pos = jit.hint(self.valuestack_pos, promote=True)
-        new_pos = pos - 1
-        assert new_pos >= 0
-        v = self.valuestack[new_pos]
-        self.valuestack_pos = new_pos
+        v = self.top()
+        pos = self.get_pos() - 1
+        assert pos >= 0
+        self.valuestack[pos] = None
+        self.valuestack_pos = pos
         return v
 
     def top(self):
-        pos = self.valuestack_pos - 1
+        pos = self.get_pos() - 1
         assert pos >= 0
         return self.valuestack[pos]
 
+    def get_pos(self):
+        return jit.promote(self.valuestack_pos)
+
     def __repr__(self):
-        return "Frame %s, parent %s" % (self.vars, self.parent_frame)
+        return "Frame %s" % (self.varmap)

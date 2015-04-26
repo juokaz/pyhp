@@ -1,7 +1,7 @@
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib.parsing.parsing import ParseError
 
-from pyhp.frame import Frame
+from pyhp.frame import Frame, VarMap
 from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.stdlib import scope as stdlibscope
@@ -29,7 +29,8 @@ def ast_to_bytecode(ast):
 def interpret(bc):
     """ Interpret bytecode and execute it
     """
-    frame = Frame(bc.symbols, None, stdlibscope)
+    varmap = VarMap(bc.symbols)
+    frame = Frame(varmap, stdlibscope)
     bc.execute(frame)
     return frame  # for tests and later introspection
 

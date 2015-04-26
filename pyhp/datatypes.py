@@ -6,6 +6,8 @@ from constants import unescapedict
 
 from rpython.rlib import jit
 
+from pyhp.frame import Frame, VarMap
+
 
 class Property(object):
     def __init__(self, name, value):
@@ -266,18 +268,19 @@ class ScriptFunction(W_Function):
         self.body = body
 
     def call(self, params, frame):
-        new_bc = self.body
+        new_bc = self.get_bytecode()
         jit.promote(new_bc)
-        new_frame = frame.create_new_frame(new_bc.get_symbols())
 
+        varmap = VarMap(new_bc.symbols, frame.varmap)
+
+        # set call arguments as variable values
         param_index = 0
-        # reverse args index to preserve order
         for variable in new_bc.params():
-            index = new_frame.scope.get_index(variable)
-            assert index >= 0
-            new_frame.vars[index] = params[param_index]
+            index = varmap.get_index(variable)
+            varmap.store(index, params[param_index])
             param_index += 1
 
+        new_frame = Frame(varmap, frame.global_scope)
         return new_bc.execute(new_frame)
 
     def get_bytecode(self):
