@@ -1,5 +1,5 @@
-from pyhp.scopes import StdlibScope
-from pyhp.datatypes import NativeFunction
+from pyhp.functions import NativeFunction
+from pyhp.datatypes import W_CodeFunction
 from pyhp.datatypes import isint, isstr
 from pyhp.datatypes import W_IntObject, W_StringObject, W_Array
 
@@ -63,13 +63,19 @@ def gettimeofday(args):
     array.put('usec', W_IntObject(usec))
     return array
 
-functions = [
-    NativeFunction('strlen', strlen),
-    NativeFunction('str_repeat', str_repeat),
-    NativeFunction('dechex', dechex),
-    NativeFunction('number_format', number_format),
-    NativeFunction('range', array_range),
-    NativeFunction('gettimeofday', gettimeofday),
-]
+# ----- #
 
-scope = StdlibScope(functions[:])
+
+def new_native_function(name, function, params=[]):
+    func = NativeFunction(name, function)
+    obj = W_CodeFunction(func)
+    return obj
+
+functions = [
+    new_native_function('strlen', strlen),
+    new_native_function('str_repeat', str_repeat),
+    new_native_function('dechex', dechex),
+    new_native_function('number_format', number_format),
+    new_native_function('range', array_range),
+    new_native_function('gettimeofday', gettimeofday),
+]

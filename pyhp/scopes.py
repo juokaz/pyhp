@@ -80,11 +80,7 @@ class Scope(object):
                           self.parameters[:])
 
 
-class StaticScope(object):
-    pass
-
-
-class FinalScope(StaticScope):
+class FinalScope(object):
     _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]',
                           'globals[*]', 'parameters[*]']
 
@@ -97,22 +93,27 @@ class FinalScope(StaticScope):
 
     @jit.elidable_promote("0")
     def get_index(self, name):
+        assert isinstance(name, str)
         return self.symbols.get_index(name)
 
     @jit.elidable_promote("0")
     def get_name(self, name):
+        assert isinstance(name, str)
         return self.symbols.get_name(name)
 
     @jit.elidable_promote("0")
     def has_variable(self, name):
+        assert isinstance(name, str)
         return name in self.variables
 
     @jit.elidable_promote("0")
     def has_global(self, name):
+        assert isinstance(name, str)
         return name in self.globals
 
     @jit.elidable_promote("0")
     def has_function(self, name):
+        assert isinstance(name, str)
         return name in self.functions
 
     def get_symbols(self):
@@ -120,21 +121,3 @@ class FinalScope(StaticScope):
 
     def __len__(self):
         return len(self.symbols)
-
-
-class StdlibScope(StaticScope):
-    _immutable_fields_ = ['functions']
-
-    def __init__(self, functions):
-        functions_ = {}
-        for function in functions:
-            functions_[function.name] = function
-        self.functions = functions_
-
-    @jit.elidable_promote("0")
-    def has_identifier(self, name):
-        return name in self.functions
-
-    @jit.elidable_promote("0")
-    def get(self, name):
-        return self.functions[name]

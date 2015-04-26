@@ -49,6 +49,12 @@ class ByteCode(object):
     def functions(self):
         return self.symbols.functions
 
+    def variables(self):
+        return self.symbols.variables
+
+    def globals(self):
+        return self.symbols.globals
+
     def params(self):
         return self.parameters
 
@@ -115,7 +121,6 @@ def compile_ast(ast, symbols):
     bc = ByteCode(symbols)
     if ast is not None:
         ast.compile(bc)
-    bc.compile()
     # print 'Bytecode: '
     # print bc
     return bc

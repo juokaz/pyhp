@@ -1,5 +1,6 @@
 from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function, W_ScriptFunction
+    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function, \
+    W_CodeFunction
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division
@@ -56,7 +57,7 @@ class LOAD_FUNCTION(Opcode):
         self.function = function
 
     def eval(self, frame):
-        frame.push(W_ScriptFunction(self.function))
+        frame.push(W_CodeFunction(self.function))
 
 
 class LOAD_LIST(Opcode):

@@ -1,14 +1,50 @@
 from rpython.rlib import jit
 
-class VarMap(object):
-    _immutable_fields_ = ['vars[*]', 'scope', 'parent']
 
-    def __init__(self, scope, parent=None):
-        self.scope = scope
-        self.vars = [None] * len(scope)
-        if parent is not None and parent.parent is not None:
-            parent = parent.parent
+class BaseVarMap(object):
+    _settled_ = True
+
+    def get(self, name, index):
+        raise NotImplementedError
+
+    def get_index(self, name):
+        raise NotImplementedError
+
+    def set(self, name, index, value):
+        raise NotImplementedError
+
+
+class VarMap(BaseVarMap):
+    _immutable_fields_ = ['vars[*]', 'parent', 'scope']
+
+    def __init__(self, size, parent):
+        self.vars = [None] * size
         self.parent = parent
+
+    def get_index(self, name):
+        return self.scope.get_index(name)
+
+    def get(self, name, index):
+        assert isinstance(name, str)
+        if self.get_scope().has_global(name):
+            return self.parent.get(name, index)
+
+        if self.get_scope().has_variable(name) \
+                or self.get_scope().has_function(name):
+            return self.load(index)
+
+        return self.parent.get(name, index)
+
+    def set(self, name, index, value):
+        assert isinstance(name, str)
+        if self.get_scope().has_global(name):
+            return self.parent.set(name, index, value)
+
+        if self.get_scope().has_variable(name) \
+                or self.get_scope().has_function(name):
+            return self.store(index, value)
+
+        return self.parent.set(name, index, value)
 
     def store(self, index, value):
         jit.promote(index)
@@ -18,66 +54,65 @@ class VarMap(object):
         jit.promote(index)
         return self.vars[index]
 
-    def get_index(self, name):
-        return self.get_scope().get_index(name)
-
     def get_scope(self):
         return self.scope
 
-    def get_parent(self):
-        return self.parent
 
-    def get_owning(self, name):
-        try:
-            if self.get_scope().has_global(name):
-                return self.get_parent().get_owning(name)
+class GlobalVarMap(BaseVarMap):
+    _immutable_fields_ = ['functions[*]']
 
-            if self.get_scope().has_variable(name) or self.get_scope().has_function(name):
-                return self
+    def __init__(self, functions):
+        functions_ = {}
+        for function in functions:
+            functions_[function.name] = function
+        self.functions = functions_
 
-            return self.get_parent().get_owning(name)
-        except AttributeError:
-            return None
+    def get(self, name, index):
+        return self.functions[name]
+
+    def set(self, name, index, value):
+        raise Exception("Global varmap cannot accept var sets")
 
 
 class Frame(object):
     _settled_ = True
-    _immutable_fields_ = ['valuestack', 'global_scope', 'varmap']
+    _immutable_fields_ = ['valuestack', 'varmap', 'code', 'arguments[*]']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos']
 
-    def __init__(self, varmap, global_scope=None):
+    def __init__(self, code):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.valuestack = [None] * 10  # safe estimate!
-        self.varmap = varmap
         self.valuestack_pos = 0
 
-        self.global_scope = global_scope
+        self.code = code
+
+    @jit.unroll_safe
+    def declare(self):
+        code = jit.promote(self.code)
+
+        self.varmap.scope = code.get_scope()
+
+        if code.is_function_code() and self.arguments:
+            # set call arguments as variable values
+            param_index = 0
+            for variable in code.params():
+                index = self.get_index(variable)
+                self.set_var(index, variable, self.arguments[param_index])
+                param_index += 1
 
     def get_var(self, name, index=-1):
         if index < 0:
             index = self.get_index(name)
 
-        try:
-            varmap = self.get_owning(name)
-
-            # if current frame has the variable defined
-            return varmap.load(index)
-        except AttributeError:
-             # or it might be a global function
-            if self.global_scope.has_identifier(name):
-                return self.global_scope.get(name)
-
-        return None
+        return self.varmap.get(name, index)
 
     def set_var(self, index, name, value):
         assert index >= 0
 
-        varmap = self.get_owning(name)
-        varmap.store(index, value)
+        self.varmap.set(name, index, value)
 
-    @jit.elidable_promote("0")
-    def get_owning(self, name):
-        return self.varmap.get_owning(name)
+    def get_varmap(self):
+        return self.varmap
 
     def get_index(self, name):
         return self.varmap.get_index(name)
@@ -124,3 +159,26 @@ class Frame(object):
 
     def __repr__(self):
         return "Frame %s" % (self.varmap)
+
+
+class GlobalFrame(Frame):
+    def __init__(self, code, global_varmap):
+        Frame.__init__(self, code)
+
+        self.varmap = VarMap(code.env_size(), global_varmap)
+
+        self.declare()
+
+
+class FunctionFrame(Frame):
+    def __init__(self, code, arguments=None, parent_context=None):
+        Frame.__init__(self, code)
+
+        self.varmap = VarMap(code.env_size(), parent_context.get_varmap())
+
+        self.arguments = arguments
+
+        self.declare()
+
+    def argv(self):
+        return self.arguments

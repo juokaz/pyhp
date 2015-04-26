@@ -1,4 +1,5 @@
 from pyhp.bytecode import compile_ast
+from pyhp.functions import CodeFunction
 from rpython.rlib.unroll import unrolling_iterable
 
 
@@ -80,16 +81,6 @@ class ExprStatement(Node):
                 or self.expr.has_operation():
             ctx.emit('DISCARD_TOP')
 
-class FUNCTION(object):
-    _immutable_fields_ = ['name', 'body']
-
-    def __init__(self, name, body):
-        self.name = name
-        self.body = body
-
-    def run(self, frame):
-        return self.body.execute(frame)
-
 
 class Function(Node):
     """ A function
@@ -103,7 +94,7 @@ class Function(Node):
     def compile(self, ctx):
         body = compile_ast(self.body, self.scope)
 
-        method = FUNCTION(self.identifier, body)
+        method = CodeFunction(self.identifier, body)
 
         ctx.emit('LOAD_FUNCTION', method)
         ctx.emit('ASSIGN', self.index, self.identifier)

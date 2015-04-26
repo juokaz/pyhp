@@ -6,7 +6,7 @@ from constants import unescapedict
 
 from rpython.rlib import jit
 
-from pyhp.frame import Frame, VarMap
+from pyhp.frame import FunctionFrame
 
 
 class Property(object):
@@ -246,51 +246,26 @@ class W_Function(W_Root):
     pass
 
 
-class NativeFunction(W_Function):
-    _immutable_fields_ = ['name', 'method']
-
-    def __init__(self, name, method):
-        self.name = name
-        self.method = method
-
-    def call(self, params, frame):
-        return self.method(params)
-
-    def __repr__(self):
-        return 'NativeFunction(%s)' % (self.name,)
-
-
-class W_ScriptFunction(W_Function):
-    _immutable_fields_ = ['name', 'funcobj', 'scope', 'params[*]']
+class W_CodeFunction(W_Function):
+    _immutable_fields_ = ['name', 'funcobj', 'params[*]']
 
     def __init__(self, funcobj):
-        self.name = funcobj.name
+        self.name = funcobj.name()
         self.funcobj = funcobj
-        self.scope = funcobj.body.get_symbols()
-        self.params = funcobj.body.params()
+        self.params = funcobj.params()
 
-    @jit.unroll_safe
     def call(self, params, frame):
         func = self.get_funcobj()
         jit.promote(func)
 
-        varmap = VarMap(self.scope, frame.varmap)
-
-        # set call arguments as variable values
-        param_index = 0
-        for variable in self.params:
-            index = varmap.get_index(variable)
-            varmap.store(index, params[param_index])
-            param_index += 1
-
-        new_frame = Frame(varmap, frame.global_scope)
+        new_frame = FunctionFrame(func, params, frame)
         return func.run(new_frame)
 
     def get_funcobj(self):
         return self.funcobj
 
     def __repr__(self):
-        return 'ScriptFunction(%s)' % (self.name,)
+        return 'W_CodeFunction(%s)' % (self.name,)
 
 
 def isint(w):
