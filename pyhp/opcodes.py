@@ -71,6 +71,9 @@ class LOAD_LIST(Opcode):
         list_w = frame.pop_n(self.number)
         frame.push(W_List(list_w))
 
+    def __str__(self):
+        return 'LOAD_LIST %d' % self.number
+
 
 class LOAD_NULL(Opcode):
     def eval(self, frame):

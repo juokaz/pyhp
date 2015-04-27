@@ -68,6 +68,9 @@ class ByteCode(object):
         return len(self.compiled_opcodes)
 
     def execute(self, frame):
+        if self._opcode_count() == 0:
+            return W_Null()
+
         pc = 0
         result = None
         while True:
