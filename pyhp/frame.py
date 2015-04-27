@@ -19,7 +19,7 @@ class BaseVarMap(object):
 
 
 class VarMap(BaseVarMap):
-    _immutable_fields_ = ['vars[*]', 'parent', 'scope']
+    _immutable_fields_ = ['vars', 'parent', 'scope']
 
     def __init__(self, size, parent):
         self.vars = [None] * size
