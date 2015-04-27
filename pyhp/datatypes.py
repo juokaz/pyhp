@@ -1,7 +1,8 @@
 from rpython.rlib.rstring import replace
+from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
-from constants import unescapedict, CURLYVARIABLE, ARRAYINDEX
+from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
 
@@ -93,41 +94,25 @@ class W_FloatObject(W_Number):
         return 'W_FloatObject(%s)' % (self.floatval,)
 
 
-class W_StringObject(W_Root):
-    _immutable_fields_ = ['stringval', 'variables[*]']
+def string_unquote(string):
+    s = string
+    single_quotes = True
+    if s.startswith('"'):
+        assert s.endswith('"')
+        single_quotes = False
+    else:
+        assert s.startswith("'")
+        assert s.endswith("'")
+    s = s[:-1]
+    s = s[1:]
 
-    def __init__(self, stringval):
-        assert(isinstance(stringval, str))
-        self.stringval = self.string_unquote(stringval)
-
-        if not self.is_single_quoted(stringval):
-            self.variables = self.extract_variables()
-        else:
-            self.variables = []
-
-    def replace(self, search, replace_with):
-        return W_StringObject(replace(self.stringval, search, replace_with))
-
-    def get_variables(self):
-        return self.variables
-
-    def str(self):
-        return str(self.stringval)
-
-    def is_single_quoted(self, string):
-        return string[0] == "'"
-
-    def extract_variables(self):
-        if self.stringval.find('$') < 0:
-            return []
-
-        variables = CURLYVARIABLE.findall(self.stringval)
-
+    if not single_quotes:
         variables_ = []
+        variables = CURLYVARIABLE.findall(s)
+
         # remove curly braces around variables
         for variable in variables:
-            self.stringval = replace(self.stringval, '{' + variable + '}',
-                                     variable)
+            s = replace(s, '{' + variable + '}', variable)
 
             # is this an array access?
             indexes = ARRAYINDEX.findall(variable)
@@ -137,33 +122,79 @@ class W_StringObject(W_Root):
                 identifier = replace(identifier, '[' + index + ']', '')
 
             variables_.append((variable, identifier, indexes))
+    else:
+        variables_ = []
 
-        return variables_
+    return s, variables_
 
-    def string_unquote(self, string):
-        # dont unquote if already unquoted
-        if string[0] not in ["'", '"']:
-            return string
 
-        temp = []
-        stop = len(string)-1
-        # XXX proper error
-        assert stop >= 0
-        last = ""
+def string_unescape(string):
+    s = string
+    size = len(string)
 
-        internalstring = string[1:stop]
+    if size == 0:
+        return ''
 
-        for c in internalstring:
-            if last == "\\":
-                # Lookup escape sequence. Ignore the backslash for
-                # unknown escape sequences (like SM)
-                unescapeseq = unescapedict.get(last+c, c)
-                temp.append(unescapeseq)
-                c = ' '  # Could be anything
-            elif c != "\\":
-                temp.append(c)
-            last = c
-        return ''.join(temp)
+    builder = StringBuilder(size)
+    pos = 0
+    while pos < size:
+        ch = s[pos]
+
+        # Non-escape characters are interpreted as Unicode ordinals
+        if ch != '\\':
+            builder.append(ch)
+            pos += 1
+            continue
+
+        # - Escapes
+        pos += 1
+        if pos >= size:
+            message = "\\ at end of string"
+            raise Exception(message)
+
+        ch = s[pos]
+        pos += 1
+        # \x escapes
+        if ch == '\n':
+            pass
+        elif ch == '\\':
+            builder.append('\\')
+        elif ch == '\'':
+            builder.append('\'')
+        elif ch == '\"':
+            builder.append('\"')
+        elif ch == 'b':
+            builder.append('\b')
+        elif ch == 'f':
+            builder.append('\f')
+        elif ch == 't':
+            builder.append('\t')
+        elif ch == 'n':
+            builder.append('\n')
+        elif ch == 'r':
+            builder.append('\r')
+        elif ch == 'v':
+            builder.append('\v')
+        elif ch == 'a':
+            builder.append('\a')
+        else:
+            builder.append(ch)
+
+    return builder.build()
+
+
+class W_StringObject(W_Root):
+    _immutable_fields_ = ['stringval']
+
+    def __init__(self, stringval):
+        assert(isinstance(stringval, str))
+        self.stringval = stringval
+
+    def replace(self, search, replace_with):
+        return W_StringObject(replace(self.stringval, search, replace_with))
+
+    def str(self):
+        return str(self.stringval)
 
     def len(self):
         return len(self.stringval)

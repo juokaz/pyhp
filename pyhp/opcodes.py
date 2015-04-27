@@ -123,14 +123,15 @@ class LOAD_FLOATVAL(Opcode):
 
 
 class LOAD_STRINGVAL(Opcode):
-    _immutable_fields_ = ['value']
+    _immutable_fields_ = ['value', 'variables[*]']
 
-    def __init__(self, value):
+    def __init__(self, value, variables):
         self.value = W_StringObject(value)
+        self.variables = variables
 
     def eval(self, frame):
         stringval = self.value
-        for variable in stringval.get_variables():
+        for variable in self.variables:
             search, identifier, indexes = variable
             ref = frame.get_reference(identifier)
             value = ref.get_value()

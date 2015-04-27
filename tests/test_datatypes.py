@@ -14,9 +14,9 @@ class TestDatatypes(TestBase):
         assert out == "Hello $y $z"
 
     def test_string_double_quotes(self, capfd):
-        out = self.run("""$x = "Hello world";
+        out = self.run("""$x = "Hello world\n";
         print $x;""", capfd)
-        assert out == "Hello world"
+        assert out == "Hello world\n"
 
     def test_string_double_quotes_embed(self, capfd):
         out = self.run("""$y = 'world';

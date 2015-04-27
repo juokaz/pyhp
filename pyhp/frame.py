@@ -24,11 +24,15 @@ class VarMap(BaseVarMap):
         self.scope = scope
 
     def store(self, name, value):
-        index = self.scope.get_index(name)
+        assert name is not None and isinstance(name, str)
+        scope = self.scope
+        index = scope.get_index(name)
         self.vars[index] = value
 
     def load(self, name):
-        index = self.scope.get_index(name)
+        assert name is not None and isinstance(name, str)
+        scope = self.scope
+        index = scope.get_index(name)
         return self.vars[index]
 
     def get_reference(self, name):

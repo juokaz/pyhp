@@ -6,6 +6,7 @@ from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
 from pyhp.scopes import Scope
+from pyhp.datatypes import string_unquote, string_unescape
 
 grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
@@ -293,7 +294,10 @@ class Transformer(RPythonVisitor):
         return operations.VariableIdentifier(name, index)
 
     def string(self, node):
-        return operations.ConstantString(node.additional_info)
+        string = node.additional_info
+        string, variables = string_unquote(string)
+        string = string_unescape(string)
+        return operations.ConstantString(string, variables)
     visit_DOUBLESTRING = string
     visit_SINGLESTRING = string
 

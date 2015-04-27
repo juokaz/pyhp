@@ -179,11 +179,12 @@ class ConstantFloat(Node):
 class ConstantString(Node):
     """ Represent a constant
     """
-    def __init__(self, stringval):
+    def __init__(self, stringval, variables):
         self.stringval = stringval
+        self.variables = variables
 
     def compile(self, ctx):
-        ctx.emit('LOAD_STRINGVAL', self.stringval)
+        ctx.emit('LOAD_STRINGVAL', self.stringval, self.variables)
 
 
 class Boolean(Expression):
