@@ -129,6 +129,7 @@ class LOAD_STRINGVAL(Opcode):
         self.value = W_StringObject(value)
         self.variables = variables
 
+    @jit.unroll_safe
     def eval(self, frame):
         stringval = self.value
         for variable in self.variables:

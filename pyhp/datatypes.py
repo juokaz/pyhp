@@ -194,7 +194,7 @@ class W_StringObject(W_Root):
         return W_StringObject(replace(self.stringval, search, replace_with))
 
     def str(self):
-        return str(self.stringval)
+        return self.stringval
 
     def len(self):
         return len(self.stringval)
