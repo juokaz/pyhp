@@ -1,6 +1,3 @@
-
-
-
 class Reference(object):
     _immutable_fields_ = ['varmap', 'referenced']
 

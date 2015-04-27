@@ -18,9 +18,10 @@ class BaseVarMap(object):
 class VarMap(BaseVarMap):
     _immutable_fields_ = ['vars', 'parent', 'scope']
 
-    def __init__(self, size, parent):
+    def __init__(self, size, parent, scope):
         self.vars = [None] * size
         self.parent = parent
+        self.scope = scope
 
     def store(self, name, value):
         index = self.scope.get_index(name)
@@ -77,8 +78,6 @@ class Frame(object):
     @jit.unroll_safe
     def declare(self):
         code = jit.promote(self.code)
-
-        self.varmap.scope = code.variables()
 
         if code.is_function_code() and self.arguments:
             # set call arguments as variable values
@@ -157,7 +156,7 @@ class GlobalFrame(Frame):
     def __init__(self, code, global_varmap):
         Frame.__init__(self, code)
 
-        self.varmap = VarMap(code.env_size(), global_varmap)
+        self.varmap = VarMap(code.env_size(), global_varmap, code.variables())
 
         self.declare()
 
@@ -166,7 +165,7 @@ class FunctionFrame(Frame):
     def __init__(self, code, arguments=None, parent_varmap=None):
         Frame.__init__(self, code)
 
-        self.varmap = VarMap(code.env_size(), parent_varmap)
+        self.varmap = VarMap(code.env_size(), parent_varmap, code.variables())
 
         self.arguments = arguments
 

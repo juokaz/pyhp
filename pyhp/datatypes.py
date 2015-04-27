@@ -118,6 +118,9 @@ class W_StringObject(W_Root):
         return string[0] == "'"
 
     def extract_variables(self):
+        if self.stringval.find('$') < 0:
+            return []
+
         variables = CURLYVARIABLE.findall(self.stringval)
 
         variables_ = []
