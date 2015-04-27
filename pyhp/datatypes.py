@@ -17,8 +17,6 @@ class Property(object):
 
 class W_Root(object):
     _settled_ = True
-    _immutable_fields_ = ['_type_']
-    _type_ = ''
 
     def is_true(self):
         return False
@@ -247,18 +245,18 @@ class W_Function(W_Root):
 
 
 class W_CodeFunction(W_Function):
-    _immutable_fields_ = ['name', 'funcobj', 'params[*]']
+    _immutable_fields_ = ['name', 'funcobj', 'varmap']
 
-    def __init__(self, funcobj):
+    def __init__(self, funcobj, varmap=None):
         self.name = funcobj.name()
         self.funcobj = funcobj
-        self.params = funcobj.params()
+        self.varmap = varmap
 
     def call(self, params, frame):
         func = self.get_funcobj()
         jit.promote(func)
 
-        new_frame = FunctionFrame(func, params, frame)
+        new_frame = FunctionFrame(func, params, self.varmap)
         return func.run(new_frame)
 
     def get_funcobj(self):

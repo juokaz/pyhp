@@ -30,7 +30,10 @@ class StaticSymbolsMap(object):
         self.symbols_id = symbols_id
 
     def get_index(self, name):
-        return self.symbols_id[name]
+        if name in self.symbols_id:
+            return self.symbols_id[name]
+        else:
+            return -1
 
     def get_name(self, index):
         return self.symbols[index]

@@ -40,7 +40,8 @@ class LOAD_VAR(Opcode):
         self.name = name
 
     def eval(self, frame):
-        variable = frame.get_var(self.name, self.index)
+        ref = frame.get_reference(self.name, self.index)
+        variable = ref.get_value()
         if variable is None:
             raise Exception("Variable %s (%s) is not set" %
                             (self.index, self.name))
@@ -57,7 +58,7 @@ class LOAD_FUNCTION(Opcode):
         self.function = function
 
     def eval(self, frame):
-        frame.push(W_CodeFunction(self.function))
+        frame.push(W_CodeFunction(self.function, frame.varmap))
 
 
 class LOAD_LIST(Opcode):
@@ -128,10 +129,12 @@ class LOAD_STRINGVAL(Opcode):
         stringval = self.value
         for variable in stringval.get_variables():
             search, identifier, indexes = variable
-            value = frame.get_var(identifier)
+            ref = frame.get_reference(identifier)
+            value = ref.get_value()
             for key in indexes:
                 if key[0] == '$':
-                    key = frame.get_var(key).str()
+                    ref = frame.get_reference(key)
+                    key = ref.get_value().str()
                 value = value.get(key)
             replace = value.str()
             stringval = stringval.replace(search, replace)
@@ -181,7 +184,8 @@ class ASSIGN(Opcode):
         self.name = name
 
     def eval(self, frame):
-        frame.set_var(self.index, self.name, frame.pop())
+        ref = frame.get_reference(self.name, self.index)
+        ref.put_value(frame.pop())
 
     def __str__(self):
         return 'ASSIGN %s, %s' % (self.index, self.name)
