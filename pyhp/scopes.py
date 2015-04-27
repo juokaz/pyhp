@@ -29,14 +29,16 @@ class StaticSymbolsMap(object):
         self.symbols = symbols
         self.symbols_id = symbols_id
 
+    @jit.elidable_promote("0")
     def get_index(self, name):
         if name in self.symbols_id:
             return self.symbols_id[name]
         else:
             return -1
 
-    def get_name(self, index):
-        return self.symbols[index]
+    @jit.elidable_promote("0")
+    def has(self, name):
+        return (self.get_index(name) == -1) is False
 
     def __len__(self):
         return len(self.symbols)
@@ -78,49 +80,21 @@ class Scope(object):
         return idx
 
     def finalize(self):
-        return FinalScope(self.symbols.finalize(), self.functions[:],
-                          self.variables[:], self.globals[:],
+        # these variables and those functions are the only identifiers
+        # this scope defines, everything else comes from a parent
+        variables = [v for v in self.variables[:] if v not in self.globals]
+        functions = self.functions[:]
+        symbols = SymbolsMap()
+        for identifier in variables + functions:
+            symbols.add(identifier)
+        return FinalScope(len(self.symbols.finalize()), symbols.finalize(),
                           self.parameters[:])
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['symbols', 'functions[*]', 'variables[*]',
-                          'globals[*]', 'parameters[*]']
+    _immutable_fields_ = ['size', 'variables' 'parameters[*]']
 
-    def __init__(self, symbols, functions, variables, globals, parameters):
-        self.symbols = symbols
-        self.functions = functions
+    def __init__(self, size, variables, parameters):
+        self.size = size
         self.variables = variables
-        self.globals = globals
         self.parameters = parameters
-
-    @jit.elidable_promote("0")
-    def get_index(self, name):
-        assert isinstance(name, str)
-        return self.symbols.get_index(name)
-
-    @jit.elidable_promote("0")
-    def get_name(self, name):
-        assert isinstance(name, str)
-        return self.symbols.get_name(name)
-
-    @jit.elidable_promote("0")
-    def has_variable(self, name):
-        assert isinstance(name, str)
-        return name in self.variables
-
-    @jit.elidable_promote("0")
-    def has_global(self, name):
-        assert isinstance(name, str)
-        return name in self.globals
-
-    @jit.elidable_promote("0")
-    def has_function(self, name):
-        assert isinstance(name, str)
-        return name in self.functions
-
-    def get_symbols(self):
-        return self.symbols
-
-    def __len__(self):
-        return len(self.symbols)

@@ -21,7 +21,7 @@ from pyhp.opcodes import BaseJump
 
 def printable_loc(pc, bc):
     bytecode = bc._get_opcode(pc)
-    return str(pc) + " " + str(bytecode)
+    return str(pc) + ": " + str(bytecode)
 
 driver = jit.JitDriver(greens=['pc', 'self'],
                        reds=['frame', 'result'],
@@ -30,33 +30,27 @@ driver = jit.JitDriver(greens=['pc', 'self'],
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['compiled_opcodes[*]', 'symbols', 'parameters[*]']
+    _immutable_fields_ = ['compiled_opcodes[*]', '_symbol_size', '_variables',
+                          'parameters[*]']
 
-    def __init__(self, symbols):
+    def __init__(self, scope):
         self.opcodes = []
-        self.symbols = symbols
-        self.parameters = symbols.parameters[:]
+        self._symbol_size = scope.size
+        self._variables = scope.variables
+        self.parameters = scope.parameters[:]
 
     def compile(self):
         self.compiled_opcodes = [o for o in self.opcodes]
-
-    def get_symbols(self):
-        return self.symbols
-
-    def get_name(self, index):
-        return self.symbols.get_name(index)
-
-    def functions(self):
-        return self.symbols.functions
+        self.opcodes = []
 
     def variables(self):
-        return self.symbols.variables
-
-    def globals(self):
-        return self.symbols.globals
+        return self._variables
 
     def params(self):
         return self.parameters
+
+    def symbol_size(self):
+        return self._symbol_size
 
     def emit(self, bc, *args):
         opcode = getattr(opcodes, bc)(*args)
@@ -110,10 +104,8 @@ class ByteCode(object):
 
     def __repr__(self):
         lines = []
-        index = 0
-        for opcode in self.opcodes:
-            lines.append("%s: %s" % (index, opcode))
-            index += 1
+        for index in range(len(self.compiled_opcodes)):
+            lines.append(printable_loc(index, self))
         return "\n".join(lines)
 
 

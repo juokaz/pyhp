@@ -1,3 +1,5 @@
+from pyhp.bytecode import ByteCode
+
 
 class BaseFunction(object):
     _settled_ = True
@@ -5,14 +7,8 @@ class BaseFunction(object):
     def run(self, ctx):
         raise NotImplementedError
 
-    def get_scope(self):
-        return None
-
     def variables(self):
-        return []
-
-    def functions(self):
-        return []
+        return None
 
     def params(self):
         return []
@@ -46,9 +42,10 @@ class ExecutableCode(BaseFunction):
     _immutable_fields_ = ['bytecode', 'symbol_size']
 
     def __init__(self, bytecode):
+        assert isinstance(bytecode, ByteCode)
         self.bytecode = bytecode
         self.bytecode.compile()
-        self.symbol_size = len(bytecode.get_symbols())
+        self.symbol_size = bytecode.symbol_size()
 
     def get_bytecode(self):
         return self.bytecode
@@ -58,23 +55,13 @@ class ExecutableCode(BaseFunction):
         result = code.execute(frame)
         return result
 
-    def get_scope(self):
-        return self.bytecode.get_symbols()
-
     def variables(self):
         code = self.get_bytecode()
         return code.variables()
 
-    def functions(self):
-        code = self.get_bytecode()
-        return code.functions()
-
     def params(self):
         code = self.get_bytecode()
         return code.params()
-
-    def name(self):
-        return '_unnamed_'
 
     def env_size(self):
         return self.symbol_size

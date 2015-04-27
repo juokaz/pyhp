@@ -37,32 +37,10 @@ class VarMap(BaseVarMap):
         index = self.get_index(name)
         return self.vars[index]
 
-    def has(self, name):
-        index = self.scope.get_index(name)
-        if index < 0:
-            return False
-
-        variable = self.vars[index]
-
-        if variable is None:
-            return False
-
-        return True
-
-    def get_scope(self):
-        return self.scope
-
     def get_reference(self, name):
-        if self.has(name):
+        if self.scope.has(name):
             return Reference(self, name)
         else:
-            if self.get_scope().has_global(name):
-                return self.parent.get_reference(name)
-
-            if self.get_scope().has_variable(name) \
-                    or self.get_scope().has_function(name):
-                return Reference(self, name)
-
             return self.parent.get_reference(name)
 
 
@@ -75,9 +53,14 @@ class GlobalVarMap(BaseVarMap):
             functions_[function.name] = function
         self.functions = functions_
 
+    @jit.elidable_promote("0")
+    def has(self, name):
+        return name in self.functions
+
     def get_reference(self, name):
-        if name in self.functions:
+        if self.has(name):
             return Reference(self, name)
+        raise Exception("%s reference not found" % name)
 
     def load(self, name):
         return self.functions[name]
@@ -102,7 +85,7 @@ class Frame(object):
     def declare(self):
         code = jit.promote(self.code)
 
-        self.varmap.scope = code.get_scope()
+        self.varmap.scope = code.variables()
 
         if code.is_function_code() and self.arguments:
             # set call arguments as variable values
@@ -110,9 +93,6 @@ class Frame(object):
             for variable in code.params():
                 self.varmap.store(variable, self.arguments[param_index])
                 param_index += 1
-
-    def get_varmap(self):
-        return self.varmap
 
     def push(self, v):
         pos = self.get_pos()

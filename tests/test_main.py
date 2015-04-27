@@ -4,6 +4,7 @@ class TestMain(TestBase):
     def test_bytecode(self):
         bytecode = self.bytecode("""$x = 1;
         print $x;""")
+        bytecode.compile()
         assert str(bytecode) == "0: LOAD_INTVAL W_IntObject(1)\n" \
         + "1: ASSIGN 0, $x\n2: LOAD_VAR 0, $x\n3: PRINT"
 
