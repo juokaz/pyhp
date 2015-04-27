@@ -20,3 +20,8 @@ class TestStdlib(TestBase):
         out = self.run("""$x = range(1, 4);
         print $x;""", capfd)
         assert out == "[1: 1, 3: 3, 2: 2, 4: 4]"
+
+    def test_number_format(self, capfd):
+        out = self.run("""$x = 3.456;
+        print number_format($x, 2);""", capfd)
+        assert out == "3.46"
