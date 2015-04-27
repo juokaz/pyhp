@@ -1,8 +1,7 @@
-from rpython.rlib.rsre.rsre_re import findall
 from rpython.rlib.rstring import replace
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
-from constants import unescapedict
+from constants import unescapedict, CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
 
@@ -119,18 +118,7 @@ class W_StringObject(W_Root):
         return string[0] == "'"
 
     def extract_variables(self):
-        VARIABLENAME = "\$[a-zA-Z_][a-zA-Z0-9_]*"
-
-        # array index regex matching the index and the brackets
-        ARRAYINDEX = "\[(?:[0-9]+|" + VARIABLENAME + ")\]"
-
-        # match variables and array access
-        VARIABLE = "(" + VARIABLENAME + "(?:" + ARRAYINDEX + ")*)"
-        CURLYVARIABLE = "{?" + VARIABLE + "}?"
-        variables = findall(CURLYVARIABLE, self.stringval)
-
-        # array index regex matching just the index
-        ARRAYINDEX = "\[([0-9]+|" + VARIABLENAME + ")\]"
+        variables = CURLYVARIABLE.findall(self.stringval)
 
         variables_ = []
         # remove curly braces around variables
@@ -139,7 +127,7 @@ class W_StringObject(W_Root):
                                      variable)
 
             # is this an array access?
-            indexes = findall(ARRAYINDEX, variable)
+            indexes = ARRAYINDEX.findall(variable)
 
             identifier = variable
             for index in indexes:
