@@ -1,8 +1,13 @@
-class Reference(object):
-    _immutable_fields_ = ['base_env', 'referenced']
 
-    def __init__(self, base_env=None, referenced=None):
-        self.base_env = base_env
+
+
+class Reference(object):
+    _immutable_fields_ = ['varmap', 'referenced']
+
+    def __init__(self, varmap, referenced):
+        from pyhp.frame import BaseVarMap
+        assert isinstance(varmap, BaseVarMap)
+        self.varmap = varmap
         self.referenced = referenced
 
     def get_referenced_name(self):
@@ -10,8 +15,10 @@ class Reference(object):
 
     def get_value(self):
         name = self.get_referenced_name()
-        return self.base_env.load(name)
+        varmap = self.varmap
+        return varmap.load(name)
 
     def put_value(self, value):
         name = self.get_referenced_name()
-        self.base_env.store(name, value)
+        varmap = self.varmap
+        varmap.store(name, value)

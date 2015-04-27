@@ -8,9 +8,6 @@ class BaseVarMap(object):
     def get_reference(self, name):
         raise NotImplementedError
 
-    def get_index(self, name):
-        raise NotImplementedError
-
     def load(self, name):
         raise NotImplementedError
 
@@ -25,16 +22,12 @@ class VarMap(BaseVarMap):
         self.vars = [None] * size
         self.parent = parent
 
-    def get_index(self, name):
-        index = self.scope.get_index(name)
-        return jit.promote(index)
-
     def store(self, name, value):
-        index = self.get_index(name)
+        index = self.scope.get_index(name)
         self.vars[index] = value
 
     def load(self, name):
-        index = self.get_index(name)
+        index = self.scope.get_index(name)
         return self.vars[index]
 
     def get_reference(self, name):
