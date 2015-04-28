@@ -250,6 +250,30 @@ class JUMP_IF_FALSE(BaseJump):
         return 'JUMP_IF_FALSE %d' % (self.where)
 
 
+class JUMP_IF_FALSE_NOPOP(BaseJump):
+    def do_jump(self, frame, pos):
+        value = frame.top()
+        if not value.is_true():
+            return self.where
+        frame.pop()
+        return pos + 1
+
+    def __str__(self):
+        return 'JUMP_IF_FALSE_NOPOP %d' % (self.where)
+
+
+class JUMP_IF_TRUE_NOPOP(BaseJump):
+    def do_jump(self, frame, pos):
+        value = frame.top()
+        if value.is_true():
+            return self.where
+        frame.pop()
+        return pos + 1
+
+    def __str__(self):
+        return 'JUMP_IF_TRUE_NOPOP %d' % (self.where)
+
+
 class JUMP(BaseJump):
     def do_jump(self, frame, pos):
         return self.where

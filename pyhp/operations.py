@@ -422,8 +422,30 @@ def create_unary_op(name):
     UnaryOp.__name__ = name
     return UnaryOp
 
-And = create_binary_op('AND')  # +
-Or = create_binary_op('OR')  # +
+
+class And(Expression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def compile(self, ctx):
+        self.left.compile(ctx)
+        if_false = ctx.emit('JUMP_IF_FALSE_NOPOP', 0)
+        self.right.compile(ctx)
+        if_false.where = len(ctx)
+
+
+class Or(Expression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def compile(self, ctx):
+        self.left.compile(ctx)
+        if_true = ctx.emit('JUMP_IF_TRUE_NOPOP', 0)
+        self.right.compile(ctx)
+        if_true.where = len(ctx)
+
 
 Plus = create_binary_op('ADD')  # +
 Mult = create_binary_op('MUL')  # *

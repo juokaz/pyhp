@@ -28,6 +28,30 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "2"
 
+    def test_if_ignores_right_and(self, capfd):
+        out = self.run("""function test() {
+            print 'a';
+            return 1;
+        }
+        $x = 1;
+        if ($x < 1 && test() < 2) {
+            print $x;
+        } else {
+            print 'OK';
+        }""", capfd)
+        assert out == "OK"
+
+    def test_if_ignores_right_or(self, capfd):
+        out = self.run("""function test() {
+            print 'a';
+            return 1;
+        }
+        $x = 1;
+        if ($x < 2 || test() < 2) {
+            print 'OK';
+        }""", capfd)
+        assert out == "OK"
+
     def test_if_equal(self, capfd):
         out = self.run("""
         $x = 1;
