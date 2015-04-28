@@ -344,16 +344,6 @@ class LE(BaseDecision):
         return compare_le(left, right)
 
 
-class AND(BaseDecision):
-    def decision(self, left, right):
-        return left.is_true() and right.is_true()
-
-
-class OR(BaseDecision):
-    def decision(self, left, right):
-        return left.is_true() or right.is_true()
-
-
 class ADD(Opcode):
     def eval(self, frame):
         right = frame.pop()
