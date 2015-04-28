@@ -45,6 +45,7 @@ class Transformer(RPythonVisitor):
         '>>>': operations.Ursh,
         '<<': operations.Lsh,
         '[': operations.Member,
+        ',': operations.Comma,
     }
     UNOP_TO_CLS = {
         '!': operations.Not,

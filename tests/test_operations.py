@@ -99,6 +99,13 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "123456789"
 
+    def test_for(self, capfd):
+        out = self.run("""
+        for ($x = 1; printf("\n"), $x < 3; $x++) {
+            print $x;
+        }""", capfd)
+        assert out == "\n1\n2\n"
+
     def test_div(self, capfd):
         out = self.run("""$x = 6 / 2;
         print $x;""", capfd)

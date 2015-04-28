@@ -446,6 +446,7 @@ class Or(Expression):
         self.right.compile(ctx)
         if_true.where = len(ctx)
 
+Comma = create_binary_op('COMMA')
 
 Plus = create_binary_op('ADD')  # +
 Mult = create_binary_op('MUL')  # *

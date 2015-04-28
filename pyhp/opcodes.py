@@ -402,6 +402,13 @@ class DECR(BaseUnaryOperation):
         frame.push(decrement(left))
 
 
+class COMMA(BaseUnaryOperation):
+    def eval(self, frame):
+        one = frame.pop()
+        frame.pop()
+        frame.push(one)
+
+
 class BaseBinaryBitwiseOp(Opcode):
     pass
 
