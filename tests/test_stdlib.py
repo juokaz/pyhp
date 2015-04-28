@@ -30,3 +30,14 @@ class TestStdlib(TestBase):
         out = self.run("""$x = 0.045664;
         print number_format($x, 3);""", capfd)
         assert out == "0.046"
+
+    def test_printf(self, capfd):
+        out = self.run("""$x = 0.045664;
+        printf("%.10f", $x);""", capfd)
+        assert out == "0.0456640000"
+
+    def test_printf_long(self, capfd):
+        out = self.run("""$x = 0.045664;
+        $y = 'string';
+        printf("Number is %.3f this %s", $x, $y);""", capfd)
+        assert out == "Number is 0.046 this string"

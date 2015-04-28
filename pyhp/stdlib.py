@@ -1,10 +1,11 @@
 from pyhp.functions import NativeFunction
 from pyhp.datatypes import W_CodeFunction
 from pyhp.datatypes import isint, isstr
-from pyhp.datatypes import W_IntObject, W_StringObject, W_Array
+from pyhp.datatypes import W_IntObject, W_StringObject, W_Array, W_Null
+from pyhp.utils import printf as printf_, StringFormatter
 
 import time
-import math
+from rpython.rlib.rfloat import formatd
 
 
 def strlen(args):
@@ -22,6 +23,13 @@ def str_repeat(args):
     return W_StringObject(repeated)
 
 
+def printf(args):
+    template = args[0]
+    formatter = StringFormatter(template.str(), args[1:])
+    printf_(formatter.format())
+    return W_Null()
+
+
 def dechex(args):
     number = args[0]
     assert(isint(number))
@@ -36,17 +44,8 @@ def number_format(args):
     number = number.to_number()
     positions = positions.get_int()
 
-    shift = int(math.pow(10, positions))
-    usec = int(number * shift + 0.5) - int(number) * shift
-    sec = int(number)
+    formatted = str(formatd(number, "f", positions))
 
-    usec = str(usec)
-    sec = str(sec)
-
-    while len(usec) < positions:
-        usec = "0" + usec
-
-    formatted = "%s.%s" % (sec, usec)
     return W_StringObject(formatted)
 
 
@@ -82,6 +81,7 @@ def new_native_function(name, function, params=[]):
 functions = [
     new_native_function('strlen', strlen),
     new_native_function('str_repeat', str_repeat),
+    new_native_function('printf', printf),
     new_native_function('dechex', dechex),
     new_native_function('number_format', number_format),
     new_native_function('range', array_range),

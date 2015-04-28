@@ -11,7 +11,6 @@ class TestBase(object):
         r = run(filename)
         out, err = capfd.readouterr()
         assert r == expected_exitcode
-        assert not err
         return out
 
     def bytecode(self, code):
