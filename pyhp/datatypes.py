@@ -409,7 +409,7 @@ def _base_compare(x, y, _compare):
 
     if isnumber(x) and isnumber(y):
         n1 = x.to_number()
-        n2 = x.to_number()
+        n2 = y.to_number()
         return _compare(n1, n2)
 
     raise Exception('Incompatible types for comparison: %s %s' % (x, y))
