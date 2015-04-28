@@ -34,9 +34,17 @@ def number_format(args):
     assert(isint(positions))
 
     number = number.to_number()
-    shift = int(math.pow(10, positions.get_int()))
+    positions = positions.get_int()
+
+    shift = int(math.pow(10, positions))
     usec = int(number * shift + 0.5) - int(number) * shift
     sec = int(number)
+
+    usec = str(usec)
+    sec = str(sec)
+
+    while len(usec) < positions:
+        usec = "0" + usec
 
     formatted = "%s.%s" % (sec, usec)
     return W_StringObject(formatted)

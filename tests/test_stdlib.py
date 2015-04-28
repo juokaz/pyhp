@@ -25,3 +25,8 @@ class TestStdlib(TestBase):
         out = self.run("""$x = 3.456;
         print number_format($x, 2);""", capfd)
         assert out == "3.46"
+
+    def test_number_format_less_than_zero(self, capfd):
+        out = self.run("""$x = 0.045664;
+        print number_format($x, 3);""", capfd)
+        assert out == "0.046"
