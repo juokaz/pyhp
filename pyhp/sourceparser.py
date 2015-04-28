@@ -41,6 +41,9 @@ class Transformer(RPythonVisitor):
         '&&': operations.And,
         '||': operations.Or,
         '==': operations.Eq,
+        '>>': operations.Rsh,
+        '>>>': operations.Ursh,
+        '<<': operations.Lsh,
         '[': operations.Member,
     }
     UNOP_TO_CLS = {
@@ -150,6 +153,7 @@ class Transformer(RPythonVisitor):
     visit_equalityexpression = binaryop
     visit_additiveexpression = binaryop
     visit_multiplicativeexpression = binaryop
+    visit_shiftexpression = binaryop
     visit_expression = binaryop
     visit_memberexpression = binaryop
 

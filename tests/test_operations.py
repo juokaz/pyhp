@@ -84,3 +84,13 @@ class TestMain(TestBase):
         out = self.run("""$x = 2 / 10;
         print $x;""", capfd)
         assert out == "0.2"
+
+    def test_mod(self, capfd):
+        out = self.run("""$x = 6 % 2;
+        print $x;""", capfd)
+        assert out == "0"
+
+    def test_bitwise_rsh(self, capfd):
+        out = self.run("""$x = 10 >> 1;
+        print $x;""", capfd)
+        assert out == "5"

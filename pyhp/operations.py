@@ -435,4 +435,8 @@ Ge = create_binary_op('GE')  # >=
 Lt = create_binary_op('LT')  # <
 Le = create_binary_op('LE')  # <=
 
+Ursh = create_binary_op('URSH')  # >>>
+Rsh = create_binary_op('RSH')  # >>
+Lsh = create_binary_op('LSH')  # <<
+
 Not = create_unary_op('NOT')

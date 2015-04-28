@@ -148,9 +148,14 @@ additiveexpression  : multiplicativeexpression (>addop< multiplicativeexpression
                     | <multiplicativeexpression>
                     ;
 
+shiftop: "<<" | ">>" | ">>>";
+shiftexpression : additiveexpression (>shiftop< additiveexpression)+
+                | <additiveexpression>
+                ;
+
 relationalop: "<" | ">" | "<=" | ">=" | "instanceof";
-relationalexpression    : additiveexpression (>relationalop< relationalexpression)+
-                        | <additiveexpression>
+relationalexpression    : shiftexpression (>relationalop< relationalexpression)+
+                        | <shiftexpression>
                         ;
 
 equalityop: "==" | "!=" | "===" | "!==";

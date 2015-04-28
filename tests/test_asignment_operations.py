@@ -1,6 +1,11 @@
 from tests import TestBase
 
 class TestAsignmentOperations(TestBase):
+    def test_assign_print(self, capfd):
+        out = self.run("""$i = 1;
+        print $i = 1;""", capfd)
+        assert out == "2"
+
     def test_increase(self, capfd):
         out = self.run("""$i = 1;
         $i++;

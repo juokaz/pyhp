@@ -8,6 +8,7 @@ from constants import CURLYVARIABLE, ARRAYINDEX
 from rpython.rlib import jit
 
 from pyhp.frame import FunctionFrame
+import math
 
 
 class Property(object):
@@ -375,6 +376,16 @@ def division(left, right):
         return W_IntObject(int(result))
     else:
         return W_FloatObject(result)
+
+
+def mod(left, right):
+    fleft = left.get_int()
+    fright = right.get_int()
+
+    if fleft == 0:
+        return left
+
+    return W_IntObject(int(math.fmod(fleft, fright)))
 
 
 @specialize.argtype(0, 1)

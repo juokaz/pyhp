@@ -3,7 +3,7 @@ from pyhp.datatypes import W_IntObject, W_StringObject, \
     W_CodeFunction
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
-from pyhp.datatypes import plus, increment, decrement, sub, mult, division
+from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
 
 from pyhp.utils import printf
 
@@ -338,6 +338,13 @@ class DIV(Opcode):
         frame.push(division(left, right))
 
 
+class MOD(Opcode):
+    def eval(self, frame):
+        right = frame.pop()
+        left = frame.pop()
+        frame.push(mod(left, right))
+
+
 class BaseUnaryOperation(Opcode):
     pass
 
@@ -361,8 +368,51 @@ class DECR(BaseUnaryOperation):
         frame.push(decrement(left))
 
 
-class MOD(Opcode):
+
+class BaseBinaryBitwiseOp(Opcode):
     pass
+
+
+class URSH(BaseBinaryBitwiseOp):
+    def eval(self, frame):
+        rval = frame.pop()
+        lval = frame.pop()
+
+        rnum = rval.get_int()
+        lnum = lval.get_int()
+
+        shift_count = rnum & 0x1F
+        res = lnum >> shift_count
+
+        frame.push(W_IntObject(res))
+
+
+class RSH(BaseBinaryBitwiseOp):
+    def eval(self, frame):
+        rval = frame.pop()
+        lval = frame.pop()
+
+        rnum = rval.get_int()
+        lnum = lval.get_int()
+
+        shift_count = rnum & 0x1F
+        res = lnum >> shift_count
+
+        frame.push(W_IntObject(res))
+
+
+class LSH(BaseBinaryBitwiseOp):
+    def eval(self, frame):
+        rval = frame.pop()
+        lval = frame.pop()
+
+        rnum = rval.get_int()
+        lnum = lval.get_int()
+
+        shift_count = rnum & 0x1F
+        res = lnum << shift_count
+
+        frame.push(W_IntObject(res))
 
 
 class Opcodes:
