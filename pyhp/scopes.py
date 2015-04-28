@@ -50,6 +50,7 @@ class Scope(object):
         self.functions = []
         self.variables = []
         self.globals = []
+        self.constants = []
         self.parameters = []
 
     def add_symbol(self, name):
@@ -67,6 +68,12 @@ class Scope(object):
         self.globals.append(name)
         return idx
 
+    def add_constant(self, name):
+        idx = self.add_symbol(name)
+
+        self.constants.append(name)
+        return idx
+
     def add_parameter(self, name):
         idx = self.add_symbol(name)
 
@@ -79,13 +86,16 @@ class Scope(object):
         self.functions.append(name)
         return idx
 
-    def finalize(self):
+    def finalize(self, main=False):
         # these variables and those functions are the only identifiers
         # this scope defines, everything else comes from a parent
         variables = [v for v in self.variables[:] if v not in self.globals]
         functions = self.functions[:]
+        variables = variables + functions
+        if main:
+            variables += self.constants[:]
         symbols = SymbolsMap()
-        for identifier in variables + functions:
+        for identifier in variables:
             symbols.add(identifier)
         return FinalScope(len(self.symbols.finalize()), symbols.finalize(),
                           self.parameters[:])

@@ -72,3 +72,35 @@ class TestScopes(TestBase):
         print $i;
         """, capfd)
         assert out == "100"
+
+    def test_constant(self, capfd):
+        out = self.run("""define("TEST", 1);
+
+        print TEST;
+        """, capfd)
+        assert out == "1"
+
+    def test_constant_defined_in_a_function(self, capfd):
+        out = self.run("""function test() {
+            define("TEST", 1);
+            return TEST;
+        }
+
+        print test();
+        """, capfd)
+        assert out == "1"
+
+    def test_constant_accessed_from_a_different_function(self, capfd):
+        out = self.run("""function test() {
+            define("TEST", 1);
+        }
+
+        function test2() {
+            return TEST;
+        }
+
+        test();
+
+        print test2();
+        """, capfd)
+        assert out == "1"

@@ -29,6 +29,7 @@ functionbody    : <sourceelements>
                 ;
 
 statement : <block>
+          | <constantstatement> [";"]
           | <expressionstatement> [";"]
           | <ifstatement>
           | <iterationstatement>
@@ -75,8 +76,9 @@ printstatement: "print" expression
 
 globalstatement: "global" globallist ;
 
-primaryexpression   : <identifier>
-                    | <variable>
+constantstatement: "define" ["("] literal "," expression [")"] ;
+
+primaryexpression   : <variable>
                     | <literal>
                     | <arrayliteral>
                     | "(" <expression> ")"
@@ -100,7 +102,7 @@ memberexpressiona   : "[" expression ["]"]
 newexpression   : <memberexpression>
                 ;
 
-callexpression  : memberexpression arguments >callexpressiona<*
+callexpression  : identifier arguments >callexpressiona<*
                 ;
 
 callexpressiona : arguments
@@ -126,6 +128,7 @@ unaryexpression : "++" unaryexpression
                 | "--" unaryexpression
                 | "!" unaryexpression
                 | <postfixexpression>
+                | <constantexpression>
                 ;
 joinop: ".";
 stringjoinexpression  : unaryexpression (>joinop< unaryexpression)+
@@ -175,8 +178,11 @@ expression  : assignmentexpression ("," assignmentexpression)+
             | <assignmentexpression>
             ;
 
+constantexpression: constant;
+
 identifier: <IDENTIFIERNAME>;
 variable: <VARIABLENAME>;
+constant: <IDENTIFIERNAME>;
 
 literal : <nullliteral>
         | <booleanliteral>

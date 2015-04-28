@@ -125,6 +125,16 @@ class Identifier(Expression):
         ctx.emit('LOAD_VAR', self.index, self.identifier)
 
 
+class Constant(Expression):
+    def __init__(self, identifier, index, value):
+        self.identifier = identifier
+        self.index = index
+        self.value = value
+
+    def compile(self, ctx):
+        self.value.compile(ctx)
+        ctx.emit('ASSIGN', self.index, self.identifier)
+
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
