@@ -7,6 +7,8 @@ from pyhp.datatypes import plus, increment, decrement, sub, mult, division
 
 from pyhp.utils import printf
 
+from rpython.rlib.rstring import replace
+
 from rpython.rlib import jit
 
 
@@ -126,7 +128,8 @@ class LOAD_STRINGVAL(Opcode):
     _immutable_fields_ = ['value', 'variables[*]']
 
     def __init__(self, value, variables):
-        self.value = W_StringObject(value)
+        assert isinstance(value, str)
+        self.value = value
         self.variables = variables
 
     @jit.unroll_safe
@@ -141,10 +144,10 @@ class LOAD_STRINGVAL(Opcode):
                     ref = frame.get_reference(key)
                     key = ref.get_value().str()
                 value = value.get(key)
-            replace = value.str()
-            stringval = stringval.replace(search, replace)
+            replace_with = value.str()
+            stringval = replace(stringval, search, replace_with)
 
-        frame.push(stringval)
+        frame.push(W_StringObject(stringval))
 
     def __str__(self):
         return 'LOAD_STRINGVAL %s' % (self.value)

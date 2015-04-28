@@ -1,5 +1,6 @@
 from rpython.rlib.rstring import replace
 from rpython.rlib.rstring import StringBuilder
+from rpython.rlib.rStringIO import RStringIO
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize
 from constants import CURLYVARIABLE, ARRAYINDEX
@@ -27,10 +28,7 @@ class W_Root(object):
     def len(self):
         return 0
 
-    def replace(self, search, replace_with):
-        pass
-
-    def get_variables(self):
+    def append(self, stringval):
         pass
 
     def to_number(self):
@@ -188,16 +186,17 @@ class W_StringObject(W_Root):
 
     def __init__(self, stringval):
         assert(isinstance(stringval, str))
-        self.stringval = stringval
+        self.stringval = RStringIO()
+        self.stringval.write(stringval)
 
-    def replace(self, search, replace_with):
-        return W_StringObject(replace(self.stringval, search, replace_with))
+    def append(self, stringval):
+        self.stringval.write(stringval)
 
     def str(self):
-        return self.stringval
+        return self.stringval.getvalue()
 
     def len(self):
-        return len(self.stringval)
+        return len(self.str())
 
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)
@@ -306,9 +305,9 @@ def isnumber(w):
 
 def plus(left, right):
     if isstr(left) or isstr(right):
-        sleft = left.str()
         sright = right.str()
-        return W_StringObject(sleft + sright)
+        left.append(sright)
+        return left
     # hot path
     if isint(left) and isint(right):
         ileft = left.get_int()
