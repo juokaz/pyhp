@@ -167,6 +167,9 @@ class LOAD_ARRAY(Opcode):
             array.put(str(index), el)
         frame.push(array)
 
+    def __str__(self):
+        return 'LOAD_ARRAY %d' % (self.number)
+
 
 class LOAD_MEMBER(Opcode):
     def eval(self, frame):
@@ -177,26 +180,43 @@ class LOAD_MEMBER(Opcode):
 
 
 class STORE_MEMBER(Opcode):
+    _immutable_fields_ = ['discard']
+
+    def __init__(self, discard=True):
+        self.discard = discard
+
     def eval(self, frame):
         array = frame.pop()
         index = frame.pop().str()
         value = frame.pop()
         array.put(index, value)
 
-
-class ASSIGN(Opcode):
-    _immutable_fields_ = ['index', 'name']
-
-    def __init__(self, index, name):
-        self.index = index
-        self.name = name
-
-    def eval(self, frame):
-        ref = frame.get_reference(self.name, self.index)
-        ref.put_value(frame.pop())
+        if not self.discard:
+            frame.push(array)
 
     def __str__(self):
-        return 'ASSIGN %s, %s' % (self.index, self.name)
+        return 'STORE_MEMBER. Discard: %s' % (self.discard)
+
+
+class ASSIGN(Opcode):
+    _immutable_fields_ = ['index', 'name', 'discard']
+
+    def __init__(self, index, name, discard=True):
+        self.index = index
+        self.name = name
+        self.discard = discard
+
+    def eval(self, frame):
+        value = frame.pop()
+        ref = frame.get_reference(self.name, self.index)
+        ref.put_value(value)
+
+        if not self.discard:
+            frame.push(value)
+
+    def __str__(self):
+        return 'ASSIGN %s, %s. Discard: %s' % (self.index, self.name,
+                                               self.discard)
 
 
 class DISCARD_TOP(Opcode):
@@ -366,7 +386,6 @@ class DECR(BaseUnaryOperation):
     def eval(self, frame):
         left = frame.pop()
         frame.push(decrement(left))
-
 
 
 class BaseBinaryBitwiseOp(Opcode):

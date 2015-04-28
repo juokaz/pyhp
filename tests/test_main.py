@@ -6,7 +6,7 @@ class TestMain(TestBase):
         print $x;""")
         bytecode.compile()
         assert str(bytecode) == "0: LOAD_INTVAL W_IntObject(1)\n" \
-        + "1: ASSIGN 0, $x\n2: LOAD_VAR 0, $x\n3: PRINT"
+        + "1: ASSIGN 0, $x. Discard: True\n2: LOAD_VAR 0, $x\n3: PRINT"
 
     def test_running(self, capfd):
         out = self.run("""$x = 1;
@@ -45,6 +45,7 @@ class TestMain(TestBase):
         assert out == "1"
 
     def test_discards_function_result_in_a_loop(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
         out = self.run("""function test() {
 
         }
@@ -54,87 +55,36 @@ class TestMain(TestBase):
         assert out == ""
 
     def test_discards_function_result(self, capfd):
-        out = self.run("""function test() {
-
-        }
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test();
-        test(); test(); test(); test(); test(); """, capfd)
-        assert out == ""
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "function test() {}"
+        for i in range(1, 20):
+            program += "test();"
+        self.run(program, capfd)
 
     def test_discards_expression_result(self, capfd):
-        out = self.run("""1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1;
-        1+1; 1+1; 1+1; 1+1; 1+1; 1+1; 1+1; """, capfd)
-        assert out == ""
+        """ if stack is not consumed correctly, this will overflow"""
+        program = ""
+        for i in range(1, 20):
+            program += "1 + 1;"
+        self.run(program, capfd)
 
     def test_discards_assignment_result(self, capfd):
-        out = self.run("""$i = 1;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;
-        $i++; $i++; $i++; $i++; $i++;  """, capfd)
-        assert out == ""
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "$i = 2;"
+        self.run(program, capfd)
+
+    def test_discards_increment_result(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "$i++;"
+        self.run(program, capfd)
+
+    def test_discards_print(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "print $i = 1;"
+        self.run(program, capfd)

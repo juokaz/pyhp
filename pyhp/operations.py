@@ -70,6 +70,8 @@ class StatementList(Statement):
 class ExprStatement(Node):
     def __init__(self, expr):
         self.expr = expr
+        if isinstance(self.expr, BaseAssignment):
+            self.expr.discard = True
 
     def compile(self, ctx):
         self.expr.compile(ctx)
@@ -77,8 +79,7 @@ class ExprStatement(Node):
         # TODO is there a better way?
         # discard the result if any of the expressions are being called
         # without an assignment operation
-        if not isinstance(self.expr, BaseAssignment) \
-                or self.expr.has_operation():
+        if not isinstance(self.expr, BaseAssignment):
             ctx.emit('DISCARD_TOP')
 
 
@@ -242,6 +243,8 @@ OPERATIONS = unrolling_iterable(OPERANDS.items())
 class BaseAssignment(Expression):
     noops = ['=']
     post = False
+    # should the value be pushed into the stack after the assignment
+    discard = False
 
     def has_operation(self):
         return self.operand not in self.noops
@@ -249,16 +252,17 @@ class BaseAssignment(Expression):
     def compile(self, ctx):
         if self.has_operation():
             self.left.compile(ctx)
-            if self.post:
+            if self.post and not self.discard:
                 ctx.emit('DUP')
             self.right.compile(ctx)
             self.compile_operation(ctx)
-            if not self.post:
-                ctx.emit('DUP')
         else:
             self.right.compile(ctx)
 
         self.compile_store(ctx)
+
+        if self.post and not self.discard:
+            ctx.emit('DISCARD_TOP')
 
     def compile_operation(self, ctx):
         # calls to 'emit' have to be very very very static
@@ -284,7 +288,7 @@ class AssignmentOperation(BaseAssignment):
         self.post = post
 
     def compile_store(self, ctx):
-        ctx.emit('ASSIGN', self.index, self.left.get_literal())
+        ctx.emit('ASSIGN', self.index, self.left.get_literal(), self.discard)
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -303,7 +307,7 @@ class MemberAssignmentOperation(BaseAssignment):
     def compile_store(self, ctx):
         self.expr.compile(ctx)
         self.w_array.compile(ctx)
-        ctx.emit('STORE_MEMBER')
+        ctx.emit('STORE_MEMBER', self.discard)
 
 
 class If(Node):
@@ -348,6 +352,11 @@ class For(Statement):
         self.update = update
         self.body = body
 
+        if isinstance(self.setup, BaseAssignment):
+            self.setup.discard = True
+        if isinstance(self.update, BaseAssignment):
+            self.update.discard = True
+
     def compile(self, ctx):
         self.setup.compile(ctx)
         pos = len(ctx)
@@ -355,13 +364,6 @@ class For(Statement):
         if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
         self.body.compile(ctx)
         self.update.compile(ctx)
-
-        # TODO is there a better way?
-        # discard the result if any of the expressions are being called
-        # without an assignment operation
-        if isinstance(self.update, BaseAssignment) \
-                and self.update.has_operation():
-            ctx.emit('DISCARD_TOP')
 
         ctx.emit('JUMP', pos)
         if_opcode.where = len(ctx)
