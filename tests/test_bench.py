@@ -253,6 +253,7 @@ class TestBench(TestBase):
           define("IC", 29573);
 
           $LAST = 42;
+          $ary = [];
           for ($i=1; $i<=$N; $i++) {
             $ary[$i] = gen_random(1);
           }
@@ -261,8 +262,8 @@ class TestBench(TestBase):
         }
 
         $LAST = 0;
-        heapsort(10);""", capfd)
-        assert out == "10\n"
+        heapsort(3);""", capfd)
+        assert out == "0.7290237769\n"
 
     def test_mkmatrix(self, capfd):
         out = self.run("""function mkmatrix ($rows, $cols) {

@@ -213,7 +213,7 @@ function hash2($n) {
 }
 */
 /****/
-/*
+
 function gen_random ($n) {
     global $LAST;
     return( ($n * ($LAST = ($LAST * IA + IC) % IM)) / IM );
@@ -259,13 +259,14 @@ function heapsort($N) {
   define("IC", 29573);
 
   $LAST = 42;
+  $ary = [];
   for ($i=1; $i<=$N; $i++) {
     $ary[$i] = gen_random(1);
   }
   heapsort_r($N, $ary);
   printf("%.10f\n", $ary[$N]);
 }
-*/
+
 /****/
 
 function mkmatrix ($rows, $cols) {
@@ -417,8 +418,9 @@ hash1(50000);
 $t = end_test($t, "hash1(50000)");
 //hash2(500);
 //$t = end_test($t, "hash2(500)");
-//heapsort(20000);
-//$t = end_test($t, "heapsort(20000)");
+$LAST = 0;
+heapsort(20000);
+$t = end_test($t, "heapsort(20000)");
 matrix(20);
 $t = end_test($t, "matrix(20)");
 nestedloop(12);
