@@ -120,19 +120,15 @@ class Transformer(RPythonVisitor):
         return None
 
     def visit_formalparameterlist(self, node):
-        nodes = [self.dispatch(child) for child in node.children]
-        for node, by_value in nodes:
-            self.declare_parameter(node.identifier, by_value)
+        for child in node.children:
+            i = 0
+            by_value = True
+            if child.children[0].additional_info == '&':
+                by_value = False
+                i += 1
+            identifier = self.dispatch(child.children[i])
+            self.declare_parameter(identifier.get_literal(), by_value)
         return None
-
-    def visit_formalparameterlistparam(self, node):
-        i = 0
-        by_value = True
-        if node.children[0].additional_info == '&':
-            by_value = False
-            i += 1
-        identifier = self.dispatch(node.children[i])
-        return identifier, by_value
 
     def visit_statementlist(self, node):
         block = self.dispatch(node.children[0])
