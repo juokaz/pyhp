@@ -193,6 +193,10 @@ class W_StringObject(W_Root):
     def append(self, stringval):
         self.stringval.write(stringval)
 
+    def get(self, key):
+        key = int(key)
+        return W_StringObject(self.str()[key])
+
     def str(self):
         return self.stringval.getvalue()
 

@@ -6,6 +6,11 @@ class TestDatatypes(TestBase):
         print $x;""", capfd)
         assert out == "Hello world"
 
+    def test_string_array_access(self, capfd):
+        out = self.run("""$x = 'Hello world';
+        print $x[1];""", capfd)
+        assert out == "e"
+
     def test_string_single_quotes_embed(self, capfd):
         out = self.run("""$y = 'world';
         $z = 1;
