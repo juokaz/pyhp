@@ -118,9 +118,18 @@ class Transformer(RPythonVisitor):
 
     def visit_formalparameterlist(self, node):
         nodes = [self.dispatch(child) for child in node.children]
-        for node in nodes:
-            self.declare_parameter(node.identifier)
-        return operations.ArgumentList(nodes)
+        for node, by_value in nodes:
+            self.declare_parameter(node.identifier, by_value)
+        return None
+
+    def visit_formalparameterlistparam(self, node):
+        i = 0
+        by_value = True
+        if node.children[0].additional_info == '&':
+            by_value = False
+            i += 1
+        identifier = self.dispatch(node.children[i])
+        return identifier, by_value
 
     def visit_statementlist(self, node):
         block = self.dispatch(node.children[0])
@@ -361,9 +370,9 @@ class Transformer(RPythonVisitor):
         idx = self.scopes[-1].add_constant(s)
         return idx
 
-    def declare_parameter(self, symbol):
+    def declare_parameter(self, symbol, by_value):
         s = symbol
-        idx = self.scopes[-1].add_parameter(s)
+        idx = self.scopes[-1].add_parameter(s, by_value)
         return idx
 
     def declare_function(self, symbol, funcobj):

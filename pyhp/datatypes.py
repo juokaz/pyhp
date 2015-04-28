@@ -226,6 +226,9 @@ class W_Array(W_Root):
         r += ']'
         return r
 
+    def __repr__(self):
+        return 'W_Array(%s)' % (self.str(),)
+
 
 class W_List(W_Root):
     _immutable_fields_ = ['values[*]']

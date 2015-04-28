@@ -1,6 +1,54 @@
 from tests import TestBase
 
 class TestScopes(TestBase):
+    def test_function_call_pass_by_value(self, capfd):
+        out = self.run("""function test($a) {
+            $a = 3;
+        }
+
+        $i = 5;
+        test($i);
+
+        print $i;
+        """, capfd)
+        assert out == "5"
+
+    def test_function_call_pass_by_reference(self, capfd):
+        out = self.run("""function test(&$a) {
+            $a = 3;
+        }
+
+        $i = 5;
+        test($i);
+
+        print $i;
+        """, capfd)
+        assert out == "3"
+
+    def test_function_call_array_pass_by_value(self, capfd):
+        out = self.run("""function test($a) {
+            $a[0] = 3;
+        }
+
+        $i = [5];
+        test($i);
+
+        print $i[0];
+        """, capfd)
+        assert out == "5"
+
+    def test_function_call_array_pass_by_reference(self, capfd):
+        out = self.run("""function test(&$a) {
+            $a[0] = 3;
+        }
+
+        $i = [5];
+        test($i);
+
+        print $i[0];
+        """, capfd)
+        assert out == "3"
+
     def test_function_call_local_vars(self, capfd):
         out = self.run("""function test() {
             $i = 5;

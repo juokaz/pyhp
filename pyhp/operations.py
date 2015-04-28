@@ -135,6 +135,7 @@ class Constant(Expression):
         self.value.compile(ctx)
         ctx.emit('ASSIGN', self.index, self.identifier)
 
+
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:

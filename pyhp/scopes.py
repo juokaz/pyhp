@@ -74,10 +74,10 @@ class Scope(object):
         self.constants.append(name)
         return idx
 
-    def add_parameter(self, name):
+    def add_parameter(self, name, by_value):
         idx = self.add_symbol(name)
 
-        self.parameters.append(name)
+        self.parameters.append((name, by_value))
         return idx
 
     def add_function(self, name):

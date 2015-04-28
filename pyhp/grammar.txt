@@ -17,9 +17,13 @@ sourceelement   : <functiondeclaration>
 functiondeclaration : ["function"] identifier "(" formalparameterlist? ")" ["{"] functionbody? "}"
                     ;
 
-formalparameterlist : variable [","] >formalparameterlist<
-                    | variable
+formalparameterlist : formalparameterlistparam [","] >formalparameterlist<
+                    | formalparameterlistparam
                     ;
+
+formalparameterlistparam : variable
+                         | "&" variable
+                         ;
 
 globallist : variable [","] >globallist<
            | variable

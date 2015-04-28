@@ -1,5 +1,6 @@
 from rpython.rlib import jit
 from pyhp.reference import Reference
+import copy
 
 
 class BaseVarMap(object):
@@ -86,8 +87,11 @@ class Frame(object):
         if code.is_function_code() and self.arguments:
             # set call arguments as variable values
             param_index = 0
-            for variable in code.params():
-                self.varmap.store(variable, self.arguments[param_index])
+            for param, by_value in code.params():
+                argument = self.arguments[param_index]
+                if by_value:
+                    argument = copy.deepcopy(argument)
+                self.varmap.store(param, argument)
                 param_index += 1
 
     def push(self, v):
