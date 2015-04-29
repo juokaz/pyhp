@@ -229,6 +229,16 @@ class DUP(Opcode):
         frame.push(frame.top())
 
 
+class LABEL(Opcode):
+    _immutable_fields_ = ['num']
+
+    def __init__(self, num):
+        self.num = num
+
+    def __str__(self):
+        return 'LABEL %d' % (self.num)
+
+
 class BaseJump(Opcode):
     _immutable_fields_ = ['where']
 

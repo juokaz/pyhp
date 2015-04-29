@@ -39,6 +39,8 @@ statement : <block>
           | <iterationstatement>
           | <printstatement> [";"]
           | <globalstatement> [";"]
+          | <continuestatement> [";"]
+          | <breakstatement> [";"]
           | <returnstatement> [";"]
           ;
 
@@ -47,6 +49,12 @@ block   : "{" >statementlist<? ["}"]
 
 statementlist   : statement >statementlist<
                 | statement
+                ;
+
+continuestatement   : ["continue"] numericliteral?
+                    ;
+
+breakstatement  : ["break"] numericliteral?
                 ;
 
 returnstatement : ["return"] expression?

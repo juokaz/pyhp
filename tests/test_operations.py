@@ -99,12 +99,32 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "123456789"
 
-    def test_for(self, capfd):
+    def test_for_comma(self, capfd):
         out = self.run("""
         for ($x = 1; printf("\n"), $x < 3; $x++) {
             print $x;
         }""", capfd)
         assert out == "\n1\n2\n"
+
+    def test_for_break(self, capfd):
+        out = self.run("""
+        for ($x = 1; $x < 10; $x++) {
+            if ($x > 3) {
+                break;
+            }
+            print $x;
+        }""", capfd)
+        assert out == "123"
+
+    def test_for_continue(self, capfd):
+        out = self.run("""
+        for ($x = 1; $x < 10; $x++) {
+            if ($x < 3) {
+                continue;
+            }
+            print $x;
+        }""", capfd)
+        assert out == "3456789"
 
     def test_div(self, capfd):
         out = self.run("""$x = 6 / 2;

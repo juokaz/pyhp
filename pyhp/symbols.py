@@ -59,7 +59,8 @@ class Map(object):
 
 class MapRoot(Map):
     def __repr__(self):
-        return "[%(index)d]:%(name)s" % {'index': self.index, 'name': self.name}
+        return "[%(index)d]:%(name)s" % {'index': self.index,
+                                         'name': self.name}
 
 
 class MapNode(Map):

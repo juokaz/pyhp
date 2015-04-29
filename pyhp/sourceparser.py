@@ -305,6 +305,20 @@ class Transformer(RPythonVisitor):
 
         return operations.For(setup, condition, update, body)
 
+    def visit_breakstatement(self, node):
+        if len(node.children) > 0:
+            count = self.dispatch(node.children[0])
+        else:
+            count = None
+        return operations.Break(count)
+
+    def visit_continuestatement(self, node):
+        if len(node.children) > 0:
+            count = self.dispatch(node.children[0])
+        else:
+            count = None
+        return operations.Continue(count)
+
     def visit_returnstatement(self, node):
         if len(node.children) > 0:
             value = self.dispatch(node.children[0])

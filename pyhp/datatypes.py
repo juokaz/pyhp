@@ -219,6 +219,7 @@ class W_StringObject(W_Root):
 from rpython.rlib.listsort import make_timsort_class
 TimSort = make_timsort_class()
 
+
 class W_Array(W_Root):
     def __init__(self):
         self.propdict = {}

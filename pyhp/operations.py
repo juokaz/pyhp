@@ -310,6 +310,23 @@ class MemberAssignmentOperation(BaseAssignment):
         ctx.emit('STORE_MEMBER', self.discard)
 
 
+class Unconditional(Statement):
+    def __init__(self, count):
+        self.count = count
+
+
+class Break(Unconditional):
+    def compile(self, ctx):
+        assert self.count is None
+        ctx.emit_break()
+
+
+class Continue(Unconditional):
+    def compile(self, ctx):
+        assert self.count is None
+        ctx.emit_continue()
+
+
 class If(Node):
     """ A very simple if
     """
@@ -320,13 +337,15 @@ class If(Node):
 
     def compile(self, ctx):
         self.cond.compile(ctx)
-        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
+        endif = ctx.prealocate_label()
+        endthen = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_FALSE', endthen)
         self.true_branch.compile(ctx)
-        true_opcode = ctx.emit('JUMP', 0)
-        if_opcode.where = len(ctx)
+        ctx.emit('JUMP', endif)
+        ctx.emit_label(endthen)
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
-        true_opcode.where = len(ctx)
+        ctx.emit_label(endif)
 
 
 class WhileBase(Statement):
@@ -337,12 +356,15 @@ class WhileBase(Statement):
 
 class While(WhileBase):
     def compile(self, ctx):
-        pos = len(ctx)
+        startlabel = ctx.emit_startloop_label()
+        ctx.continue_at_label(startlabel)
         self.condition.compile(ctx)
-        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
+        endlabel = ctx.prealocate_endloop_label()
+        ctx.emit('JUMP_IF_FALSE', endlabel)
         self.body.compile(ctx)
-        ctx.emit('JUMP', pos)
-        if_opcode.where = len(ctx)
+        ctx.emit('JUMP', startlabel)
+        ctx.emit_endloop_label(endlabel)
+        ctx.done_continue()
 
 
 class For(Statement):
@@ -359,14 +381,17 @@ class For(Statement):
 
     def compile(self, ctx):
         self.setup.compile(ctx)
-        pos = len(ctx)
+        startlabel = ctx.emit_startloop_label()
+        endlabel = ctx.prealocate_endloop_label()
+        update = ctx.prealocate_updateloop_label()
         self.condition.compile(ctx)
-        if_opcode = ctx.emit('JUMP_IF_FALSE', 0)
+        ctx.emit('JUMP_IF_FALSE', endlabel)
         self.body.compile(ctx)
+        ctx.emit_updateloop_label(update)
         self.update.compile(ctx)
 
-        ctx.emit('JUMP', pos)
-        if_opcode.where = len(ctx)
+        ctx.emit('JUMP', startlabel)
+        ctx.emit_endloop_label(endlabel)
 
 
 class Print(Node):
@@ -430,9 +455,10 @@ class And(Expression):
 
     def compile(self, ctx):
         self.left.compile(ctx)
-        if_false = ctx.emit('JUMP_IF_FALSE_NOPOP', 0)
+        one = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_FALSE_NOPOP', one)
         self.right.compile(ctx)
-        if_false.where = len(ctx)
+        ctx.emit_label(one)
 
 
 class Or(Expression):
@@ -442,9 +468,10 @@ class Or(Expression):
 
     def compile(self, ctx):
         self.left.compile(ctx)
-        if_true = ctx.emit('JUMP_IF_TRUE_NOPOP', 0)
+        one = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_TRUE_NOPOP', one)
         self.right.compile(ctx)
-        if_true.where = len(ctx)
+        ctx.emit_label(one)
 
 Comma = create_binary_op('COMMA')
 
