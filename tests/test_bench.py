@@ -89,6 +89,31 @@ class TestBench(TestBase):
         mandel();""", capfd)
         assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"
 
+    def test_mandel2(self, capfd):
+        out = self.run("""function mandel2() {
+          $b = " .:,;!/>)|&IH%*#";
+          //float r, i, z, Z, t, c, C;
+          for ($y=10; printf("\n"), $C = $y*0.1 - 1.5, $y--;){
+            for ($x=0; $c = $x*0.04 - 2, $z=0, $Z=0, $x++ < 10;){
+              for ($r=$c, $i=$C, $k=0; $t = $z*$z - $Z*$Z + $r, $Z = 2*$z*$Z + $i, $z=$t, $k<10; $k++)
+                if ($z*$z + $Z*$Z > 500000) break;
+              echo $b[$k%16];
+            }
+          }
+        }
+
+        mandel2();""", capfd)
+        assert out == """\n!!!!!!!!!!
+;;;!!!!!!!
+;;;;;!!!!!
+;;;;;;;;!!
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;
+;;;;;;;;;;\n"""
+
     def test_ackermann(self, capfd):
         out = self.run("""function Ack($m, $n) {
           if($m == 0) return $n+1;

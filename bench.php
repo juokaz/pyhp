@@ -78,7 +78,7 @@ function mandel() {
 }
 
 /****/
-/*
+
 function mandel2() {
   $b = " .:,;!/>)|&IH%*#";
   //float r, i, z, Z, t, c, C;
@@ -90,7 +90,7 @@ function mandel2() {
     }
   }
 }
-*/
+
 /****/
 
 function Ack($m, $n){
@@ -402,8 +402,8 @@ simpleudcall();
 $t = end_test($t, "simpleudcall");
 mandel();
 $t = end_test($t, "mandel");
-//mandel2();
-//$t = end_test($t, "mandel2");
+mandel2();
+$t = end_test($t, "mandel2");
 ackermann(7);
 $t = end_test($t, "ackermann(7)");
 ary(50000);
