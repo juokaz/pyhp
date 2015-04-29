@@ -26,17 +26,17 @@ class VarMap(BaseVarMap):
     def store(self, name, value):
         assert name is not None and isinstance(name, str)
         scope = self.scope
-        index = scope.get_index(name)
+        index = scope.lookup(name)
         self.vars[index] = value
 
     def load(self, name):
         assert name is not None and isinstance(name, str)
         scope = self.scope
-        index = scope.get_index(name)
+        index = scope.lookup(name)
         return self.vars[index]
 
     def get_reference(self, name):
-        if self.scope.has(name):
+        if self.scope.contains(name):
             return Reference(self, name)
         else:
             return self.parent.get_reference(name)

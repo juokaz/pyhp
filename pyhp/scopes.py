@@ -1,52 +1,9 @@
-from rpython.rlib import jit
-
-
-class SymbolsMap(object):
-    def __init__(self):
-        self.symbols = []
-        self.symbols_id = {}
-
-    def add(self, name):
-        if name not in self.symbols_id:
-            self.symbols_id[name] = len(self.symbols)
-            self.symbols.append(name)
-            idx = len(self.symbols) - 1
-        else:
-            idx = self.symbols_id[name]
-
-        assert isinstance(idx, int)
-        assert idx >= 0
-        return idx
-
-    def finalize(self):
-        return StaticSymbolsMap(self.symbols[:], self.symbols_id)
-
-
-class StaticSymbolsMap(object):
-    _immutable_fields_ = ['symbols[*]', 'symbols_id[*]']
-
-    def __init__(self, symbols, symbols_id):
-        self.symbols = symbols
-        self.symbols_id = symbols_id
-
-    @jit.elidable_promote("0")
-    def get_index(self, name):
-        if name in self.symbols_id:
-            return self.symbols_id[name]
-        else:
-            return -1
-
-    @jit.elidable_promote("0")
-    def has(self, name):
-        return (self.get_index(name) == -1) is False
-
-    def __len__(self):
-        return len(self.symbols)
+from pyhp.symbols import new_map
 
 
 class Scope(object):
     def __init__(self):
-        self.symbols = SymbolsMap()
+        self.symbols = new_map()
         self.functions = []
         self.variables = []
         self.globals = []
@@ -54,36 +11,53 @@ class Scope(object):
         self.parameters = []
 
     def add_symbol(self, name):
-        return self.symbols.add(name)
+        idx = self.symbols.lookup(name)
+
+        if idx == self.symbols.NOT_FOUND:
+            self.symbols = self.symbols.add(name)
+            idx = self.symbols.lookup(name)
+
+        assert isinstance(idx, int)
+        return idx
 
     def add_variable(self, name):
         idx = self.add_symbol(name)
 
-        self.variables.append(name)
+        if name not in self.variables:
+            self.variables.append(name)
+
         return idx
 
     def add_global(self, name):
         idx = self.add_symbol(name)
 
-        self.globals.append(name)
+        if name not in self.globals:
+            self.globals.append(name)
+
         return idx
 
     def add_constant(self, name):
         idx = self.add_symbol(name)
 
-        self.constants.append(name)
+        if name not in self.constants:
+            self.constants.append(name)
+
         return idx
 
     def add_parameter(self, name, by_value):
         idx = self.add_symbol(name)
 
-        self.parameters.append((name, by_value))
+        if (name, by_value) not in self.parameters:
+            self.parameters.append((name, by_value))
+
         return idx
 
     def add_function(self, name):
         idx = self.add_symbol(name)
 
-        self.functions.append(name)
+        if name not in self.functions:
+            self.functions.append(name)
+
         return idx
 
     def finalize(self, main=False):
@@ -94,10 +68,10 @@ class Scope(object):
         variables = variables + functions
         if main:
             variables += self.constants[:]
-        symbols = SymbolsMap()
+        symbols = new_map()
         for identifier in variables:
-            symbols.add(identifier)
-        return FinalScope(len(self.symbols.finalize()), symbols.finalize(),
+            symbols = symbols.add(identifier)
+        return FinalScope(self.symbols.len(), symbols,
                           self.parameters[:])
 
 
