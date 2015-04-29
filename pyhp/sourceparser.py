@@ -295,13 +295,13 @@ class Transformer(RPythonVisitor):
         body, i = self.get_next_expr(node, i)
 
         if setup is None:
-            setup = operations.Empty()
+            setup = operations.EmptyExpression()
         if condition is None:
             condition = operations.Boolean(True)
         if update is None:
-            update = operations.Empty()
+            update = operations.EmptyExpression()
         if body is None:
-            body = operations.Empty()
+            body = operations.EmptyExpression()
 
         return operations.For(setup, condition, update, body)
 

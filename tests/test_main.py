@@ -6,7 +6,7 @@ class TestMain(TestBase):
         print $x;""")
         bytecode.compile()
         assert str(bytecode) == "0: LOAD_INTVAL W_IntObject(1)\n" \
-        + "1: ASSIGN 0, $x. Discard: True\n2: LOAD_VAR 0, $x\n3: PRINT"
+        + "1: ASSIGN 0, $x\n2: DISCARD_TOP\n3: LOAD_VAR 0, $x\n4: PRINT"
 
     def test_running(self, capfd):
         out = self.run("""$x = 1;

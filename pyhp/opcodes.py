@@ -77,6 +77,14 @@ class LOAD_LIST(Opcode):
         return 'LOAD_LIST %d' % self.number
 
 
+class LOAD_UNDEFINED(Opcode):
+    def eval(self, frame):
+        frame.push(W_Null())
+
+    def __str__(self):
+        return 'LOAD_UNDEFINED'
+
+
 class LOAD_NULL(Opcode):
     def eval(self, frame):
         frame.push(W_Null())
@@ -180,43 +188,34 @@ class LOAD_MEMBER(Opcode):
 
 
 class STORE_MEMBER(Opcode):
-    _immutable_fields_ = ['discard']
-
-    def __init__(self, discard=True):
-        self.discard = discard
-
     def eval(self, frame):
         array = frame.pop()
         index = frame.pop().str()
         value = frame.pop()
         array.put(index, value)
 
-        if not self.discard:
-            frame.push(array)
+        frame.push(array)
 
     def __str__(self):
-        return 'STORE_MEMBER. Discard: %s' % (self.discard)
+        return 'STORE_MEMBER'
 
 
 class ASSIGN(Opcode):
-    _immutable_fields_ = ['index', 'name', 'discard']
+    _immutable_fields_ = ['index', 'name']
 
-    def __init__(self, index, name, discard=True):
+    def __init__(self, index, name):
         self.index = index
         self.name = name
-        self.discard = discard
 
     def eval(self, frame):
         value = frame.pop()
         ref = frame.get_reference(self.name, self.index)
         ref.put_value(value, self.name)
 
-        if not self.discard:
-            frame.push(value)
+        frame.push(value)
 
     def __str__(self):
-        return 'ASSIGN %s, %s. Discard: %s' % (self.index, self.name,
-                                               self.discard)
+        return 'ASSIGN %s, %s' % (self.index, self.name)
 
 
 class DISCARD_TOP(Opcode):
@@ -302,7 +301,7 @@ class RETURN(Opcode):
 
 class PRINT(Opcode):
     def eval(self, frame):
-        item = frame.pop()
+        item = frame.top()
         printf(item.str())
 
 

@@ -46,8 +46,16 @@ class SourceElements(Statement):
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
 
-        for node in self.nodes:
+        if len(self.nodes) > 1:
+            for node in self.nodes[:-1]:
+                node.compile(ctx)
+                ctx.emit('DISCARD_TOP')
+
+        if len(self.nodes) > 0:
+            node = self.nodes[-1]
             node.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
 
 
 class Program(Statement):
@@ -70,17 +78,9 @@ class StatementList(Statement):
 class ExprStatement(Node):
     def __init__(self, expr):
         self.expr = expr
-        if isinstance(self.expr, BaseAssignment):
-            self.expr.discard = True
 
     def compile(self, ctx):
         self.expr.compile(ctx)
-
-        # TODO is there a better way?
-        # discard the result if any of the expressions are being called
-        # without an assignment operation
-        if not isinstance(self.expr, BaseAssignment):
-            ctx.emit('DISCARD_TOP')
 
 
 class Function(Node):
@@ -229,6 +229,11 @@ class Empty(Expression):
         pass
 
 
+class EmptyExpression(Expression):
+    def compile(self, ctx):
+        ctx.emit('LOAD_UNDEFINED')
+
+
 OPERANDS = {
     '+=': 'ADD',
     '-=': 'SUB',
@@ -243,8 +248,6 @@ OPERATIONS = unrolling_iterable(OPERANDS.items())
 class BaseAssignment(Expression):
     noops = ['=']
     post = False
-    # should the value be pushed into the stack after the assignment
-    discard = False
 
     def has_operation(self):
         return self.operand not in self.noops
@@ -252,7 +255,7 @@ class BaseAssignment(Expression):
     def compile(self, ctx):
         if self.has_operation():
             self.left.compile(ctx)
-            if self.post and not self.discard:
+            if self.post:
                 ctx.emit('DUP')
             self.right.compile(ctx)
             self.compile_operation(ctx)
@@ -261,7 +264,7 @@ class BaseAssignment(Expression):
 
         self.compile_store(ctx)
 
-        if self.post and not self.discard:
+        if self.post:
             ctx.emit('DISCARD_TOP')
 
     def compile_operation(self, ctx):
@@ -288,7 +291,7 @@ class AssignmentOperation(BaseAssignment):
         self.post = post
 
     def compile_store(self, ctx):
-        ctx.emit('ASSIGN', self.index, self.left.get_literal(), self.discard)
+        ctx.emit('ASSIGN', self.index, self.left.get_literal())
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -307,7 +310,7 @@ class MemberAssignmentOperation(BaseAssignment):
     def compile_store(self, ctx):
         self.expr.compile(ctx)
         self.w_array.compile(ctx)
-        ctx.emit('STORE_MEMBER', self.discard)
+        ctx.emit('STORE_MEMBER')
 
 
 class Unconditional(Statement):
@@ -318,12 +321,14 @@ class Unconditional(Statement):
 class Break(Unconditional):
     def compile(self, ctx):
         assert self.count is None
+        ctx.emit('LOAD_UNDEFINED')
         ctx.emit_break()
 
 
 class Continue(Unconditional):
     def compile(self, ctx):
         assert self.count is None
+        ctx.emit('LOAD_UNDEFINED')
         ctx.emit_continue()
 
 
@@ -343,8 +348,12 @@ class If(Node):
         self.true_branch.compile(ctx)
         ctx.emit('JUMP', endif)
         ctx.emit_label(endthen)
+
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
+
         ctx.emit_label(endif)
 
 
@@ -356,12 +365,18 @@ class WhileBase(Statement):
 
 class While(WhileBase):
     def compile(self, ctx):
+        ctx.emit('LOAD_UNDEFINED')
         startlabel = ctx.emit_startloop_label()
         ctx.continue_at_label(startlabel)
+
         self.condition.compile(ctx)
+
         endlabel = ctx.prealocate_endloop_label()
         ctx.emit('JUMP_IF_FALSE', endlabel)
+
         self.body.compile(ctx)
+        ctx.emit('DISCARD_TOP')
+
         ctx.emit('JUMP', startlabel)
         ctx.emit_endloop_label(endlabel)
         ctx.done_continue()
@@ -374,21 +389,25 @@ class For(Statement):
         self.update = update
         self.body = body
 
-        if isinstance(self.setup, BaseAssignment):
-            self.setup.discard = True
-        if isinstance(self.update, BaseAssignment):
-            self.update.discard = True
-
     def compile(self, ctx):
         self.setup.compile(ctx)
+        ctx.emit('DISCARD_TOP')
+
+        ctx.emit('LOAD_UNDEFINED')
+
         startlabel = ctx.emit_startloop_label()
         endlabel = ctx.prealocate_endloop_label()
         update = ctx.prealocate_updateloop_label()
+
         self.condition.compile(ctx)
         ctx.emit('JUMP_IF_FALSE', endlabel)
+        ctx.emit('DISCARD_TOP')
+
         self.body.compile(ctx)
+
         ctx.emit_updateloop_label(update)
         self.update.compile(ctx)
+        ctx.emit('DISCARD_TOP')
 
         ctx.emit('JUMP', startlabel)
         ctx.emit_endloop_label(endlabel)
@@ -418,8 +437,16 @@ class Block(Statement):
         self.nodes = nodes
 
     def compile(self, ctx):
-        for node in self.nodes:
+        if len(self.nodes) > 1:
+            for node in self.nodes[:-1]:
+                node.compile(ctx)
+                ctx.emit('DISCARD_TOP')
+
+        if len(self.nodes) > 0:
+            node = self.nodes[-1]
             node.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
 
 
 def create_binary_op(name):
