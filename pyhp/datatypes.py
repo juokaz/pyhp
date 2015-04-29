@@ -2,19 +2,13 @@ from rpython.rlib.rstring import replace
 from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rStringIO import RStringIO
 from rpython.rlib.rarithmetic import ovfcheck
-from rpython.rlib.objectmodel import specialize
+from rpython.rlib.objectmodel import specialize, instantiate
 from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
 
 from pyhp.frame import FunctionFrame
 import math
-
-
-class Property(object):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
 
 
 class W_Root(object):
@@ -47,8 +41,9 @@ class W_Root(object):
     def to_list(self):
         pass
 
-    def get_bytecode(self):
-        pass
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        return obj
 
 
 class W_Number(W_Root):
@@ -72,6 +67,11 @@ class W_IntObject(W_Number):
     def str(self):
         return str(self.intval)
 
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.intval = self.intval
+        return obj
+
     def __repr__(self):
         return 'W_IntObject(%s)' % (self.intval,)
 
@@ -88,6 +88,11 @@ class W_FloatObject(W_Number):
 
     def str(self):
         return str(self.floatval)
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.floatval = self.floatval
+        return obj
 
     def __repr__(self):
         return 'W_FloatObject(%s)' % (self.floatval,)
@@ -203,8 +208,27 @@ class W_StringObject(W_Root):
     def len(self):
         return len(self.str())
 
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.stringval = self.stringval
+        return obj
+
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)
+
+
+class Property(object):
+    _immutable_fields_ = ['name']
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.name = self.name
+        obj.value = self.value
+        return obj
 
 
 class W_Array(W_Root):
@@ -230,6 +254,14 @@ class W_Array(W_Root):
         r = r.strip(', ')
         r += ']'
         return r
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        y = {}
+        for key, value in self.propdict.iteritems():
+            y[key] = value.__deepcopy__()
+        obj.propdict = y
+        return obj
 
     def __repr__(self):
         return 'W_Array(%s)' % (self.str(),)
@@ -259,6 +291,11 @@ class W_Boolean(W_Root):
         if self.boolval is True:
             return "true"
         return "false"
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.boolval = self.boolval
+        return obj
 
     def is_true(self):
         return self.boolval

@@ -1,6 +1,5 @@
 from rpython.rlib import jit
 from pyhp.reference import Reference
-import copy
 
 
 class BaseVarMap(object):
@@ -90,7 +89,8 @@ class Frame(object):
             for param, by_value in code.params():
                 argument = self.arguments[param_index]
                 if by_value:
-                    argument = copy.deepcopy(argument)
+                    # todo use copy.deepcopy for this
+                    argument = argument.__deepcopy__()
                 self.varmap.store(param, argument)
                 param_index += 1
 

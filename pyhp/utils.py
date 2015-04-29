@@ -10,7 +10,6 @@ from rpython.rlib import jit
 from rpython.rlib.rfloat import formatd
 from rpython.rlib.unroll import unrolling_iterable
 
-
 FORMAT_CHARS = unrolling_iterable([
     "s", "d", "f"
 ])
