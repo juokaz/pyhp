@@ -216,20 +216,8 @@ class W_StringObject(W_Root):
     def __repr__(self):
         return 'W_StringObject(%s)' % (self.stringval,)
 
-
-class Property(object):
-    _immutable_fields_ = ['name']
-
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-
-    def __deepcopy__(self):
-        obj = instantiate(self.__class__)
-        obj.name = self.name
-        obj.value = self.value
-        return obj
-
+from rpython.rlib.listsort import make_timsort_class
+TimSort = make_timsort_class()
 
 class W_Array(W_Root):
     def __init__(self):
@@ -237,19 +225,18 @@ class W_Array(W_Root):
 
     def put(self, key, value):
         assert(isinstance(key, str))
-        if key not in self.propdict:
-            self.propdict[key] = Property(key, value)
-        else:
-            self.propdict[key].value = value
+        self.propdict[key] = value
 
     def get(self, key):
         assert(isinstance(key, str))
-        return self.propdict[key].value
+        return self.propdict[key]
 
     def str(self):
         r = '['
-        for key, element in self.propdict.iteritems():
-            value = element.value.str()
+        properties = self.propdict.keys()
+        TimSort(properties).sort()
+        for key in properties:
+            value = self.propdict[key].str()
             r += '%s: %s' % (key, value) + ', '
         r = r.strip(', ')
         r += ']'
