@@ -414,6 +414,56 @@ class For(Statement):
         ctx.emit_endloop_label(endlabel)
 
 
+class Foreach(Statement):
+    def __init__(self, lobject, key, variable, body):
+        self.w_object = lobject
+        self.key = key
+        self.variable = variable
+        self.body = body
+
+    def compile(self, ctx):
+        w_object = self.w_object
+        key = self.key
+        variable = self.variable
+        body = self.body
+
+        w_object.compile(ctx)
+        ctx.emit('LOAD_ITERATOR')
+        # load the "last" iterations result
+        ctx.emit('LOAD_UNDEFINED')
+        precond = ctx.emit_startloop_label()
+        finish = ctx.prealocate_endloop_label(True)
+
+        ctx.emit('JUMP_IF_ITERATOR_EMPTY', finish)
+
+        # put the next iterator value onto stack
+        ctx.emit('NEXT_ITERATOR')
+
+        # store iterator key into appropriate place
+        if key is None:
+            ctx.emit('DISCARD_TOP')
+        elif isinstance(key, VariableIdentifier):
+            name = key.identifier
+            index = key.index
+            ctx.emit('ASSIGN', index, name)
+            ctx.emit('DISCARD_TOP')
+        else:
+            raise Exception(u'unsupported')
+
+        # store iterator value into appropriate place
+        if isinstance(variable, VariableIdentifier):
+            name = variable.identifier
+            index = variable.index
+            ctx.emit('ASSIGN', index, name)
+            ctx.emit('DISCARD_TOP')
+        else:
+            raise Exception(u'unsupported')
+
+        body.compile(ctx)
+        ctx.emit('JUMP', precond)
+        ctx.emit_endloop_label(finish)
+
+
 class Print(Node):
     def __init__(self, expr):
         self.expr = expr

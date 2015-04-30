@@ -73,6 +73,8 @@ ifstatement : ["if"] ["("] expression [")"] statement  ["else"] statement
 iterationstatement
     : whiles
     | regularfor
+    | foreach
+    | keyforeach
     ;
 
 whiles
@@ -81,6 +83,12 @@ whiles
 
 regularfor
     : "for" ["("] expression? ";" expression? ";" expression? ")" statement;
+
+foreach
+    : "foreach" ["("] expression ["as"] variable [")"] statement;
+
+keyforeach
+    : "foreach" ["("] expression ["as"] variable ["=>"] variable [")"] statement;
 
 printstatement: "print" expression
               | "echo" expression

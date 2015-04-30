@@ -305,6 +305,19 @@ class Transformer(RPythonVisitor):
 
         return operations.For(setup, condition, update, body)
 
+    def visit_foreach(self, node):
+        array = self.dispatch(node.children[1])
+        variable = self.dispatch(node.children[2])
+        body = self.dispatch(node.children[3])
+        return operations.Foreach(array, None, variable, body)
+
+    def visit_keyforeach(self, node):
+        array = self.dispatch(node.children[1])
+        key = self.dispatch(node.children[2])
+        variable = self.dispatch(node.children[3])
+        body = self.dispatch(node.children[4])
+        return operations.Foreach(array, key, variable, body)
+
     def visit_breakstatement(self, node):
         if len(node.children) > 0:
             count = self.dispatch(node.children[0])

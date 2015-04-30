@@ -243,6 +243,20 @@ class W_Array(W_Root):
         r += ']'
         return r
 
+    def to_iterator(self):
+        props = []
+        properties = self.propdict.keys()
+        TimSort(properties).sort()
+
+        for key in properties:
+            prop = self.propdict[key]
+            props.append((W_StringObject(key), prop))
+
+        props.reverse()
+
+        iterator = W_Iterator(props)
+        return iterator
+
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         y = {}
@@ -266,6 +280,24 @@ class W_List(W_Root):
 
     def __str__(self):
         return 'W_List(%s)' % (str([str(v) for v in self.values]))
+
+
+class W_Iterator(W_Root):
+    _immutable_fields_ = ['values[*]']
+
+    def __init__(self, values):
+        self.values = values
+        self.index = len(values)
+
+    def next(self):
+        self.index -= 1
+        return self.values[self.index]
+
+    def empty(self):
+        return self.index == 0
+
+    def to_string(self):
+        return 'W_Iterator(%s)' % (str([str(v) for v in self.values]))
 
 
 class W_Boolean(W_Root):

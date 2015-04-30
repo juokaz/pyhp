@@ -1,6 +1,6 @@
 from pyhp.datatypes import W_IntObject, W_StringObject, \
     W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function, \
-    W_CodeFunction
+    W_CodeFunction, W_Iterator
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
@@ -289,6 +289,39 @@ class JUMP(BaseJump):
 
     def __str__(self):
         return 'JUMP %d' % (self.where)
+
+
+class LOAD_ITERATOR(Opcode):
+    def eval(self, frame):
+        obj = frame.pop()
+        iterator = obj.to_iterator()
+
+        frame.push(iterator)
+
+
+class JUMP_IF_ITERATOR_EMPTY(BaseJump):
+    def do_jump(self, frame, pos):
+        last_block_value = frame.pop()
+        iterator = frame.top()
+        if iterator.empty():
+            # discard the iterator
+            frame.pop()
+            # put the last block value on the stack
+            frame.push(last_block_value)
+            return self.where
+        return pos + 1
+
+    def __str__(self):
+        return 'JUMP_IF_ITERATOR_EMPTY %d' % (self.where)
+
+
+class NEXT_ITERATOR(Opcode):
+    def eval(self, frame):
+        iterator = frame.top()
+        assert isinstance(iterator, W_Iterator)
+        key, value = iterator.next()
+        frame.push(value)
+        frame.push(key)
 
 
 class RETURN(Opcode):

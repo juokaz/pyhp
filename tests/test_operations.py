@@ -126,6 +126,23 @@ class TestMain(TestBase):
         }""", capfd)
         assert out == "3456789"
 
+    def test_foreach(self, capfd):
+        out = self.run("""$x = [1, 2, 3];
+        foreach ($x as $i) {
+            print $i;
+        }""", capfd)
+        assert out == "123"
+
+    def test_foreach_key(self, capfd):
+        out = self.run("""$x = [3, 4, 5];
+        foreach ($x as $i => $v) {
+            print $i;
+            print '-';
+            print $v;
+            print ' ';
+        }""", capfd)
+        assert out == "0-3 1-4 2-5 "
+
     def test_div(self, capfd):
         out = self.run("""$x = 6 / 2;
         print $x;""", capfd)
