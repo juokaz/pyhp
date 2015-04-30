@@ -293,10 +293,7 @@ class JUMP(BaseJump):
 
 class RETURN(Opcode):
     def eval(self, frame):
-        if frame.valuestack_pos > 0:
-            return frame.pop()
-        else:
-            return W_Null()
+        return frame.pop()
 
 
 class PRINT(Opcode):

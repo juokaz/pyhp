@@ -45,6 +45,7 @@ class SourceElements(Statement):
     def compile(self, ctx):
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
+            ctx.emit('DISCARD_TOP')
 
         if len(self.nodes) > 1:
             for node in self.nodes[:-1]:
@@ -427,7 +428,9 @@ class Return(Statement):
         self.expr = expr
 
     def compile(self, ctx):
-        if self.expr is not None:
+        if self.expr is None:
+            ctx.emit('LOAD_UNDEFINED')
+        else:
             self.expr.compile(ctx)
         ctx.emit('RETURN')
 
