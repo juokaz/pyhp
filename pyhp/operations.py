@@ -1,5 +1,5 @@
-from pyhp import bytecode
-from constants import unescapedict
+from pyhp.bytecode import compile_ast
+from pyhp.functions import CodeFunction
 from rpython.rlib.unroll import unrolling_iterable
 
 
@@ -15,6 +15,9 @@ class Node(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 class Statement(Node):
@@ -42,14 +45,24 @@ class SourceElements(Statement):
     def compile(self, ctx):
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
+            ctx.emit('DISCARD_TOP')
 
-        for node in self.nodes:
+        if len(self.nodes) > 1:
+            for node in self.nodes[:-1]:
+                node.compile(ctx)
+                ctx.emit('DISCARD_TOP')
+
+        if len(self.nodes) > 0:
+            node = self.nodes[-1]
             node.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
 
 
 class Program(Statement):
-    def __init__(self, body):
+    def __init__(self, body, scope):
         self.body = body
+        self.scope = scope
 
     def compile(self, ctx):
         self.body.compile(ctx)
@@ -71,87 +84,72 @@ class ExprStatement(Node):
         self.expr.compile(ctx)
 
 
-class FUNCTION(object):
-    def __init__(self, name, params, globals=[], body=None):
-        assert isinstance(name, str)
-
-        self.name = name
-        self.params = params
-        self.globals = globals
-        self.body = body
-
-
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, params, globals=None, body=None):
-        self.name = name.get_literal()
-        self.params = params
-        self.globals = globals
+    def __init__(self, name, index, body, scope):
+        self.identifier = name.get_literal()
+        self.index = index
         self.body = body
+        self.scope = scope
 
     def compile(self, ctx):
-        method = FUNCTION(self.name, self.params, self.globals)
-        ctx.register_function(method)
+        body = compile_ast(self.body, self.scope)
 
-        ctx2 = bytecode.CompilerContext()
-        ctx2.functions = ctx.functions[:]
-        ctx2.function_id = ctx.function_id
-        # no variables from the parent context can be accessed
-        ctx2.names = []
-        ctx2.names_id = {}
+        method = CodeFunction(self.identifier, body)
 
-        for param in self.params:
-            ctx2.register_var(param)
-
-        for variable in self.globals:
-            ctx2.register_var(variable)
-
-        if self.body:
-            self.body.compile(ctx2)
-
-        method.body = ctx2.create_bytecode()
+        ctx.emit('LOAD_FUNCTION', method)
+        ctx.emit('ASSIGN', self.index, self.identifier)
 
 
 class Call(Node):
     def __init__(self, left, params):
-        self.func = left.get_literal()
+        self.left = left
         self.params = params
 
     def compile(self, ctx):
-        id, method = ctx.resolve_function(self.func)
-        numargs = len(method.params)
-        if numargs != len(self.params.nodes):
-            raise Exception(
-                self.func+' expects %d arguments got %d' %
-                (numargs, len(self.params.nodes))
-            )
-
         self.params.compile(ctx)
+        self.left.compile(ctx)
 
-        ctx.emit(bytecode.CALL, id)
+        ctx.emit('CALL')
 
 
 class Identifier(Expression):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, identifier, index):
+        assert index >= 0
+        self.identifier = identifier
+        self.index = index
 
     def get_literal(self):
-        return self.name
+        return self.identifier
+
+    def compile(self, ctx):
+        ctx.emit('LOAD_VAR', self.index, self.identifier)
+
+
+class Constant(Expression):
+    def __init__(self, identifier, index, value):
+        self.identifier = identifier
+        self.index = index
+        self.value = value
+
+    def compile(self, ctx):
+        self.value.compile(ctx)
+        ctx.emit('ASSIGN', self.index, self.identifier)
 
 
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
             node.compile(ctx)
-            ctx.emit(bytecode.LOAD_PARAM)
+        ctx.emit('LOAD_LIST', len(self.nodes))
 
 
 class Array(ListOp):
     def compile(self, ctx):
         for element in self.nodes:
             element.compile(ctx)
-        ctx.emit(bytecode.LOAD_ARRAY, len(self.nodes))
+        ctx.emit('LOAD_ARRAY', len(self.nodes))
 
 
 class Global(ListOp):
@@ -168,7 +166,7 @@ class Member(Expression):
     def compile(self, ctx):
         self.expr.compile(ctx)
         self.left.compile(ctx)
-        ctx.emit(bytecode.LOAD_MEMBER)
+        ctx.emit('LOAD_MEMBER')
 
 
 class ConstantInt(Node):
@@ -178,10 +176,7 @@ class ConstantInt(Node):
         self.intval = intval
 
     def compile(self, ctx):
-        # convert the integer to W_IntObject already here
-        from pyhp.interpreter import W_IntObject
-        w = W_IntObject(self.intval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+        ctx.emit('LOAD_INTVAL', self.intval)
 
 
 class ConstantFloat(Node):
@@ -191,60 +186,18 @@ class ConstantFloat(Node):
         self.floatval = floatval
 
     def compile(self, ctx):
-        # convert the float to W_FloatObject already here
-        from pyhp.interpreter import W_FloatObject
-        w = W_FloatObject(self.floatval)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
+        ctx.emit('LOAD_FLOATVAL', self.floatval)
 
 
 class ConstantString(Node):
     """ Represent a constant
     """
-    def __init__(self, stringval):
-        self.stringval = self.string_unquote(stringval)
-
-        self.variables = []
-        if not self.is_single_quoted(stringval):
-            self.variables = self.get_variables(self.stringval)
+    def __init__(self, stringval, variables):
+        self.stringval = stringval
+        self.variables = variables
 
     def compile(self, ctx):
-        for variable in self.variables:
-            ctx.emit(bytecode.LOAD_VAR, ctx.get_var(variable))
-        # convert the string to W_StringObject already here
-        from pyhp.interpreter import W_StringObject
-        w = W_StringObject(self.stringval, self.variables)
-        ctx.emit(bytecode.LOAD_CONSTANT, ctx.register_constant(w))
-
-    def is_single_quoted(self, string):
-        return string[0] == "'"
-
-    def get_variables(self, string):
-        # TODO implement this using regular expressions
-        variables = [x for x in string.split(' ') if x.startswith('$')]
-        return variables
-
-    def string_unquote(self, string):
-        # XXX I don't think this works, it's very unlikely IMHO
-        #     test it
-        temp = []
-        stop = len(string)-1
-        # XXX proper error
-        assert stop >= 0
-        last = ""
-
-        internalstring = string[1:stop]
-
-        for c in internalstring:
-            if last == "\\":
-                # Lookup escape sequence. Ignore the backslash for
-                # unknown escape sequences (like SM)
-                unescapeseq = unescapedict.get(last+c, c)
-                temp.append(unescapeseq)
-                c = ' '  # Could be anything
-            elif c != "\\":
-                temp.append(c)
-            last = c
-        return ''.join(temp)
+        ctx.emit('LOAD_STRINGVAL', self.stringval, self.variables)
 
 
 class Boolean(Expression):
@@ -252,23 +205,24 @@ class Boolean(Expression):
         self.bool = boolval
 
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_BOOLEAN, self.bool)
+        ctx.emit('LOAD_BOOLEAN', self.bool)
 
 
 class Null(Expression):
     def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_NULL)
+        ctx.emit('LOAD_NULL')
 
 
 class VariableIdentifier(Expression):
-    def __init__(self, identifier):
+    def __init__(self, identifier, index):
         self.identifier = identifier
-
-    def compile(self, ctx):
-        ctx.emit(bytecode.LOAD_VAR, ctx.get_var(self.identifier))
+        self.index = index
 
     def get_literal(self):
         return self.identifier
+
+    def compile(self, ctx):
+        ctx.emit('LOAD_VAR', self.index, self.identifier)
 
 
 class Empty(Expression):
@@ -276,11 +230,17 @@ class Empty(Expression):
         pass
 
 
+class EmptyExpression(Expression):
+    def compile(self, ctx):
+        ctx.emit('LOAD_UNDEFINED')
+
+
 OPERANDS = {
-    '+=': bytecode.ADD,
-    '-=': bytecode.SUB,
-    '++': bytecode.INCR,
-    '--': bytecode.DECR,
+    '+=': 'ADD',
+    '-=': 'SUB',
+    '++': 'INCR',
+    '--': 'DECR',
+    '.=': 'ADD',
 }
 
 OPERATIONS = unrolling_iterable(OPERANDS.items())
@@ -288,6 +248,7 @@ OPERATIONS = unrolling_iterable(OPERANDS.items())
 
 class BaseAssignment(Expression):
     noops = ['=']
+    post = False
 
     def has_operation(self):
         return self.operand not in self.noops
@@ -295,6 +256,8 @@ class BaseAssignment(Expression):
     def compile(self, ctx):
         if self.has_operation():
             self.left.compile(ctx)
+            if self.post:
+                ctx.emit('DUP')
             self.right.compile(ctx)
             self.compile_operation(ctx)
         else:
@@ -302,8 +265,11 @@ class BaseAssignment(Expression):
 
         self.compile_store(ctx)
 
+        if self.post:
+            ctx.emit('DISCARD_TOP')
+
     def compile_operation(self, ctx):
-        # calls to bytecode.emit have to be very very very static
+        # calls to 'emit' have to be very very very static
         op = self.operand
         for key, value in OPERATIONS:
             if op == key:
@@ -316,20 +282,21 @@ class BaseAssignment(Expression):
 
 
 class AssignmentOperation(BaseAssignment):
-    def __init__(self, left, right, operand):
+    def __init__(self, left, right, operand, post=False):
         self.left = left
-        self.identifier = left.get_literal()
+        self.index = left.index
         self.right = right
         if self.right is None:
             self.right = Empty()
         self.operand = operand
+        self.post = post
 
     def compile_store(self, ctx):
-        ctx.emit(bytecode.ASSIGN, ctx.register_var(self.identifier))
+        ctx.emit('ASSIGN', self.index, self.left.get_literal())
 
 
 class MemberAssignmentOperation(BaseAssignment):
-    def __init__(self, left, right, operand):
+    def __init__(self, left, right, operand, post=False):
         self.left = left
         self.right = right
         if right is None:
@@ -339,11 +306,31 @@ class MemberAssignmentOperation(BaseAssignment):
 
         self.w_array = self.left.left
         self.expr = self.left.expr
+        self.post = post
 
     def compile_store(self, ctx):
         self.expr.compile(ctx)
         self.w_array.compile(ctx)
-        ctx.emit(bytecode.STORE_MEMBER)
+        ctx.emit('STORE_MEMBER')
+
+
+class Unconditional(Statement):
+    def __init__(self, count):
+        self.count = count
+
+
+class Break(Unconditional):
+    def compile(self, ctx):
+        assert self.count is None
+        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit_break()
+
+
+class Continue(Unconditional):
+    def compile(self, ctx):
+        assert self.count is None
+        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit_continue()
 
 
 class If(Node):
@@ -356,10 +343,19 @@ class If(Node):
 
     def compile(self, ctx):
         self.cond.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+        endif = ctx.prealocate_label()
+        endthen = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_FALSE', endthen)
         self.true_branch.compile(ctx)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        ctx.emit('JUMP', endif)
+        ctx.emit_label(endthen)
+
+        if self.else_branch is not None:
+            self.else_branch.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
+
+        ctx.emit_label(endif)
 
 
 class WhileBase(Statement):
@@ -370,13 +366,21 @@ class WhileBase(Statement):
 
 class While(WhileBase):
     def compile(self, ctx):
-        pos = len(ctx.data)
+        ctx.emit('LOAD_UNDEFINED')
+        startlabel = ctx.emit_startloop_label()
+        ctx.continue_at_label(startlabel)
+
         self.condition.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+
+        endlabel = ctx.prealocate_endloop_label()
+        ctx.emit('JUMP_IF_FALSE', endlabel)
+
         self.body.compile(ctx)
-        ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        ctx.emit('DISCARD_TOP')
+
+        ctx.emit('JUMP', startlabel)
+        ctx.emit_endloop_label(endlabel)
+        ctx.done_continue()
 
 
 class For(Statement):
@@ -388,14 +392,76 @@ class For(Statement):
 
     def compile(self, ctx):
         self.setup.compile(ctx)
-        pos = len(ctx.data)
+        ctx.emit('DISCARD_TOP')
+
+        ctx.emit('LOAD_UNDEFINED')
+
+        startlabel = ctx.emit_startloop_label()
+        endlabel = ctx.prealocate_endloop_label()
+        update = ctx.prealocate_updateloop_label()
+
         self.condition.compile(ctx)
-        ctx.emit(bytecode.JUMP_IF_FALSE, 0)
-        jmp_pos = len(ctx.data) - 1
+        ctx.emit('JUMP_IF_FALSE', endlabel)
+        ctx.emit('DISCARD_TOP')
+
         self.body.compile(ctx)
+
+        ctx.emit_updateloop_label(update)
         self.update.compile(ctx)
-        ctx.emit(bytecode.JUMP_BACKWARD, pos)
-        ctx.data[jmp_pos] = chr(len(ctx.data))
+        ctx.emit('DISCARD_TOP')
+
+        ctx.emit('JUMP', startlabel)
+        ctx.emit_endloop_label(endlabel)
+
+
+class Foreach(Statement):
+    def __init__(self, lobject, key, variable, body):
+        self.w_object = lobject
+        self.key = key
+        self.variable = variable
+        self.body = body
+
+    def compile(self, ctx):
+        w_object = self.w_object
+        key = self.key
+        variable = self.variable
+        body = self.body
+
+        w_object.compile(ctx)
+        ctx.emit('LOAD_ITERATOR')
+        # load the "last" iterations result
+        ctx.emit('LOAD_UNDEFINED')
+        precond = ctx.emit_startloop_label()
+        finish = ctx.prealocate_endloop_label(True)
+
+        ctx.emit('JUMP_IF_ITERATOR_EMPTY', finish)
+
+        # put the next iterator value onto stack
+        ctx.emit('NEXT_ITERATOR')
+
+        # store iterator key into appropriate place
+        if key is None:
+            ctx.emit('DISCARD_TOP')
+        elif isinstance(key, VariableIdentifier):
+            name = key.identifier
+            index = key.index
+            ctx.emit('ASSIGN', index, name)
+            ctx.emit('DISCARD_TOP')
+        else:
+            raise Exception(u'unsupported')
+
+        # store iterator value into appropriate place
+        if isinstance(variable, VariableIdentifier):
+            name = variable.identifier
+            index = variable.index
+            ctx.emit('ASSIGN', index, name)
+            ctx.emit('DISCARD_TOP')
+        else:
+            raise Exception(u'unsupported')
+
+        body.compile(ctx)
+        ctx.emit('JUMP', precond)
+        ctx.emit_endloop_label(finish)
 
 
 class Print(Node):
@@ -404,7 +470,7 @@ class Print(Node):
 
     def compile(self, ctx):
         self.expr.compile(ctx)
-        ctx.emit(bytecode.PRINT)
+        ctx.emit('PRINT')
 
 
 class Return(Statement):
@@ -412,9 +478,11 @@ class Return(Statement):
         self.expr = expr
 
     def compile(self, ctx):
-        if self.expr is not None:
+        if self.expr is None:
+            ctx.emit('LOAD_UNDEFINED')
+        else:
             self.expr.compile(ctx)
-        ctx.emit(bytecode.RETURN)
+        ctx.emit('RETURN')
 
 
 class Block(Statement):
@@ -422,8 +490,16 @@ class Block(Statement):
         self.nodes = nodes
 
     def compile(self, ctx):
-        for node in self.nodes:
+        if len(self.nodes) > 1:
+            for node in self.nodes[:-1]:
+                node.compile(ctx)
+                ctx.emit('DISCARD_TOP')
+
+        if len(self.nodes) > 0:
+            node = self.nodes[-1]
             node.compile(ctx)
+        else:
+            ctx.emit('LOAD_UNDEFINED')
 
 
 def create_binary_op(name):
@@ -435,10 +511,49 @@ def create_binary_op(name):
         def compile(self, ctx):
             self.left.compile(ctx)
             self.right.compile(ctx)
-            b_name = 'BINARY_%s' % name.upper()
-            ctx.emit(bytecode.BytecodesMap[b_name])
+            ctx.emit(name)
     BinaryOp.__name__ = name
     return BinaryOp
+
+
+def create_unary_op(name):
+    class UnaryOp(Expression):
+        def __init__(self, expr):
+            self.expr = expr
+
+        def compile(self, ctx):
+            self.expr.compile(ctx)
+            ctx.emit(name)
+    UnaryOp.__name__ = name
+    return UnaryOp
+
+
+class And(Expression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def compile(self, ctx):
+        self.left.compile(ctx)
+        one = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_FALSE_NOPOP', one)
+        self.right.compile(ctx)
+        ctx.emit_label(one)
+
+
+class Or(Expression):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def compile(self, ctx):
+        self.left.compile(ctx)
+        one = ctx.prealocate_label()
+        ctx.emit('JUMP_IF_TRUE_NOPOP', one)
+        self.right.compile(ctx)
+        ctx.emit_label(one)
+
+Comma = create_binary_op('COMMA')
 
 Plus = create_binary_op('ADD')  # +
 Mult = create_binary_op('MUL')  # *
@@ -447,7 +562,13 @@ Division = create_binary_op('DIV')  # /
 Sub = create_binary_op('SUB')  # -
 
 Eq = create_binary_op('EQ')  # ==
+Gt = create_binary_op('GT')  # >
 Ge = create_binary_op('GE')  # >=
 Lt = create_binary_op('LT')  # <
+Le = create_binary_op('LE')  # <=
 
-StringJoin = create_binary_op('STRINGJOIN')  # .
+Ursh = create_binary_op('URSH')  # >>>
+Rsh = create_binary_op('RSH')  # >>
+Lsh = create_binary_op('LSH')  # <<
+
+Not = create_unary_op('NOT')

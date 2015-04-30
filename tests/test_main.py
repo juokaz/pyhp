@@ -1,9 +1,21 @@
 from tests import TestBase
 
 class TestMain(TestBase):
+    def test_bytecode(self):
+        bytecode = self.bytecode("""$x = 1;
+        print $x;""")
+        bytecode.compile()
+        assert str(bytecode) == "0: LOAD_INTVAL W_IntObject(1)\n" \
+        + "1: ASSIGN 0, $x\n2: DISCARD_TOP\n3: LOAD_VAR 0, $x\n4: PRINT"
+
     def test_running(self, capfd):
         out = self.run("""$x = 1;
         print $x;""", capfd)
+        assert out == "1"
+
+    def test_echo(self, capfd):
+        out = self.run("""$x = 1;
+        echo $x;""", capfd)
         assert out == "1"
 
     def test_running_comments(self, capfd):
@@ -32,52 +44,47 @@ class TestMain(TestBase):
         print $x;""", capfd)
         assert out == "1"
 
-    def test_string_single_quotes(self, capfd):
-        out = self.run("""$x = 'Hello world';
-        print $x;""", capfd)
-        assert out == "Hello world"
+    def test_discards_function_result_in_a_loop(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        out = self.run("""function test() {
 
-    def test_string_single_quotes_embed(self, capfd):
-        out = self.run("""$y = 'world';
-        $z = 1;
-        $x = 'Hello $y $z';
-        print $x;""", capfd)
-        assert out == "Hello $y $z"
+        }
+        for ($x = 1; $x < 200; $x++) {
+            test();
+        }""", capfd)
+        assert out == ""
 
-    def test_string_double_quotes(self, capfd):
-        out = self.run("""$x = "Hello world";
-        print $x;""", capfd)
-        assert out == "Hello world"
+    def test_discards_function_result(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "function test() {}"
+        for i in range(1, 20):
+            program += "test();"
+        self.run(program, capfd)
 
-    def test_string_double_quotes_embed(self, capfd):
-        out = self.run("""$y = 'world';
-        $z = 1;
-        $x = "Hello $y $z";
-        print $x;""", capfd)
-        assert out == "Hello world 1"
+    def test_discards_expression_result(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = ""
+        for i in range(1, 20):
+            program += "1 + 1;"
+        self.run(program, capfd)
 
-    def test_boolean(self, capfd):
-        out = self.run("""$x = true;
-        print $x;""", capfd)
-        assert out == "true"
+    def test_discards_assignment_result(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "$i = 2;"
+        self.run(program, capfd)
 
-    def test_array(self, capfd):
-        out = self.run("""$x = [1, 2, 3];
-        print $x;""", capfd)
-        assert out == "[1: 2, 0: 1, 2: 3]"
+    def test_discards_increment_result(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "$i++;"
+        self.run(program, capfd)
 
-    def test_array_old_syntax(self, capfd):
-        out = self.run("""$x = array(1, 2, 3);
-        print $x;""", capfd)
-        assert out == "[1: 2, 0: 1, 2: 3]"
-
-    def test_array_access(self, capfd):
-        out = self.run("""$x = [1, 2, 3];
-        print $x[1];""", capfd)
-        assert out == "2"
-
-    def test_array_write(self, capfd):
-        out = self.run("""$x = [1, 2, 3];
-        $x[1] = 5;
-        print $x;""", capfd)
-        assert out == "[1: 5, 0: 1, 2: 3]"
+    def test_discards_print(self, capfd):
+        """ if stack is not consumed correctly, this will overflow"""
+        program = "$i = 1;"
+        for i in range(1, 20):
+            program += "print $i = 1;"
+        self.run(program, capfd)

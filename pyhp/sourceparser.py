@@ -5,6 +5,8 @@ from rpython.rlib.parsing.tree import RPythonVisitor, Symbol
 from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
+from pyhp.scopes import Scope
+from pyhp.datatypes import string_unquote, string_unescape
 
 grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
@@ -16,63 +18,9 @@ except ParseError, e:
 _parse = make_parse_function(regexs, rules, eof=True)
 
 
-class Scope(object):
-    def __init__(self):
-        self.local_variables = []
-
-    def __repr__(self):
-        return 'Scope ' + repr(self.local_variables)
-
-    def add_local(self, variable):
-        if not self.is_local(variable) is True:
-            self.local_variables.append(variable)
-
-    def is_local(self, variable):
-        return variable in self.local_variables
-
-    def get_local(self, variable):
-        return self.local_variables.index(variable)
-
-
-class Scopes(object):
-    def __init__(self):
-        self.scopes = []
-
-    def current_scope(self):
-        if not self.scopes:
-            return None
-        else:
-            return self.scopes[-1]
-
-    def new_scope(self):
-        self.scopes.append(Scope())
-
-    def end_scope(self):
-        self.scopes.pop()
-
-    def variables(self):
-        if self.scope_present():
-            return self.current_scope().local_variables
-        return []
-
-    def is_local(self, variable):
-        return self.scope_present() is True \
-            and self.current_scope().is_local(variable) is True
-
-    def scope_present(self):
-        return self.current_scope() is not None
-
-    def add_local(self, variable):
-        if self.scope_present():
-            self.current_scope().add_local(variable)
-
-    def get_local(self, variable):
-        return self.current_scope().get_local(variable)
-
-
-class FakeParseError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
+def parse(code):
+    t = _parse(code)
+    return ToAST().transform(t)
 
 
 class Transformer(RPythonVisitor):
@@ -85,63 +33,87 @@ class Transformer(RPythonVisitor):
         '*': operations.Mult,
         '/': operations.Division,
         '%': operations.Mod,
+        '>': operations.Gt,
         '>=': operations.Ge,
-        '==': operations.Eq,
         '<': operations.Lt,
-        '.': operations.StringJoin,
+        '<=': operations.Le,
+        '.': operations.Plus,
+        '&&': operations.And,
+        '||': operations.Or,
+        '==': operations.Eq,
+        '>>': operations.Rsh,
+        '>>>': operations.Ursh,
+        '<<': operations.Lsh,
         '[': operations.Member,
+        ',': operations.Comma,
+    }
+    UNOP_TO_CLS = {
+        '!': operations.Not,
     }
 
     def __init__(self):
-        self.varlists = []
         self.funclists = []
-        self.scopes = Scopes()
+        self.scopes = []
+        self.depth = -1
 
     def visit_main(self, node):
+        self.enter_scope()
         body = self.dispatch(node.children[0])
-        return operations.Program(body)
+        scope = self.current_scope()
+        final_scope = scope.finalize(True)
+        return operations.Program(body, final_scope)
 
     def visit_arguments(self, node):
         nodes = [self.dispatch(child) for child in node.children[1:]]
         return operations.ArgumentList(nodes)
 
     def visit_sourceelements(self, node):
-        self.varlists.append({})
         self.funclists.append({})
         nodes = []
         for child in node.children:
             node = self.dispatch(child)
-            if node is not None:
-                nodes.append(node)
+            if node is None:
+                continue
+
+            if isinstance(node, operations.Global):
+                for node in node.nodes:
+                    self.declare_global(node.get_literal())
+                continue
+
+            nodes.append(node)
+
         func_decl = self.funclists.pop()
         return operations.SourceElements(func_decl, nodes)
 
     def functioncommon(self, node, declaration=True):
-        self.scopes.new_scope()
+        self.enter_scope()
+
         i = 0
         identifier, i = self.get_next_expr(node, i)
-
-        p = []
         parameters, i = self.get_next_expr(node, i)
-        if parameters is not None:
-            p = [pident.get_literal() for pident in parameters.nodes]
-
         functionbody, i = self.get_next_expr(node, i)
 
-        global_variables = None
-        if functionbody:
-            for node in functionbody.nodes:
-                if isinstance(node, operations.Global):
-                    global_variables = node
+        scope = self.current_scope()
+        constants = scope.constants  # preserve a list of defined constants
+        final_scope = scope.finalize()
 
-        g = []
-        if global_variables is not None:
-            g = [pident.get_literal() for pident in global_variables.nodes]
+        self.exit_scope()
 
-        funcobj = operations.Function(identifier, p, g, functionbody)
+        # declare all constants in the parent context, they will be removed
+        # from the child context as they get stored in the main scope
+        for constant in constants:
+            self.declare_constant(constant)
+
+        funcindex = -1
         if declaration:
-            self.funclists[-1][identifier.get_literal()] = funcobj
-        self.scopes.end_scope()
+            funcindex = self.declare_symbol(identifier.get_literal())
+
+        funcobj = operations.Function(identifier, funcindex, functionbody,
+                                      final_scope)
+
+        if declaration:
+            self.declare_function(identifier.get_literal(), funcobj)
+
         return funcobj
 
     def visit_functiondeclaration(self, node):
@@ -149,8 +121,15 @@ class Transformer(RPythonVisitor):
         return None
 
     def visit_formalparameterlist(self, node):
-        nodes = [self.dispatch(child) for child in node.children]
-        return operations.ArgumentList(nodes)
+        for child in node.children:
+            i = 0
+            by_value = True
+            if child.children[0].additional_info == '&':
+                by_value = False
+                i += 1
+            identifier = self.dispatch(child.children[i])
+            self.declare_parameter(identifier.get_literal(), by_value)
+        return None
 
     def visit_statementlist(self, node):
         block = self.dispatch(node.children[0])
@@ -164,12 +143,23 @@ class Transformer(RPythonVisitor):
             result = self.BINOP_TO_CLS[op.additional_info](left, right)
             left = result
         return left
+    visit_logicalorexpression = binaryop
+    visit_logicalandexpression = binaryop
     visit_stringjoinexpression = binaryop
     visit_relationalexpression = binaryop
     visit_equalityexpression = binaryop
     visit_additiveexpression = binaryop
+    visit_multiplicativeexpression = binaryop
+    visit_shiftexpression = binaryop
     visit_expression = binaryop
     visit_memberexpression = binaryop
+
+    def visit_unaryexpression(self, node):
+        op = node.children[0]
+        child = self.dispatch(node.children[1])
+        if op.additional_info in ['++', '--']:
+            return self._dispatch_assignment(child, op.additional_info, 'pre')
+        return self.UNOP_TO_CLS[op.additional_info](child)
 
     def literalop(self, node):
         value = node.children[0].additional_info
@@ -182,6 +172,20 @@ class Transformer(RPythonVisitor):
     visit_nullliteral = literalop
     visit_booleanliteral = literalop
 
+    def visit_numericliteral(self, node):
+        number = ""
+        for node in node.children:
+            number += node.additional_info
+        try:
+            f = float(number)
+            i = ovfcheck_float_to_int(f)
+            if i != f:
+                return operations.ConstantFloat(f)
+            else:
+                return operations.ConstantInt(i)
+        except (ValueError, OverflowError):
+            return operations.ConstantFloat(float(node.additional_info))
+
     def visit_expressionstatement(self, node):
         return operations.ExprStatement(self.dispatch(node.children[0]))
 
@@ -191,6 +195,19 @@ class Transformer(RPythonVisitor):
     def visit_globalstatement(self, node):
         nodes = [self.dispatch(child) for child in node.children[1].children]
         return operations.Global(nodes)
+
+    def visit_constantstatement(self, node):
+        i = 1
+        identifier, i = self.get_next_expr(node, i)
+        identifier = identifier.stringval
+        index = self.declare_constant(identifier)
+        value, i = self.get_next_expr(node, i)
+        return operations.Constant(identifier, index, value)
+
+    def visit_constantexpression(self, node):
+        identifier = self.dispatch(node.children[0])
+        self.declare_constant(identifier.get_literal())
+        return identifier
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
@@ -206,12 +223,14 @@ class Transformer(RPythonVisitor):
         return left
 
     def _dispatch_assignment(self, left, atype, prepost):
+        is_post = prepost == 'post'
         if self.is_variable(left):
-            return operations.AssignmentOperation(left, None, atype)
+            return operations.AssignmentOperation(left, None, atype, is_post)
         elif self.is_member(left):
-            return operations.MemberAssignmentOperation(left, None, atype)
+            return operations.MemberAssignmentOperation(left, None, atype,
+                                                        is_post)
         else:
-            raise FakeParseError("invalid lefthand expression")
+            raise Exception("invalid lefthand expression")
 
     def visit_postfixexpression(self, node):
         op = node.children[1]
@@ -237,7 +256,7 @@ class Transformer(RPythonVisitor):
         elif self.is_member(left):
             return operations.MemberAssignmentOperation(left, right, operation)
         else:
-            raise FakeParseError("invalid lefthand expression")
+            raise Exception("invalid lefthand expression")
 
     def visit_ifstatement(self, node):
         condition = self.dispatch(node.children[0])
@@ -247,6 +266,12 @@ class Transformer(RPythonVisitor):
         else:
             elseblock = None
         return operations.If(condition, ifblock, elseblock)
+
+    def visit_conditionalexpression(self, node):
+        condition = self.dispatch(node.children[0])
+        truepart = self.dispatch(node.children[2])
+        falsepart = self.dispatch(node.children[3])
+        return operations.If(condition, truepart, falsepart)
 
     def visit_iterationstatement(self, node):
         return self.dispatch(node.children[0])
@@ -270,15 +295,42 @@ class Transformer(RPythonVisitor):
         body, i = self.get_next_expr(node, i)
 
         if setup is None:
-            setup = operations.Empty()
+            setup = operations.EmptyExpression()
         if condition is None:
             condition = operations.Boolean(True)
         if update is None:
-            update = operations.Empty()
+            update = operations.EmptyExpression()
         if body is None:
-            body = operations.Empty()
+            body = operations.EmptyExpression()
 
         return operations.For(setup, condition, update, body)
+
+    def visit_foreach(self, node):
+        array = self.dispatch(node.children[1])
+        variable = self.dispatch(node.children[2])
+        body = self.dispatch(node.children[3])
+        return operations.Foreach(array, None, variable, body)
+
+    def visit_keyforeach(self, node):
+        array = self.dispatch(node.children[1])
+        key = self.dispatch(node.children[2])
+        variable = self.dispatch(node.children[3])
+        body = self.dispatch(node.children[4])
+        return operations.Foreach(array, key, variable, body)
+
+    def visit_breakstatement(self, node):
+        if len(node.children) > 0:
+            count = self.dispatch(node.children[0])
+        else:
+            count = None
+        return operations.Break(count)
+
+    def visit_continuestatement(self, node):
+        if len(node.children) > 0:
+            count = self.dispatch(node.children[0])
+        else:
+            count = None
+        return operations.Continue(count)
 
     def visit_returnstatement(self, node):
         if len(node.children) > 0:
@@ -287,28 +339,21 @@ class Transformer(RPythonVisitor):
             value = None
         return operations.Return(value)
 
-    def visit_DECIMALLITERAL(self, node):
-        try:
-
-            f = float(node.additional_info)
-            i = ovfcheck_float_to_int(f)
-            if i != f:
-                return operations.ConstantFloat(f)
-            else:
-                return operations.ConstantInt(i)
-        except (ValueError, OverflowError):
-            return operations.ConstantFloat(float(node.additional_info))
-
     def visit_IDENTIFIERNAME(self, node):
         name = node.additional_info
-        return operations.Identifier(name)
+        index = self.declare_symbol(name)
+        return operations.Identifier(name, index)
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
-        return operations.VariableIdentifier(name)
+        index = self.declare_variable(name)
+        return operations.VariableIdentifier(name, index)
 
     def string(self, node):
-        return operations.ConstantString(node.additional_info)
+        string = node.additional_info
+        string, variables = string_unquote(string)
+        string = string_unescape(string)
+        return operations.ConstantString(string, variables)
     visit_DOUBLESTRING = string
     visit_SINGLESTRING = string
 
@@ -326,3 +371,50 @@ class Transformer(RPythonVisitor):
     def is_member(self, obj):
         from pyhp.operations import Member
         return isinstance(obj, Member)
+
+    def enter_scope(self):
+        self.depth = self.depth + 1
+
+        new_scope = Scope()
+        self.scopes.append(new_scope)
+
+    def declare_symbol(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_symbol(s)
+        return idx
+
+    def declare_variable(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_variable(s)
+        return idx
+
+    def declare_global(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_global(s)
+        return idx
+
+    def declare_constant(self, symbol):
+        s = symbol
+        idx = self.scopes[-1].add_constant(s)
+        return idx
+
+    def declare_parameter(self, symbol, by_value):
+        s = symbol
+        idx = self.scopes[-1].add_parameter(s, by_value)
+        return idx
+
+    def declare_function(self, symbol, funcobj):
+        s = symbol
+        self.funclists[-1][s] = funcobj
+        idx = self.scopes[-1].add_function(s)
+        return idx
+
+    def exit_scope(self):
+        self.depth = self.depth - 1
+        self.scopes.pop()
+
+    def current_scope(self):
+        try:
+            return self.scopes[-1]
+        except IndexError:
+            return None

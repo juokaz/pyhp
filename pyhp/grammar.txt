@@ -17,12 +17,13 @@ sourceelement   : <functiondeclaration>
 functiondeclaration : ["function"] identifier "(" formalparameterlist? ")" ["{"] functionbody? "}"
                     ;
 
-functionexpression  : ["function"] identifier "(" formalparameterlist? ")"
+formalparameterlist : formalparameterlistparam [","] >formalparameterlist<
+                    | formalparameterlistparam
                     ;
 
-formalparameterlist : variable [","] >formalparameterlist<
-                    | variable
-                    ;
+formalparameterlistparam : variable
+                         | "&" variable
+                         ;
 
 globallist : variable [","] >globallist<
            | variable
@@ -32,11 +33,14 @@ functionbody    : <sourceelements>
                 ;
 
 statement : <block>
+          | <constantstatement> [";"]
           | <expressionstatement> [";"]
           | <ifstatement>
           | <iterationstatement>
           | <printstatement> [";"]
           | <globalstatement> [";"]
+          | <continuestatement> [";"]
+          | <breakstatement> [";"]
           | <returnstatement> [";"]
           ;
 
@@ -45,6 +49,12 @@ block   : "{" >statementlist<? ["}"]
 
 statementlist   : statement >statementlist<
                 | statement
+                ;
+
+continuestatement   : ["continue"] numericliteral?
+                    ;
+
+breakstatement  : ["break"] numericliteral?
                 ;
 
 returnstatement : ["return"] expression?
@@ -63,6 +73,8 @@ ifstatement : ["if"] ["("] expression [")"] statement  ["else"] statement
 iterationstatement
     : whiles
     | regularfor
+    | foreach
+    | keyforeach
     ;
 
 whiles
@@ -72,28 +84,36 @@ whiles
 regularfor
     : "for" ["("] expression? ";" expression? ";" expression? ")" statement;
 
-printstatement: "print" expression ;
+foreach
+    : "foreach" ["("] expression ["as"] variable [")"] statement;
+
+keyforeach
+    : "foreach" ["("] expression ["as"] variable ["=>"] variable [")"] statement;
+
+printstatement: "print" expression
+              | "echo" expression
+              ;
 
 globalstatement: "global" globallist ;
 
-primaryexpression   : <identifier>
-                    | <variable>
+constantstatement: "define" ["("] literal "," expression [")"] ;
+
+primaryexpression   : <variable>
                     | <literal>
                     | <arrayliteral>
+                    | "(" <expression> ")"
                     ;
 
-arrayliteral    : "[" >elementlist< ["]"]
-                | "array(" >elementlist< [")"]
-                | "[" >elementlist< ["," "]"]
+arrayliteral    : "[" >elementlist<? ["]"]
+                | "array(" >elementlist<? [")"]
+                | "[" >elementlist<? ["," "]"]
                 ;
 
 elementlist : assignmentexpression ([","] assignmentexpression)*
             ;
 
 memberexpression    : primaryexpression >memberexpressiona<+
-                    | functionexpression >memberexpressiona<+
                     | <primaryexpression>
-                    | <functionexpression>
                     ;
 
 memberexpressiona   : "[" expression ["]"]
@@ -102,7 +122,7 @@ memberexpressiona   : "[" expression ["]"]
 newexpression   : <memberexpression>
                 ;
 
-callexpression  : memberexpression arguments >callexpressiona<*
+callexpression  : identifier arguments >callexpressiona<*
                 ;
 
 callexpressiona : arguments
@@ -128,6 +148,7 @@ unaryexpression : "++" unaryexpression
                 | "--" unaryexpression
                 | "!" unaryexpression
                 | <postfixexpression>
+                | <constantexpression>
                 ;
 joinop: ".";
 stringjoinexpression  : unaryexpression (>joinop< unaryexpression)+
@@ -143,9 +164,14 @@ additiveexpression  : multiplicativeexpression (>addop< multiplicativeexpression
                     | <multiplicativeexpression>
                     ;
 
+shiftop: "<<" | ">>" | ">>>";
+shiftexpression : additiveexpression (>shiftop< additiveexpression)+
+                | <additiveexpression>
+                ;
+
 relationalop: "<" | ">" | "<=" | ">=" | "instanceof";
-relationalexpression    : additiveexpression (>relationalop< relationalexpression)+
-                        | <additiveexpression>
+relationalexpression    : shiftexpression (>relationalop< relationalexpression)+
+                        | <shiftexpression>
                         ;
 
 equalityop: "==" | "!=" | "===" | "!==";
@@ -153,20 +179,35 @@ equalityexpression  : relationalexpression (>equalityop< relationalexpression)+
                     | <relationalexpression>
                     ;
 
-assignmentexpression    : lefthandsideexpression >assignmentoperator< assignmentexpression
+logicalandexpression    : equalityexpression ("&&" equalityexpression)+
                         | <equalityexpression>
                         ;
 
+logicalorexpression : logicalandexpression ("||" logicalandexpression)+
+                    | <logicalandexpression>
+                    ;
+
+conditionalexpression   : logicalorexpression "?" assignmentexpression [":"] assignmentexpression
+                        | <logicalorexpression>
+                        ;
+
+assignmentexpression    : lefthandsideexpression >assignmentoperator< assignmentexpression
+                        | <conditionalexpression>
+                        ;
+
 assignmentoperator  : "=" | "\*=" | "\/=" | "\%=" | "\+=" | "\-=" | "<<="
-                    | ">>=" | ">>>=" | "&=" | "^=" | "\|="
+                    | ">>=" | ">>>=" | "&=" | "^=" | "\|=" | ".="
                     ;
 
 expression  : assignmentexpression ("," assignmentexpression)+
             | <assignmentexpression>
             ;
 
+constantexpression: constant;
+
 identifier: <IDENTIFIERNAME>;
 variable: <VARIABLENAME>;
+constant: <IDENTIFIERNAME>;
 
 literal : <nullliteral>
         | <booleanliteral>
@@ -180,7 +221,9 @@ booleanliteral  : "true"
                 | "false"
                 ;
 
-numericliteral  : <DECIMALLITERAL>
+numericliteral  : DECIMALLITERAL
+                | "-" DECIMALLITERAL
+                | "+" DECIMALLITERAL
                 ;
 
 DECIMALLITERAL  : "(((0|[1-9][0-9]*)(\.[0-9]*)?)|(\.[0-9]+))([eE][\+\-]?[0-9]*)?"
