@@ -198,8 +198,10 @@ function hash1($n) {
 }
 
 /****/
-/*
+
 function hash2($n) {
+  $hash1 = [];
+  $hash2 = [];
   for ($i = 0; $i < $n; $i++) {
     $hash1["foo_$i"] = $i;
     $hash2["foo_$i"] = 0;
@@ -211,7 +213,7 @@ function hash2($n) {
   $last  = "foo_".($n-1);
   print "$hash1[$first] $hash1[$last] $hash2[$first] $hash2[$last]\n";
 }
-*/
+
 /****/
 
 function gen_random ($n) {
@@ -416,8 +418,8 @@ fibo(30);
 $t = end_test($t, "fibo(30)");
 hash1(50000);
 $t = end_test($t, "hash1(50000)");
-//hash2(500);
-//$t = end_test($t, "hash2(500)");
+hash2(500);
+$t = end_test($t, "hash2(500)");
 $LAST = 0;
 heapsort(20000);
 $t = end_test($t, "heapsort(20000)");

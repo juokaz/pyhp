@@ -232,6 +232,25 @@ class TestBench(TestBase):
         hash1(10);""", capfd)
         assert out == "10\n"
 
+    def test_hash2(self, capfd):
+        out = self.run("""function hash2($n) {
+          $hash1 = [];
+          $hash2 = [];
+          for ($i = 0; $i < $n; $i++) {
+            $hash1["foo_$i"] = $i;
+            $hash2["foo_$i"] = 0;
+          }
+          for ($i = $n; $i > 0; $i--) {
+            foreach($hash1 as $key => $value) $hash2[$key] += $value;
+          }
+          $first = "foo_0";
+          $last  = "foo_".($n-1);
+          print "$hash1[$first] $hash1[$last] $hash2[$first] $hash2[$last]\n";
+        }
+
+        hash2(10);""", capfd)
+        assert out == "0 9 0 90\n"
+
     def test_heapsort(self, capfd):
         out = self.run("""function gen_random ($n) {
             global $LAST;
