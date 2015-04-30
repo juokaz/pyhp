@@ -12,7 +12,6 @@ import math
 
 
 class W_Root(object):
-    _settled_ = True
 
     def is_true(self):
         return False
