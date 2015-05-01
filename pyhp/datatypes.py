@@ -3,6 +3,7 @@ from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rStringIO import RStringIO
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
+from rpython.rlib.objectmodel import compute_hash, r_dict
 from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
@@ -19,11 +20,17 @@ class W_Root(object):
     def str(self):
         return ''
 
+    def str_full(self):
+        return self.str()
+
     def len(self):
         return 0
 
     def append(self, stringval):
         pass
+
+    def hash(self):
+        return 0
 
     def to_number(self):
         return 0.0
@@ -66,6 +73,9 @@ class W_IntObject(W_Number):
     def str(self):
         return str(self.intval)
 
+    def hash(self):
+        return compute_hash(self.intval)
+
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         obj.intval = self.intval
@@ -87,6 +97,9 @@ class W_FloatObject(W_Number):
 
     def str(self):
         return str(self.floatval)
+
+    def hash(self):
+        return compute_hash(self.floatval)
 
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
@@ -198,11 +211,15 @@ class W_StringObject(W_Root):
         self.stringval.write(stringval)
 
     def get(self, key):
-        key = int(key)
+        assert isinstance(key, W_IntObject)
+        key = key.get_int()
         return W_StringObject(self.str()[key])
 
     def str(self):
         return self.stringval.getvalue()
+
+    def hash(self):
+        return compute_hash(self.str())
 
     def len(self):
         return len(self.str())
@@ -213,43 +230,55 @@ class W_StringObject(W_Root):
         return obj
 
     def __repr__(self):
-        return 'W_StringObject(%s)' % (self.stringval,)
+        return 'W_StringObject(%s)' % (self.str(),)
 
-from rpython.rlib.listsort import make_timsort_class
-TimSort = make_timsort_class()
+
+def eq_fn(this, other):
+    return _base_compare(this, other, _compare_eq)
+
+
+def hash_fn(this):
+    return this.hash()
 
 
 class W_Array(W_Root):
+    _immutable_fields_ = ['data']
+
     def __init__(self):
-        self.propdict = {}
+        self.data = r_dict(eq_fn, hash_fn, force_non_null=True)
 
     def put(self, key, value):
-        assert(isinstance(key, str))
-        self.propdict[key] = value
+        self.data[key] = value
 
     def get(self, key):
-        assert(isinstance(key, str))
-        return self.propdict[key]
+        try:
+            return self.data[key]
+        except KeyError:
+            raise Exception("key %s not in %s" % (key, self))
 
     def str(self):
-        r = '['
-        properties = self.propdict.keys()
-        TimSort(properties).sort()
-        for key in properties:
-            value = self.propdict[key].str()
-            r += '%s: %s' % (key, value) + ', '
-        r = r.strip(', ')
-        r += ']'
-        return r
+        return 'Array'
+
+    def str_full(self):
+        iterator = self.to_iterator()
+        result = "Array\n" + "(\n"
+        while not iterator.empty():
+            key, value = iterator.next()
+            lines = value.str_full().split("\n")
+            string = lines[0]
+            end = len(lines)-1
+            if end > 1:
+                offset = "\n".join(["\t" + line for line in lines[1:end]])
+                string = string + "\n" + offset
+            result += "\t[" + key.str() + "] => " + string + "\n"
+        result += ")\n"
+        return result
 
     def to_iterator(self):
         props = []
-        properties = self.propdict.keys()
-        TimSort(properties).sort()
-
-        for key in properties:
-            prop = self.propdict[key]
-            props.append((W_StringObject(key), prop))
+        for key in self.data.iterkeys():
+            prop = self.get(key)
+            props.append((key, prop))
 
         props.reverse()
 
@@ -258,14 +287,11 @@ class W_Array(W_Root):
 
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
-        y = {}
-        for key, value in self.propdict.iteritems():
-            y[key] = value.__deepcopy__()
-        obj.propdict = y
+        obj.data = self.data.copy()
         return obj
 
     def __repr__(self):
-        return 'W_Array(%s)' % (self.str(),)
+        return 'W_Array(%s)' % (self.str_full(),)
 
 
 class W_List(W_Root):
@@ -472,7 +498,9 @@ def _base_compare(x, y, _compare):
         n2 = y.to_number()
         return _compare(n1, n2)
 
-    raise Exception('Incompatible types for comparison: %s %s' % (x, y))
+    s1 = x.str()
+    s2 = y.str()
+    return _compare(s1, s2)
 
 
 def compare_gt(x, y):

@@ -150,7 +150,11 @@ class LOAD_STRINGVAL(Opcode):
             for key in indexes:
                 if key[0] == '$':
                     ref = frame.get_reference(key)
-                    key = ref.get_value(key).str()
+                    key = ref.get_value(key)
+                elif str(int(key)) == key:
+                    key = W_IntObject(int(key))
+                else:
+                    key = W_StringObject(key)
                 value = value.get(key)
             replace_with = value.str()
             stringval = replace(stringval, search, replace_with)
@@ -172,7 +176,7 @@ class LOAD_ARRAY(Opcode):
         array = W_Array()
         list_w = frame.pop_n(self.number)
         for index, el in enumerate(list_w):
-            array.put(str(index), el)
+            array.put(W_IntObject(index), el)
         frame.push(array)
 
     def __str__(self):
@@ -182,7 +186,7 @@ class LOAD_ARRAY(Opcode):
 class LOAD_MEMBER(Opcode):
     def eval(self, frame):
         array = frame.pop()
-        member = frame.pop().str()
+        member = frame.pop()
         value = array.get(member)
         frame.push(value)
 
@@ -190,7 +194,7 @@ class LOAD_MEMBER(Opcode):
 class STORE_MEMBER(Opcode):
     def eval(self, frame):
         array = frame.pop()
-        index = frame.pop().str()
+        index = frame.pop()
         value = frame.pop()
         array.put(index, value)
 

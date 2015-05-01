@@ -30,6 +30,14 @@ def printf(args):
     return W_Null()
 
 
+def print_r(args):
+    array = args[0]
+    assert(isinstance(array, W_Array))
+    result = array.str_full()
+    printf_(result)
+    return W_Null()
+
+
 def dechex(args):
     number = args[0]
     assert(isint(number))
@@ -55,8 +63,10 @@ def array_range(args):
     assert(isint(start))
     assert(isint(finish))
     array = W_Array()
+    i = 0
     for number in range(start.get_int(), finish.get_int()+1):
-        array.put(str(number), W_IntObject(number))
+        array.put(W_IntObject(i), W_IntObject(number))
+        i += 1
     return array
 
 
@@ -66,8 +76,8 @@ def gettimeofday(args):
     sec = int(seconds)
 
     array = W_Array()
-    array.put('sec', W_IntObject(sec))
-    array.put('usec', W_IntObject(usec))
+    array.put(W_StringObject('sec'), W_IntObject(sec))
+    array.put(W_StringObject('usec'), W_IntObject(usec))
     return array
 
 # ----- #
@@ -82,6 +92,7 @@ functions = [
     new_native_function('strlen', strlen),
     new_native_function('str_repeat', str_repeat),
     new_native_function('printf', printf),
+    new_native_function('print_r', print_r),
     new_native_function('dechex', dechex),
     new_native_function('number_format', number_format),
     new_native_function('range', array_range),

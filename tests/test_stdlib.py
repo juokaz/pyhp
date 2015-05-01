@@ -17,9 +17,9 @@ class TestStdlib(TestBase):
         assert out == "11"
 
     def test_range(self, capfd):
-        out = self.run("""$x = range(1, 4);
-        print $x;""", capfd)
-        assert out == "[1: 1, 2: 2, 3: 3, 4: 4]"
+        out = self.run("""$x = range(1, 3);
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n\t[0] => 1\n\t[1] => 2\n\t[2] => 3\n)\n"
 
     def test_number_format(self, capfd):
         out = self.run("""$x = 3.456;

@@ -66,23 +66,29 @@ class TestDatatypes(TestBase):
 
     def test_array(self, capfd):
         out = self.run("""$x = [1, 2, 3];
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n\t[0] => 1\n\t[1] => 2\n\t[2] => 3\n)\n"
+
+    def test_print_array(self, capfd):
+        out = self.run("""$x = [1, 2, 3];
         print $x;""", capfd)
-        assert out == "[0: 1, 1: 2, 2: 3]"
+        assert out == "Array"
 
     def test_empty_array(self, capfd):
         out = self.run("""$x = [];
-        print $x;""", capfd)
-        assert out == "[]"
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n)\n"
 
     def test_nested_array(self, capfd):
         out = self.run("""$x = [1, 2, [3, 4, 5]];
-        print $x;""", capfd)
-        assert out == "[0: 1, 1: 2, 2: [0: 3, 1: 4, 2: 5]]"
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n\t[0] => 1\n\t[1] => 2\n\t[2] => Array" + \
+            "\n\t(\n\t\t[0] => 3\n\t\t[1] => 4\n\t\t[2] => 5\n\t)\n)\n"
 
     def test_array_old_syntax(self, capfd):
         out = self.run("""$x = array(1, 2, 3);
-        print $x;""", capfd)
-        assert out == "[0: 1, 1: 2, 2: 3]"
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n\t[0] => 1\n\t[1] => 2\n\t[2] => 3\n)\n"
 
     def test_array_access(self, capfd):
         out = self.run("""$x = [1, 2, 3];
@@ -97,5 +103,5 @@ class TestDatatypes(TestBase):
     def test_array_write(self, capfd):
         out = self.run("""$x = [1, 2, 3];
         $x[1] = 5;
-        print $x;""", capfd)
-        assert out == "[0: 1, 1: 5, 2: 3]"
+        print_r($x);""", capfd)
+        assert out == "Array\n(\n\t[0] => 1\n\t[1] => 5\n\t[2] => 3\n)\n"
