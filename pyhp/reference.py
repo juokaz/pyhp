@@ -15,7 +15,12 @@ class Reference(object):
         assert isinstance(self.varmap, BaseVarMap)
         varmap = self.varmap
         name = self.get_referenced_name(identifier)
-        return varmap.load(name)
+        value = varmap.load(name)
+
+        if value is None:
+            raise Exception("Variable %s is not set" % name)
+        else:
+            return value
 
     def put_value(self, value, identifier=None):
         from pyhp.frame import BaseVarMap

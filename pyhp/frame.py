@@ -6,13 +6,13 @@ class BaseVarMap(object):
     _settled_ = True
 
     def get_reference(self, name):
-        raise NotImplementedError
+        return None
 
     def load(self, name):
-        raise NotImplementedError
+        return None
 
     def store(self, name, value):
-        raise NotImplementedError
+        return None
 
 
 class VarMap(BaseVarMap):
@@ -40,6 +40,9 @@ class VarMap(BaseVarMap):
             return Reference(self, name)
         else:
             return self.parent.get_reference(name)
+
+    def __repr__(self):
+        return 'VarMap(%s, %s)' % (self.parent, self.vars)
 
 
 class GlobalVarMap(BaseVarMap):

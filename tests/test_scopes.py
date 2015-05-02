@@ -76,7 +76,7 @@ class TestScopes(TestBase):
             print $i;
             """, capfd)
         except Exception as e:
-            assert str(e) == 'Variable 1 ($a) is not set'
+            assert str(e) == 'Variable $a is not set'
         else:
             assert False == True
 

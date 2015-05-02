@@ -44,9 +44,6 @@ class LOAD_VAR(Opcode):
     def eval(self, frame):
         ref = frame.get_reference(self.name, self.index)
         variable = ref.get_value(self.name)
-        if variable is None:
-            raise Exception("Variable %s (%s) is not set" %
-                            (self.index, self.name))
         frame.push(variable)
 
     def __str__(self):
