@@ -1,4 +1,5 @@
 class Reference(object):
+    _settled_ = True
     _immutable_fields_ = ['varmap', 'referenced']
 
     def __init__(self, varmap, referenced):

@@ -13,6 +13,7 @@ import math
 
 
 class W_Root(object):
+    _settled_ = True
 
     def is_true(self):
         return False
@@ -46,6 +47,12 @@ class W_Root(object):
 
     def to_list(self):
         pass
+
+    def to_iterator(self):
+        return None
+
+    def empty(self):
+        return False
 
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
