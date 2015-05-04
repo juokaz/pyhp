@@ -1,6 +1,5 @@
 from rpython.rlib.rstring import replace
 from rpython.rlib.rstring import StringBuilder
-from rpython.rlib.rStringIO import RStringIO
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
 from rpython.rlib.objectmodel import compute_hash, r_dict
@@ -211,11 +210,49 @@ class W_StringObject(W_Root):
 
     def __init__(self, stringval):
         assert(isinstance(stringval, str))
-        self.stringval = RStringIO()
-        self.stringval.write(stringval)
+        self.stringval = stringval
 
     def append(self, stringval):
-        self.stringval.write(stringval)
+        builder = StringBuilder()
+        concat = W_ConcatStringObject(builder)
+        concat.builder.append(self.stringval)
+        concat.builder.append(stringval)
+        return concat
+
+    def get(self, key):
+        assert isinstance(key, W_IntObject)
+        key = key.get_int()
+        return W_StringObject(self.stringval[key])
+
+    def str(self):
+        return self.stringval
+
+    def hash(self):
+        return compute_hash(self.stringval)
+
+    def len(self):
+        return len(self.stringval)
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.stringval = self.stringval  # todo this is incorrect
+        return obj
+
+    def __repr__(self):
+        return 'W_StringObject(%s)' % (self.str(),)
+
+
+class W_ConcatStringObject(W_StringObject):
+    _immutable_fields_ = ['builder']
+
+    def __init__(self, builder):
+        self.builder = builder
+
+    def append(self, stringval):
+        builder = self.builder
+        concat = W_ConcatStringObject(builder)
+        concat.builder.append(stringval)
+        return concat
 
     def get(self, key):
         assert isinstance(key, W_IntObject)
@@ -223,21 +260,13 @@ class W_StringObject(W_Root):
         return W_StringObject(self.str()[key])
 
     def str(self):
-        return self.stringval.getvalue()
+        return self.builder.build()
 
     def hash(self):
         return compute_hash(self.str())
 
     def len(self):
         return len(self.str())
-
-    def __deepcopy__(self):
-        obj = instantiate(self.__class__)
-        obj.stringval = self.stringval
-        return obj
-
-    def __repr__(self):
-        return 'W_StringObject(%s)' % (self.str(),)
 
 
 def eq_fn(this, other):
@@ -403,8 +432,7 @@ def isnumber(w):
 def plus(left, right):
     if isstr(left) or isstr(right):
         sright = right.str()
-        left.append(sright)
-        return left
+        return left.append(sright)
     # hot path
     if isint(left) and isint(right):
         ileft = left.get_int()

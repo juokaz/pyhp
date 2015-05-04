@@ -58,3 +58,10 @@ class TestAsignmentOperations(TestBase):
         $x = $hello . ' ' . $world;
         print $x;""", capfd)
         assert out == "Hello World"
+
+    def test_string_join_does_not_modify_original(self, capfd):
+        out = self.run("""$hello = 'Hello';
+        $x = $hello . ' World';
+        print $hello;
+        print $x;""", capfd)
+        assert out == "HelloHello World"
