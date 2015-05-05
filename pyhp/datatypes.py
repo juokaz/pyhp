@@ -397,11 +397,7 @@ class W_Null(W_Root):
         return "null"
 
 
-class W_Function(W_Root):
-    pass
-
-
-class W_CodeFunction(W_Function):
+class W_CodeFunction(W_Root):
     _immutable_fields_ = ['name', 'funcobj']
 
     def __init__(self, funcobj):

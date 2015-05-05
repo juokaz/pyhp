@@ -55,7 +55,7 @@ class SourceElements(Statement):
             node = self.nodes[-1]
             node.compile(ctx)
         else:
-            ctx.emit('LOAD_UNDEFINED')
+            ctx.emit('LOAD_NULL')
 
 
 class Program(Statement):
@@ -92,7 +92,10 @@ class Function(Node):
         self.scope = scope
 
     def compile(self, ctx):
-        body = compile_ast(self.body, self.scope)
+        body = self.body
+        if body is None:
+            body = Return(None)
+        body = compile_ast(body, self.scope)
 
         method = CodeFunction(self.identifier, body)
 
@@ -230,7 +233,7 @@ class Empty(Expression):
 
 class EmptyExpression(Expression):
     def compile(self, ctx):
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
 
 
 OPERANDS = {
@@ -320,14 +323,14 @@ class Unconditional(Statement):
 class Break(Unconditional):
     def compile(self, ctx):
         assert self.count is None
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
         ctx.emit_break()
 
 
 class Continue(Unconditional):
     def compile(self, ctx):
         assert self.count is None
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
         ctx.emit_continue()
 
 
@@ -351,7 +354,7 @@ class If(Node):
         if self.else_branch is not None:
             self.else_branch.compile(ctx)
         else:
-            ctx.emit('LOAD_UNDEFINED')
+            ctx.emit('LOAD_NULL')
 
         ctx.emit_label(endif)
 
@@ -364,7 +367,7 @@ class WhileBase(Statement):
 
 class While(WhileBase):
     def compile(self, ctx):
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
         startlabel = ctx.emit_startloop_label()
         ctx.continue_at_label(startlabel)
 
@@ -392,7 +395,7 @@ class For(Statement):
         self.setup.compile(ctx)
         ctx.emit('DISCARD_TOP')
 
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
 
         startlabel = ctx.emit_startloop_label()
         endlabel = ctx.prealocate_endloop_label()
@@ -428,7 +431,7 @@ class Foreach(Statement):
         w_object.compile(ctx)
         ctx.emit('LOAD_ITERATOR')
         # load the "last" iterations result
-        ctx.emit('LOAD_UNDEFINED')
+        ctx.emit('LOAD_NULL')
         precond = ctx.emit_startloop_label()
         finish = ctx.prealocate_endloop_label(True)
 
@@ -477,7 +480,7 @@ class Return(Statement):
 
     def compile(self, ctx):
         if self.expr is None:
-            ctx.emit('LOAD_UNDEFINED')
+            ctx.emit('LOAD_NULL')
         else:
             self.expr.compile(ctx)
         ctx.emit('RETURN')
@@ -497,7 +500,7 @@ class Block(Statement):
             node = self.nodes[-1]
             node.compile(ctx)
         else:
-            ctx.emit('LOAD_UNDEFINED')
+            ctx.emit('LOAD_NULL')
 
 
 def create_binary_op(name):

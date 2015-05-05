@@ -1,7 +1,7 @@
-from pyhp.functions import NativeFunction
-from pyhp.datatypes import W_CodeFunction
+
 from pyhp.datatypes import isint, isfloat, isstr
-from pyhp.datatypes import W_IntObject, W_StringObject, W_Array, W_Null
+from pyhp.objspace import w_Null, newint, newstring, new_native_function
+from pyhp.datatypes import W_Array
 from pyhp.utils import printf as printf_, StringFormatter
 
 import time
@@ -18,7 +18,7 @@ def define(space, args):
 def strlen(space, args):
     string = args[0].get_value()
     assert(isstr(string))
-    return W_IntObject(string.len())
+    return newint(string.len())
 
 
 def str_repeat(space, args):
@@ -27,7 +27,7 @@ def str_repeat(space, args):
     assert(isstr(string))
     assert(isint(repeat))
     repeated = string.str() * repeat.get_int()
-    return W_StringObject(repeated)
+    return newstring(repeated)
 
 
 def printf(space, args):
@@ -36,7 +36,6 @@ def printf(space, args):
     items = [arg.get_value() for arg in args[1:]]
     formatter = StringFormatter(template.str(), items)
     printf_(formatter.format())
-    return W_Null()
 
 
 def print_r(space, args):
@@ -44,13 +43,13 @@ def print_r(space, args):
     assert(isinstance(array, W_Array))
     result = array.str_full()
     printf_(result)
-    return W_Null()
+    return w_Null
 
 
 def dechex(space, args):
     number = args[0].get_value()
     assert(isint(number))
-    return W_StringObject(hex(number.get_int()))
+    return newstring(hex(number.get_int()))
 
 
 def number_format(space, args):
@@ -64,7 +63,7 @@ def number_format(space, args):
 
     formatted = str(formatd(number, "f", positions))
 
-    return W_StringObject(formatted)
+    return newstring(formatted)
 
 
 def array_range(space, args):
@@ -75,7 +74,7 @@ def array_range(space, args):
     array = W_Array()
     i = 0
     for number in range(start.get_int(), finish.get_int()+1):
-        array.put(W_IntObject(i), W_IntObject(number))
+        array.put(newint(i), newint(number))
         i += 1
     return array
 
@@ -86,17 +85,11 @@ def gettimeofday(space, args):
     sec = int(seconds)
 
     array = W_Array()
-    array.put(W_StringObject('sec'), W_IntObject(sec))
-    array.put(W_StringObject('usec'), W_IntObject(usec))
+    array.put(newstring('sec'), newint(sec))
+    array.put(newstring('usec'), newint(usec))
     return array
 
 # ----- #
-
-
-def new_native_function(name, function, params=[]):
-    func = NativeFunction(name, function)
-    obj = W_CodeFunction(func)
-    return obj
 
 functions = [
     new_native_function('define', define),

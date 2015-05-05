@@ -1,6 +1,7 @@
-from pyhp.datatypes import W_IntObject, W_StringObject, \
-    W_Null, W_Array, W_List, W_Boolean, W_FloatObject, W_Function, \
+from pyhp.datatypes import W_StringObject, \
+    W_Array, W_List, \
     W_CodeFunction, W_Iterator
+from pyhp.objspace import w_Null, newbool, newint, newfloat, newstring
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
@@ -130,17 +131,9 @@ class LOAD_LIST(Opcode):
         return 'LOAD_LIST %d' % self.number
 
 
-class LOAD_UNDEFINED(Opcode):
-    def eval(self, frame):
-        frame.push(W_Null())
-
-    def __str__(self):
-        return 'LOAD_UNDEFINED'
-
-
 class LOAD_NULL(Opcode):
     def eval(self, frame):
-        frame.push(W_Null())
+        frame.push(w_Null)
 
     def __str__(self):
         return 'LOAD_NULL'
@@ -150,7 +143,7 @@ class LOAD_BOOLEAN(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = W_Boolean(value)
+        self.value = newbool(value)
 
     def eval(self, frame):
         frame.push(self.value)
@@ -163,7 +156,7 @@ class LOAD_INTVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = W_IntObject(value)
+        self.value = newint(value)
 
     def eval(self, frame):
         frame.push(self.value)
@@ -176,7 +169,7 @@ class LOAD_FLOATVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = W_FloatObject(value)
+        self.value = newfloat(value)
 
     def eval(self, frame):
         frame.push(self.value)
@@ -201,18 +194,19 @@ class LOAD_STRINGVAL(Opcode):
             ref = frame.get_reference(identifier)
             value = ref.get_value()
             for key in indexes:
+                assert isinstance(key, str)
                 if key[0] == '$':
                     ref = frame.get_reference(key)
                     key = ref.get_value()
                 elif str(int(key)) == key:
-                    key = W_IntObject(int(key))
+                    key = newint(int(key))
                 else:
-                    key = W_StringObject(key)
+                    key = newstring(key)
                 value = value.get(key)
             replace_with = value.str()
             stringval = replace(stringval, search, replace_with)
 
-        frame.push(W_StringObject(stringval))
+        frame.push(newstring(stringval))
 
     def __str__(self):
         return 'LOAD_STRINGVAL %s' % (self.value)
@@ -229,7 +223,7 @@ class LOAD_ARRAY(Opcode):
         array = W_Array()
         list_w = frame.pop_n(self.number)
         for index, el in enumerate(list_w):
-            array.put(W_IntObject(index), el)
+            array.put(newint(index), el)
         frame.push(array)
 
     def __str__(self):
@@ -423,7 +417,7 @@ class CALL(Opcode):
         method = frame.pop()
         params = frame.pop()
 
-        assert isinstance(method, W_Function)
+        assert isinstance(method, W_CodeFunction)
         assert isinstance(params, W_List)
 
         res = method.call(params.to_list(), frame)
@@ -435,7 +429,7 @@ class BaseDecision(Opcode):
         right = frame.pop()
         left = frame.pop()
         res = self.decision(left, right)
-        frame.push(W_Boolean(res))
+        frame.push(newbool(res))
 
     def decision(self, op1, op2):
         raise NotImplementedError
@@ -509,7 +503,7 @@ class NOT(BaseUnaryOperation):
     def eval(self, frame):
         val = frame.pop()
         boolval = val.is_true()
-        frame.push(W_Boolean(not boolval))
+        frame.push(newbool(not boolval))
 
 
 class INCR(BaseUnaryOperation):
@@ -546,7 +540,7 @@ class URSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(W_IntObject(res))
+        frame.push(newint(res))
 
 
 class RSH(BaseBinaryBitwiseOp):
@@ -560,7 +554,7 @@ class RSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(W_IntObject(res))
+        frame.push(newint(res))
 
 
 class LSH(BaseBinaryBitwiseOp):
@@ -574,7 +568,7 @@ class LSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum << shift_count
 
-        frame.push(W_IntObject(res))
+        frame.push(newint(res))
 
 
 class Opcodes:

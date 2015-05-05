@@ -12,10 +12,8 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 """
 
-from pyhp.opcodes import opcodes, LABEL, BaseJump
+from pyhp.opcodes import opcodes, LABEL, BaseJump, RETURN
 from rpython.rlib import jit
-
-from pyhp.datatypes import W_Null, W_Root
 
 
 def printable_loc(pc, bc):
@@ -23,7 +21,7 @@ def printable_loc(pc, bc):
     return str(pc) + ": " + str(bytecode)
 
 driver = jit.JitDriver(greens=['pc', 'self'],
-                       reds=['frame', 'result'],
+                       reds=['frame'],
                        virtualizables=['frame'],
                        get_printable_location=printable_loc)
 
@@ -146,38 +144,32 @@ class ByteCode(object):
 
     def execute(self, frame):
         if self._opcode_count() == 0:
-            return W_Null()
+            return None
 
         pc = 0
-        result = None
         while True:
             # required hint indicating this is the top of the opcode dispatch
-            driver.jit_merge_point(pc=pc, self=self, frame=frame,
-                                   result=result)
+            driver.jit_merge_point(pc=pc, self=self, frame=frame)
 
             if pc >= self._opcode_count():
-                break
+                return None
 
             opcode = self._get_opcode(pc)
-            result = opcode.eval(frame)
 
-            if isinstance(result, W_Root):
-                break
+            if isinstance(opcode, RETURN):
+                return frame.pop()
+
+            opcode.eval(frame)
 
             if isinstance(opcode, BaseJump):
                 new_pc = opcode.do_jump(frame, pc)
                 if new_pc < pc:
                     driver.can_enter_jit(pc=new_pc, self=self,
-                                         frame=frame, result=result)
+                                         frame=frame)
                 pc = new_pc
                 continue
             else:
                 pc += 1
-
-        if result is None:
-            result = W_Null()
-
-        return result
 
     def __repr__(self):
         lines = []

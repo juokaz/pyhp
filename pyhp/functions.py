@@ -1,6 +1,3 @@
-from pyhp.bytecode import ByteCode
-
-
 class BaseFunction(object):
     _settled_ = True
 
@@ -45,6 +42,7 @@ class ExecutableCode(BaseFunction):
     _immutable_fields_ = ['bytecode']
 
     def __init__(self, bytecode):
+        from pyhp.bytecode import ByteCode
         assert isinstance(bytecode, ByteCode)
         self.bytecode = bytecode
         self.bytecode.compile()
