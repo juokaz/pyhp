@@ -98,7 +98,7 @@ class Function(Node):
 
         method = CodeFunction(self.identifier, body)
 
-        ctx.emit('LOAD_FUNCTION', method)
+        ctx.emit('DECLARE_FUNCTION', method)
         ctx.emit('ASSIGN', self.index, self.identifier)
 
 
@@ -124,7 +124,7 @@ class Identifier(Expression):
         return self.identifier
 
     def compile(self, ctx):
-        ctx.emit('LOAD_VAR', self.index, self.identifier)
+        ctx.emit('LOAD_FUNCTION', self.index, self.identifier)
 
 
 class Constant(Expression):

@@ -51,6 +51,22 @@ class LOAD_VAR(Opcode):
 
 
 class LOAD_FUNCTION(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, frame):
+        ref = frame.get_reference(self.name, self.index)
+        variable = ref.get_value(self.name)
+        frame.push(variable)
+
+    def __str__(self):
+        return 'LOAD_FUNCTION %s, %s' % (self.index, self.name)
+
+
+class DECLARE_FUNCTION(Opcode):
     _immutable_fields_ = ['function']
 
     def __init__(self, function):
@@ -58,6 +74,9 @@ class LOAD_FUNCTION(Opcode):
 
     def eval(self, frame):
         frame.push(W_CodeFunction(self.function, frame.varmap))
+
+    def __str__(self):
+        return 'DECLARE_FUNCTION %s' % self.function
 
 
 class LOAD_LIST(Opcode):
