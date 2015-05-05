@@ -61,16 +61,16 @@ class Scope(object):
         return idx
 
     def finalize(self):
-        return FinalScope(self.symbols.len(), self.symbols,
-                          self.globals[:],
+        return FinalScope(self.symbols, self.variables[:], self.globals[:],
                           self.parameters[:])
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['size', 'symbols', 'globals[*]', 'parameters[*]']
+    _immutable_fields_ = ['symbols','variables[*]', 'globals[*]',
+                          'parameters[*]']
 
-    def __init__(self, size, symbols, globals, parameters):
-        self.size = size
+    def __init__(self, symbols, variables, globals, parameters):
         self.symbols = symbols
+        self.variables = variables
         self.globals = globals
         self.parameters = parameters

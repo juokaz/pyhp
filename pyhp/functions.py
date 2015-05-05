@@ -42,13 +42,12 @@ class NativeFunction(BaseFunction):
 
 
 class ExecutableCode(BaseFunction):
-    _immutable_fields_ = ['bytecode', 'symbol_size']
+    _immutable_fields_ = ['bytecode']
 
     def __init__(self, bytecode):
         assert isinstance(bytecode, ByteCode)
         self.bytecode = bytecode
         self.bytecode.compile()
-        self.symbol_size = bytecode.symbol_size()
 
     def get_bytecode(self):
         return self.bytecode
@@ -60,7 +59,7 @@ class ExecutableCode(BaseFunction):
 
     def symbols(self):
         code = self.get_bytecode()
-        return code.variables()
+        return code.symbols()
 
     def globals(self):
         code = self.get_bytecode()
@@ -71,7 +70,8 @@ class ExecutableCode(BaseFunction):
         return code.params()
 
     def env_size(self):
-        return self.symbol_size
+        code = self.get_bytecode()
+        return code.symbols().len()
 
     def __repr__(self):
         return "ExecutableCode %s" % (self.bytecode)
