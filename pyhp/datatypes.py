@@ -2,7 +2,7 @@ from rpython.rlib.rstring import replace
 from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
-from rpython.rlib.objectmodel import compute_hash, r_dict
+from rpython.rlib.objectmodel import compute_hash
 from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
@@ -285,37 +285,31 @@ class W_ConcatStringObject(W_StringObject):
         return len(self.str())
 
 
-def eq_fn(this, other):
-    return _base_compare(this, other, _compare_eq)
-
-
-def hash_fn(this):
-    return this.hash()
-
-
 class W_Array(W_Root):
-    _immutable_fields_ = ['data']
-
     def __init__(self):
-        self.data = r_dict(eq_fn, hash_fn, force_non_null=True)
+        self.data = {}
 
     def put(self, key, value):
-        self.data[key] = value
+        assert isinstance(key, W_Root)
+        _key = key.hash()
+        self.data[_key] = (key, value)
 
     def get(self, key):
+        assert isinstance(key, W_Root)
+        _key = key.hash()
         try:
-            return self.data[key]
+            element = self.data[_key]
+            return element[1]
         except KeyError:
             raise Exception("key %s not in %s" % (key, self))
 
     def str(self):
         return 'Array'
 
+    @jit.unroll_safe
     def str_full(self):
-        iterator = self.to_iterator()
         result = "Array\n" + "(\n"
-        while not iterator.empty():
-            key, value = iterator.next()
+        for key, value in self.data.itervalues():
             lines = value.str_full().split("\n")
             string = lines[0]
             end = len(lines)-1
@@ -326,11 +320,11 @@ class W_Array(W_Root):
         result += ")\n"
         return result
 
+    @jit.unroll_safe
     def to_iterator(self):
         props = []
-        for key in self.data.iterkeys():
-            prop = self.get(key)
-            props.append((key, prop))
+        for element in self.data.itervalues():
+            props.append(element)
 
         props.reverse()
 

@@ -239,6 +239,29 @@ class LOAD_ARRAY(Opcode):
 class LOAD_MEMBER(Opcode):
     def eval(self, frame):
         array = frame.pop()
+        assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
+
+        member = frame.pop()
+        value = array.get(member)
+        frame.push(value)
+
+
+class LOAD_MEMBER_VAR(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, frame):
+        ref = frame.get_reference(self.name, self.index)
+
+        if ref is None:
+            raise Exception("Variable %s is not set" % self.name)
+
+        array = ref.get_value()
+        assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
+
         member = frame.pop()
         value = array.get(member)
         frame.push(value)

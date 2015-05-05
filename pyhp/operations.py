@@ -160,8 +160,11 @@ class Member(Expression):
 
     def compile(self, ctx):
         self.expr.compile(ctx)
-        self.left.compile(ctx)
-        ctx.emit('LOAD_MEMBER')
+        if isinstance(self.left, VariableIdentifier):
+            ctx.emit('LOAD_MEMBER_VAR', self.left.index, self.left.identifier)
+        else:
+            self.left.compile(ctx)
+            ctx.emit('LOAD_MEMBER')
 
 
 class ConstantInt(Node):
