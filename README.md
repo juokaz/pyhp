@@ -16,7 +16,7 @@ and is a complete, working implementation.
 - all variable types like int, float, string, array, iterator
 - if, while, for, foreach statements
 - functions
-- (incomplete) pass by value or by reference to a function
+- pass by value or by reference to a function
 - global variables in function blocks using `global`
 - global constants using `define()`
 - (incomplete) standard library functions
