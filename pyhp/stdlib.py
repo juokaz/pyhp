@@ -1,6 +1,6 @@
 from pyhp.functions import NativeFunction
 from pyhp.datatypes import W_CodeFunction
-from pyhp.datatypes import isint, isstr
+from pyhp.datatypes import isint, isfloat, isstr
 from pyhp.datatypes import W_IntObject, W_StringObject, W_Array, W_Null
 from pyhp.utils import printf as printf_, StringFormatter
 
@@ -8,45 +8,55 @@ import time
 from rpython.rlib.rfloat import formatd
 
 
-def strlen(args):
-    string = args[0]
+def define(space, args):
+    name = args[0].get_value()
+    assert(isstr(name))
+    value = args[1].get_value()
+    space.declare_constant(name.str(), value)
+
+
+def strlen(space, args):
+    string = args[0].get_value()
     assert(isstr(string))
     return W_IntObject(string.len())
 
 
-def str_repeat(args):
-    string = args[0]
-    repeat = args[1]
+def str_repeat(space, args):
+    string = args[0].get_value()
+    repeat = args[1].get_value()
     assert(isstr(string))
     assert(isint(repeat))
     repeated = string.str() * repeat.get_int()
     return W_StringObject(repeated)
 
 
-def printf(args):
+def printf(space, args):
     template = args[0]
-    formatter = StringFormatter(template.str(), args[1:])
+    assert(isstr(template))
+    items = [arg.get_value() for arg in args[1:]]
+    formatter = StringFormatter(template.str(), items)
     printf_(formatter.format())
     return W_Null()
 
 
-def print_r(args):
-    array = args[0]
+def print_r(space, args):
+    array = args[0].get_value()
     assert(isinstance(array, W_Array))
     result = array.str_full()
     printf_(result)
     return W_Null()
 
 
-def dechex(args):
-    number = args[0]
+def dechex(space, args):
+    number = args[0].get_value()
     assert(isint(number))
     return W_StringObject(hex(number.get_int()))
 
 
-def number_format(args):
-    number = args[0]
-    positions = args[1]
+def number_format(space, args):
+    number = args[0].get_value()
+    assert(isfloat(number))
+    positions = args[1].get_value()
     assert(isint(positions))
 
     number = number.to_number()
@@ -57,9 +67,9 @@ def number_format(args):
     return W_StringObject(formatted)
 
 
-def array_range(args):
-    start = args[0]
-    finish = args[1]
+def array_range(space, args):
+    start = args[0].get_value()
+    finish = args[1].get_value()
     assert(isint(start))
     assert(isint(finish))
     array = W_Array()
@@ -70,7 +80,7 @@ def array_range(args):
     return array
 
 
-def gettimeofday(args):
+def gettimeofday(space, args):
     seconds = time.time()
     usec = int(seconds * 1000000) - int(seconds) * 1000000
     sec = int(seconds)
@@ -89,6 +99,7 @@ def new_native_function(name, function, params=[]):
     return obj
 
 functions = [
+    new_native_function('define', define),
     new_native_function('strlen', strlen),
     new_native_function('str_repeat', str_repeat),
     new_native_function('printf', printf),

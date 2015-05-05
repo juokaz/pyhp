@@ -31,7 +31,19 @@ class Opcode(object):
 
 
 class LOAD_CONSTANT(Opcode):
-    pass
+    _immutable_fields_ = ['name']
+
+    def __init__(self, name):
+        self.name = name
+
+    def eval(self, frame):
+        value = frame.get_constant(self.name)
+        if value is None:
+            raise Exception("Constant %s is not defined" % self.name)
+        frame.push(value)
+
+    def __str__(self):
+        return 'LOAD_CONSTANT %s' % (self.name)
 
 
 class LOAD_VAR(Opcode):
@@ -43,21 +55,65 @@ class LOAD_VAR(Opcode):
 
     def eval(self, frame):
         ref = frame.get_reference(self.name, self.index)
-        variable = ref.get_value(self.name)
+
+        if ref is None:
+            raise Exception("Variable %s is not set" % self.name)
+
+        variable = ref.get_value()
         frame.push(variable)
 
     def __str__(self):
         return 'LOAD_VAR %s, %s' % (self.index, self.name)
 
 
-class LOAD_FUNCTION(Opcode):
-    _immutable_fields_ = ['function']
+class LOAD_REF(Opcode):
+    _immutable_fields_ = ['index', 'name']
 
-    def __init__(self, function):
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, frame):
+        ref = frame.get_reference(self.name, self.index)
+
+        if ref is None:
+            raise Exception("Variable %s is not set" % self.name)
+
+        frame.push(ref)
+
+    def __str__(self):
+        return 'LOAD_REF %s, %s' % (self.index, self.name)
+
+
+class LOAD_FUNCTION(Opcode):
+    _immutable_fields_ = ['name']
+
+    def __init__(self, name):
+        self.name = name
+
+    def eval(self, frame):
+        func = frame.get_function(self.name)
+        if func is None:
+            raise Exception("Function %s is not defined" % self.name)
+        frame.push(func)
+
+    def __str__(self):
+        return 'LOAD_FUNCTION %s' % (self.name)
+
+
+class DECLARE_FUNCTION(Opcode):
+    _immutable_fields_ = ['name', 'function']
+
+    def __init__(self, name, function):
+        self.name = name
         self.function = function
 
     def eval(self, frame):
-        frame.push(W_CodeFunction(self.function, frame.varmap))
+        funcobj = W_CodeFunction(self.function)
+        frame.declare_function(self.name, funcobj)
+
+    def __str__(self):
+        return 'DECLARE_FUNCTION %s, %s' % (self.name, self.function)
 
 
 class LOAD_LIST(Opcode):
@@ -143,11 +199,11 @@ class LOAD_STRINGVAL(Opcode):
         for variable in self.variables:
             search, identifier, indexes = variable
             ref = frame.get_reference(identifier)
-            value = ref.get_value(identifier)
+            value = ref.get_value()
             for key in indexes:
                 if key[0] == '$':
                     ref = frame.get_reference(key)
-                    key = ref.get_value(key)
+                    key = ref.get_value()
                 elif str(int(key)) == key:
                     key = W_IntObject(int(key))
                 else:
@@ -211,7 +267,10 @@ class ASSIGN(Opcode):
     def eval(self, frame):
         value = frame.pop()
         ref = frame.get_reference(self.name, self.index)
-        ref.put_value(value, self.name)
+        if ref is None:
+            frame.set_reference(self.name, self.index, value)
+        else:
+            ref.put_value(value)
 
         frame.push(value)
 

@@ -45,7 +45,6 @@ class SourceElements(Statement):
     def compile(self, ctx):
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
-            ctx.emit('DISCARD_TOP')
 
         if len(self.nodes) > 1:
             for node in self.nodes[:-1]:
@@ -87,9 +86,8 @@ class ExprStatement(Node):
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, index, body, scope):
+    def __init__(self, name, body, scope):
         self.identifier = name.get_literal()
-        self.index = index
         self.body = body
         self.scope = scope
 
@@ -98,8 +96,7 @@ class Function(Node):
 
         method = CodeFunction(self.identifier, body)
 
-        ctx.emit('LOAD_FUNCTION', method)
-        ctx.emit('ASSIGN', self.index, self.identifier)
+        ctx.emit('DECLARE_FUNCTION', self.identifier, method)
 
 
 class Call(Node):
@@ -115,33 +112,31 @@ class Call(Node):
 
 
 class Identifier(Expression):
-    def __init__(self, identifier, index):
-        assert index >= 0
+    def __init__(self, identifier):
         self.identifier = identifier
-        self.index = index
 
     def get_literal(self):
         return self.identifier
 
     def compile(self, ctx):
-        ctx.emit('LOAD_VAR', self.index, self.identifier)
+        ctx.emit('LOAD_FUNCTION', self.identifier)
 
 
 class Constant(Expression):
-    def __init__(self, identifier, index, value):
+    def __init__(self, identifier):
         self.identifier = identifier
-        self.index = index
-        self.value = value
 
     def compile(self, ctx):
-        self.value.compile(ctx)
-        ctx.emit('ASSIGN', self.index, self.identifier)
+        ctx.emit('LOAD_CONSTANT', self.identifier)
 
 
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
-            node.compile(ctx)
+            if isinstance(node, VariableIdentifier):
+                ctx.emit('LOAD_REF', node.index, node.identifier)
+            else:
+                node.compile(ctx)
         ctx.emit('LOAD_LIST', len(self.nodes))
 
 

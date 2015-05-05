@@ -29,14 +29,15 @@ driver = jit.JitDriver(greens=['pc', 'self'],
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['compiled_opcodes[*]', '_symbol_size', '_variables',
-                          'parameters[*]']
+    _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_variables[*]',
+                          '_globals[*]', '_parameters[*]']
 
     def __init__(self, scope):
         self.opcodes = []
-        self._symbol_size = scope.size
-        self._variables = scope.variables
-        self.parameters = scope.parameters[:]
+        self._symbols = scope.symbols
+        self._variables = scope.variables[:]
+        self._globals = scope.globals[:]
+        self._parameters = scope.parameters[:]
 
         self.label_count = 100000
         self.startlooplabel = []
@@ -63,14 +64,17 @@ class ByteCode(object):
             if isinstance(op, BaseJump):
                 op.where = labels[op.where]
 
+    def symbols(self):
+        return self._symbols
+
     def variables(self):
         return self._variables
 
-    def params(self):
-        return self.parameters
+    def globals(self):
+        return self._globals
 
-    def symbol_size(self):
-        return self._symbol_size
+    def params(self):
+        return self._parameters
 
     def emit_label(self, num=-1):
         if num == -1:

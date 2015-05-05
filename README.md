@@ -16,7 +16,7 @@ and is a complete, working implementation.
 - all variable types like int, float, string, array, iterator
 - if, while, for, foreach statements
 - functions
-- (incomplete) pass by value or by reference to a function
+- pass by value or by reference to a function
 - global variables in function blocks using `global`
 - global constants using `define()`
 - (incomplete) standard library functions
@@ -44,9 +44,6 @@ called by the `Bytecode.execute()` method
 which then gets used to run a function or the main program
 - `datatypes.py` - all datatypes' box classes used to store the variables,
 like int, float, array, etc.
-- `references.py` - wraps a `VarMap` instance and a variable name into a reference object
-so a `Frame` could lookup a variable in a tree of `VarMaps` and remember where the variable
-was stored
 
 ## Building
 

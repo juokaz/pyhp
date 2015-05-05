@@ -1,11 +1,12 @@
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib.parsing.parsing import ParseError
 
-from pyhp.frame import GlobalFrame, GlobalVarMap
+from pyhp.frame import GlobalFrame
 from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.stdlib import functions as global_functions
 from pyhp.functions import GlobalCode
+from pyhp.objspace import ObjectSpace
 
 
 def source_to_ast(source):
@@ -30,9 +31,9 @@ def ast_to_bytecode(ast):
 def interpret(bc):
     """ Interpret bytecode and execute it
     """
-    varmap = GlobalVarMap(global_functions)
+    space = ObjectSpace(global_functions)
     code = GlobalCode(bc)
-    frame = GlobalFrame(code, varmap)
+    frame = GlobalFrame(space, code)
     code.run(frame)
     return frame  # for tests and later introspection
 

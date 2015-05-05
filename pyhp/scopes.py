@@ -4,10 +4,8 @@ from pyhp.symbols import new_map
 class Scope(object):
     def __init__(self):
         self.symbols = new_map()
-        self.functions = []
         self.variables = []
         self.globals = []
-        self.constants = []
         self.parameters = []
 
     def add_symbol(self, name):
@@ -36,14 +34,6 @@ class Scope(object):
 
         return idx
 
-    def add_constant(self, name):
-        idx = self.add_symbol(name)
-
-        if name not in self.constants:
-            self.constants.append(name)
-
-        return idx
-
     def add_parameter(self, name, by_value):
         idx = self.add_symbol(name)
 
@@ -52,33 +42,17 @@ class Scope(object):
 
         return idx
 
-    def add_function(self, name):
-        idx = self.add_symbol(name)
-
-        if name not in self.functions:
-            self.functions.append(name)
-
-        return idx
-
-    def finalize(self, main=False):
-        # these variables and those functions are the only identifiers
-        # this scope defines, everything else comes from a parent
-        variables = [v for v in self.variables[:] if v not in self.globals]
-        functions = self.functions[:]
-        variables = variables + functions
-        if main:
-            variables += self.constants[:]
-        symbols = new_map()
-        for identifier in variables:
-            symbols = symbols.add(identifier)
-        return FinalScope(self.symbols.len(), symbols,
+    def finalize(self):
+        return FinalScope(self.symbols, self.variables[:], self.globals[:],
                           self.parameters[:])
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['size', 'variables' 'parameters[*]']
+    _immutable_fields_ = ['symbols', 'variables[*]', 'globals[*]',
+                          'parameters[*]']
 
-    def __init__(self, size, variables, parameters):
-        self.size = size
+    def __init__(self, symbols, variables, globals, parameters):
+        self.symbols = symbols
         self.variables = variables
+        self.globals = globals
         self.parameters = parameters
