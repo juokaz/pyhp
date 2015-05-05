@@ -7,7 +7,6 @@ from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
 
-from pyhp.frame import FunctionFrame
 import math
 
 
@@ -53,9 +52,26 @@ class W_Root(object):
     def empty(self):
         return False
 
+    def set_value(self, value):
+        pass
+
+    def get_value(self):
+        return self
+
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         return obj
+
+
+class W_Reference(W_Root):
+    def __init__(self, value):
+        self.value = value
+
+    def get_value(self):
+        return self.value
+
+    def put_value(self, value):
+        self.value = value
 
 
 class W_Number(W_Root):
@@ -392,17 +408,17 @@ class W_Function(W_Root):
 
 
 class W_CodeFunction(W_Function):
-    _immutable_fields_ = ['name', 'funcobj', 'varmap']
+    _immutable_fields_ = ['name', 'funcobj']
 
-    def __init__(self, funcobj, varmap=None):
+    def __init__(self, funcobj):
         self.name = funcobj.name()
         self.funcobj = funcobj
-        self.varmap = varmap
 
     def call(self, params, frame):
         func = self.get_funcobj()
         jit.promote(func)
 
+        from pyhp.frame import FunctionFrame
         new_frame = FunctionFrame(frame.space, frame, func, params)
         return func.run(new_frame)
 

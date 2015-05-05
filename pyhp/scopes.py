@@ -66,7 +66,7 @@ class Scope(object):
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['symbols','variables[*]', 'globals[*]',
+    _immutable_fields_ = ['symbols', 'variables[*]', 'globals[*]',
                           'parameters[*]']
 
     def __init__(self, symbols, variables, globals, parameters):

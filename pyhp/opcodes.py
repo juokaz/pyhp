@@ -56,11 +56,35 @@ class LOAD_VAR(Opcode):
 
     def eval(self, frame):
         ref = frame.get_reference(self.name, self.index)
-        variable = ref.get_value(self.name)
+        variable = ref.get_value()
+
+        if variable is None:
+            raise Exception("Variable %s is not set" % self.name)
+
         frame.push(variable)
 
     def __str__(self):
         return 'LOAD_VAR %s, %s' % (self.index, self.name)
+
+
+class LOAD_REF(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, frame):
+        ref = frame.get_reference(self.name, self.index)
+        variable = ref.get_value()
+
+        if variable is None:
+            raise Exception("Variable %s is not set" % self.name)
+
+        frame.push(ref)
+
+    def __str__(self):
+        return 'LOAD_REF %s, %s' % (self.index, self.name)
 
 
 class LOAD_FUNCTION(Opcode):
@@ -88,7 +112,7 @@ class DECLARE_FUNCTION(Opcode):
         self.function = function
 
     def eval(self, frame):
-        funcobj = W_CodeFunction(self.function, frame.varmap)
+        funcobj = W_CodeFunction(self.function)
         frame.declare_function(self.name, funcobj)
 
     def __str__(self):
@@ -178,11 +202,11 @@ class LOAD_STRINGVAL(Opcode):
         for variable in self.variables:
             search, identifier, indexes = variable
             ref = frame.get_reference(identifier)
-            value = ref.get_value(identifier)
+            value = ref.get_value()
             for key in indexes:
                 if key[0] == '$':
                     ref = frame.get_reference(key)
-                    key = ref.get_value(key)
+                    key = ref.get_value()
                 elif str(int(key)) == key:
                     key = W_IntObject(int(key))
                 else:
@@ -246,7 +270,7 @@ class ASSIGN(Opcode):
     def eval(self, frame):
         value = frame.pop()
         ref = frame.get_reference(self.name, self.index)
-        ref.put_value(value, self.name)
+        ref.put_value(value)
 
         frame.push(value)
 

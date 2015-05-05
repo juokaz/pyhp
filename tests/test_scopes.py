@@ -14,7 +14,6 @@ class TestScopes(TestBase):
         """, capfd)
         assert out == "5"
 
-    @pytest.mark.xfail
     def test_function_call_pass_by_reference(self, capfd):
         out = self.run("""function test(&$a) {
             $a = 3;

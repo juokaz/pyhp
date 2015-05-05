@@ -137,7 +137,10 @@ class Constant(Expression):
 class ArgumentList(ListOp):
     def compile(self, ctx):
         for node in self.nodes:
-            node.compile(ctx)
+            if isinstance(node, VariableIdentifier):
+                ctx.emit('LOAD_REF', node.index, node.identifier)
+            else:
+                node.compile(ctx)
         ctx.emit('LOAD_LIST', len(self.nodes))
 
 

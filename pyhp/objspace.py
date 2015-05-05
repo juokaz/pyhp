@@ -1,4 +1,5 @@
-from pyhp.datatypes import W_Root, W_CodeFunction
+from pyhp.datatypes import W_CodeFunction
+
 
 class ObjectSpace(object):
     def __init__(self, global_functions):

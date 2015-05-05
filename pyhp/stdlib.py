@@ -1,6 +1,6 @@
 from pyhp.functions import NativeFunction
 from pyhp.datatypes import W_CodeFunction
-from pyhp.datatypes import isint, isstr
+from pyhp.datatypes import isint, isfloat, isstr
 from pyhp.datatypes import W_IntObject, W_StringObject, W_Array, W_Null
 from pyhp.utils import printf as printf_, StringFormatter
 
@@ -9,21 +9,21 @@ from rpython.rlib.rfloat import formatd
 
 
 def define(space, args):
-    name = args[0]
+    name = args[0].get_value()
     assert(isstr(name))
-    value = args[1]
+    value = args[1].get_value()
     space.declare_constant(name.str(), value)
 
 
 def strlen(space, args):
-    string = args[0]
+    string = args[0].get_value()
     assert(isstr(string))
     return W_IntObject(string.len())
 
 
 def str_repeat(space, args):
-    string = args[0]
-    repeat = args[1]
+    string = args[0].get_value()
+    repeat = args[1].get_value()
     assert(isstr(string))
     assert(isint(repeat))
     repeated = string.str() * repeat.get_int()
@@ -32,13 +32,15 @@ def str_repeat(space, args):
 
 def printf(space, args):
     template = args[0]
-    formatter = StringFormatter(template.str(), args[1:])
+    assert(isstr(template))
+    items = [arg.get_value() for arg in args[1:]]
+    formatter = StringFormatter(template.str(), items)
     printf_(formatter.format())
     return W_Null()
 
 
 def print_r(space, args):
-    array = args[0]
+    array = args[0].get_value()
     assert(isinstance(array, W_Array))
     result = array.str_full()
     printf_(result)
@@ -46,14 +48,15 @@ def print_r(space, args):
 
 
 def dechex(space, args):
-    number = args[0]
+    number = args[0].get_value()
     assert(isint(number))
     return W_StringObject(hex(number.get_int()))
 
 
 def number_format(space, args):
-    number = args[0]
-    positions = args[1]
+    number = args[0].get_value()
+    assert(isfloat(number))
+    positions = args[1].get_value()
     assert(isint(positions))
 
     number = number.to_number()
@@ -65,8 +68,8 @@ def number_format(space, args):
 
 
 def array_range(space, args):
-    start = args[0]
-    finish = args[1]
+    start = args[0].get_value()
+    finish = args[1].get_value()
     assert(isint(start))
     assert(isint(finish))
     array = W_Array()
