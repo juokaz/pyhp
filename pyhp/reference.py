@@ -12,8 +12,6 @@ class Reference(object):
         return self.referenced
 
     def get_value(self, identifier=None):
-        from pyhp.frame import BaseVarMap
-        assert isinstance(self.varmap, BaseVarMap)
         varmap = self.varmap
         name = self.get_referenced_name(identifier)
         value = varmap.load(name)
@@ -24,8 +22,9 @@ class Reference(object):
             return value
 
     def put_value(self, value, identifier=None):
-        from pyhp.frame import BaseVarMap
-        assert isinstance(self.varmap, BaseVarMap)
         varmap = self.varmap
         name = self.get_referenced_name(identifier)
         varmap.store(name, value)
+
+    def __repr__(self):
+        return 'Reference (%s, %s)' % (self.referenced, self.varmap)

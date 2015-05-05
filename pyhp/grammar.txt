@@ -33,7 +33,6 @@ functionbody    : <sourceelements>
                 ;
 
 statement : <block>
-          | <constantstatement> [";"]
           | <expressionstatement> [";"]
           | <ifstatement>
           | <iterationstatement>
@@ -95,8 +94,6 @@ printstatement: "print" expression
               ;
 
 globalstatement: "global" globallist ;
-
-constantstatement: "define" ["("] literal "," expression [")"] ;
 
 primaryexpression   : <variable>
                     | <literal>

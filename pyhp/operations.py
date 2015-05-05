@@ -45,7 +45,6 @@ class SourceElements(Statement):
     def compile(self, ctx):
         for funcname, funccode in self.func_decl.items():
             funccode.compile(ctx)
-            ctx.emit('DISCARD_TOP')
 
         if len(self.nodes) > 1:
             for node in self.nodes[:-1]:
@@ -98,8 +97,7 @@ class Function(Node):
 
         method = CodeFunction(self.identifier, body)
 
-        ctx.emit('DECLARE_FUNCTION', method)
-        ctx.emit('ASSIGN', self.index, self.identifier)
+        ctx.emit('DECLARE_FUNCTION', self.identifier, method)
 
 
 class Call(Node):
@@ -128,14 +126,12 @@ class Identifier(Expression):
 
 
 class Constant(Expression):
-    def __init__(self, identifier, index, value):
+    def __init__(self, identifier, index):
         self.identifier = identifier
         self.index = index
-        self.value = value
 
     def compile(self, ctx):
-        self.value.compile(ctx)
-        ctx.emit('ASSIGN', self.index, self.identifier)
+        ctx.emit('LOAD_CONSTANT', self.index, self.identifier)
 
 
 class ArgumentList(ListOp):

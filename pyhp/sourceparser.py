@@ -60,7 +60,7 @@ class Transformer(RPythonVisitor):
         self.enter_scope()
         body = self.dispatch(node.children[0])
         scope = self.current_scope()
-        final_scope = scope.finalize(True)
+        final_scope = scope.finalize()
         return operations.Program(body, final_scope)
 
     def visit_arguments(self, node):
@@ -94,15 +94,9 @@ class Transformer(RPythonVisitor):
         functionbody, i = self.get_next_expr(node, i)
 
         scope = self.current_scope()
-        constants = scope.constants  # preserve a list of defined constants
         final_scope = scope.finalize()
 
         self.exit_scope()
-
-        # declare all constants in the parent context, they will be removed
-        # from the child context as they get stored in the main scope
-        for constant in constants:
-            self.declare_constant(constant)
 
         funcindex = -1
         if declaration:
@@ -196,18 +190,11 @@ class Transformer(RPythonVisitor):
         nodes = [self.dispatch(child) for child in node.children[1].children]
         return operations.Global(nodes)
 
-    def visit_constantstatement(self, node):
-        i = 1
-        identifier, i = self.get_next_expr(node, i)
-        identifier = identifier.stringval
-        index = self.declare_constant(identifier)
-        value, i = self.get_next_expr(node, i)
-        return operations.Constant(identifier, index, value)
-
     def visit_constantexpression(self, node):
-        identifier = self.dispatch(node.children[0])
-        self.declare_constant(identifier.get_literal())
-        return identifier
+        node = node.children[0]
+        name = node.additional_info
+        index = self.declare_constant(name)
+        return operations.Constant(name, index)
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])

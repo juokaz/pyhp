@@ -403,7 +403,7 @@ class W_CodeFunction(W_Function):
         func = self.get_funcobj()
         jit.promote(func)
 
-        new_frame = FunctionFrame(func, params, self.varmap)
+        new_frame = FunctionFrame(frame.space, frame, func, params)
         return func.run(new_frame)
 
     def get_funcobj(self):

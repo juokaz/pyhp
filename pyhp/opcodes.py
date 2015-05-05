@@ -31,7 +31,20 @@ class Opcode(object):
 
 
 class LOAD_CONSTANT(Opcode):
-    pass
+    _immutable_fields_ = ['index', 'name']
+
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, frame):
+        value = frame.get_constant(self.name)
+        if value is None:
+            raise Exception("Constant %s is not defined" % self.name)
+        frame.push(value)
+
+    def __str__(self):
+        return 'LOAD_CONSTANT %s, %s' % (self.index, self.name)
 
 
 class LOAD_VAR(Opcode):
@@ -58,25 +71,28 @@ class LOAD_FUNCTION(Opcode):
         self.name = name
 
     def eval(self, frame):
-        ref = frame.get_reference(self.name, self.index)
-        variable = ref.get_value(self.name)
-        frame.push(variable)
+        func = frame.get_function(self.name)
+        if func is None:
+            raise Exception("Function %s is not defined" % self.name)
+        frame.push(func)
 
     def __str__(self):
         return 'LOAD_FUNCTION %s, %s' % (self.index, self.name)
 
 
 class DECLARE_FUNCTION(Opcode):
-    _immutable_fields_ = ['function']
+    _immutable_fields_ = ['name', 'function']
 
-    def __init__(self, function):
+    def __init__(self, name, function):
+        self.name = name
         self.function = function
 
     def eval(self, frame):
-        frame.push(W_CodeFunction(self.function, frame.varmap))
+        funcobj = W_CodeFunction(self.function, frame.varmap)
+        frame.declare_function(self.name, funcobj)
 
     def __str__(self):
-        return 'DECLARE_FUNCTION %s' % self.function
+        return 'DECLARE_FUNCTION %s, %s' % (self.name, self.function)
 
 
 class LOAD_LIST(Opcode):

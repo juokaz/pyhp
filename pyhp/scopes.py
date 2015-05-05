@@ -60,25 +60,17 @@ class Scope(object):
 
         return idx
 
-    def finalize(self, main=False):
-        # these variables and those functions are the only identifiers
-        # this scope defines, everything else comes from a parent
-        variables = [v for v in self.variables[:] if v not in self.globals]
-        functions = self.functions[:]
-        variables = variables + functions
-        if main:
-            variables += self.constants[:]
-        symbols = new_map()
-        for identifier in variables:
-            symbols = symbols.add(identifier)
-        return FinalScope(self.symbols.len(), symbols,
+    def finalize(self):
+        return FinalScope(self.symbols.len(), self.symbols,
+                          self.globals[:],
                           self.parameters[:])
 
 
 class FinalScope(object):
-    _immutable_fields_ = ['size', 'variables' 'parameters[*]']
+    _immutable_fields_ = ['size', 'symbols', 'globals[*]', 'parameters[*]']
 
-    def __init__(self, size, variables, parameters):
+    def __init__(self, size, symbols, globals, parameters):
         self.size = size
-        self.variables = variables
+        self.symbols = symbols
+        self.globals = globals
         self.parameters = parameters

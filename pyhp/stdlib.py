@@ -8,13 +8,20 @@ import time
 from rpython.rlib.rfloat import formatd
 
 
-def strlen(args):
+def define(space, args):
+    name = args[0]
+    assert(isstr(name))
+    value = args[1]
+    space.declare_constant(name.str(), value)
+
+
+def strlen(space, args):
     string = args[0]
     assert(isstr(string))
     return W_IntObject(string.len())
 
 
-def str_repeat(args):
+def str_repeat(space, args):
     string = args[0]
     repeat = args[1]
     assert(isstr(string))
@@ -23,14 +30,14 @@ def str_repeat(args):
     return W_StringObject(repeated)
 
 
-def printf(args):
+def printf(space, args):
     template = args[0]
     formatter = StringFormatter(template.str(), args[1:])
     printf_(formatter.format())
     return W_Null()
 
 
-def print_r(args):
+def print_r(space, args):
     array = args[0]
     assert(isinstance(array, W_Array))
     result = array.str_full()
@@ -38,13 +45,13 @@ def print_r(args):
     return W_Null()
 
 
-def dechex(args):
+def dechex(space, args):
     number = args[0]
     assert(isint(number))
     return W_StringObject(hex(number.get_int()))
 
 
-def number_format(args):
+def number_format(space, args):
     number = args[0]
     positions = args[1]
     assert(isint(positions))
@@ -57,7 +64,7 @@ def number_format(args):
     return W_StringObject(formatted)
 
 
-def array_range(args):
+def array_range(space, args):
     start = args[0]
     finish = args[1]
     assert(isint(start))
@@ -70,7 +77,7 @@ def array_range(args):
     return array
 
 
-def gettimeofday(args):
+def gettimeofday(space, args):
     seconds = time.time()
     usec = int(seconds * 1000000) - int(seconds) * 1000000
     sec = int(seconds)
@@ -89,6 +96,7 @@ def new_native_function(name, function, params=[]):
     return obj
 
 functions = [
+    new_native_function('define', define),
     new_native_function('strlen', strlen),
     new_native_function('str_repeat', str_repeat),
     new_native_function('printf', printf),

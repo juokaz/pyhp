@@ -7,8 +7,11 @@ class BaseFunction(object):
     def run(self, ctx):
         raise NotImplementedError
 
-    def variables(self):
+    def symbols(self):
         return None
+
+    def globals(self):
+        return []
 
     def params(self):
         return []
@@ -35,7 +38,7 @@ class NativeFunction(BaseFunction):
         return self._name
 
     def run(self, frame):
-        return self.function(frame.argv())
+        return self.function(frame.space, frame.argv())
 
 
 class ExecutableCode(BaseFunction):
@@ -55,9 +58,13 @@ class ExecutableCode(BaseFunction):
         result = code.execute(frame)
         return result
 
-    def variables(self):
+    def symbols(self):
         code = self.get_bytecode()
         return code.variables()
+
+    def globals(self):
+        code = self.get_bytecode()
+        return code.globals()
 
     def params(self):
         code = self.get_bytecode()
@@ -65,6 +72,9 @@ class ExecutableCode(BaseFunction):
 
     def env_size(self):
         return self.symbol_size
+
+    def __repr__(self):
+        return "ExecutableCode %s" % (self.bytecode)
 
 
 class GlobalCode(ExecutableCode):
