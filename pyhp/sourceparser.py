@@ -98,15 +98,10 @@ class Transformer(RPythonVisitor):
 
         self.exit_scope()
 
-        funcindex = -1
-        if declaration:
-            funcindex = self.declare_symbol(identifier.get_literal())
-
-        funcobj = operations.Function(identifier, funcindex, functionbody,
-                                      final_scope)
+        funcobj = operations.Function(identifier, functionbody, final_scope)
 
         if declaration:
-            self.declare_function(identifier.get_literal(), funcobj)
+            self.funclists[-1][identifier.get_literal()] = funcobj
 
         return funcobj
 
@@ -121,8 +116,8 @@ class Transformer(RPythonVisitor):
             if child.children[0].additional_info == '&':
                 by_value = False
                 i += 1
-            identifier = self.dispatch(child.children[i])
-            self.declare_parameter(identifier.get_literal(), by_value)
+            variable = self.dispatch(child.children[i])
+            self.declare_parameter(variable.get_literal(), by_value)
         return None
 
     def visit_statementlist(self, node):
@@ -193,8 +188,7 @@ class Transformer(RPythonVisitor):
     def visit_constantexpression(self, node):
         node = node.children[0]
         name = node.additional_info
-        index = self.declare_constant(name)
-        return operations.Constant(name, index)
+        return operations.Constant(name)
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
@@ -328,8 +322,7 @@ class Transformer(RPythonVisitor):
 
     def visit_IDENTIFIERNAME(self, node):
         name = node.additional_info
-        index = self.declare_symbol(name)
-        return operations.Identifier(name, index)
+        return operations.Identifier(name)
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
@@ -365,11 +358,6 @@ class Transformer(RPythonVisitor):
         new_scope = Scope()
         self.scopes.append(new_scope)
 
-    def declare_symbol(self, symbol):
-        s = symbol
-        idx = self.scopes[-1].add_symbol(s)
-        return idx
-
     def declare_variable(self, symbol):
         s = symbol
         idx = self.scopes[-1].add_variable(s)
@@ -380,20 +368,9 @@ class Transformer(RPythonVisitor):
         idx = self.scopes[-1].add_global(s)
         return idx
 
-    def declare_constant(self, symbol):
-        s = symbol
-        idx = self.scopes[-1].add_constant(s)
-        return idx
-
     def declare_parameter(self, symbol, by_value):
         s = symbol
         idx = self.scopes[-1].add_parameter(s, by_value)
-        return idx
-
-    def declare_function(self, symbol, funcobj):
-        s = symbol
-        self.funclists[-1][s] = funcobj
-        idx = self.scopes[-1].add_function(s)
         return idx
 
     def exit_scope(self):

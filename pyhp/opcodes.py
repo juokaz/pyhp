@@ -31,10 +31,9 @@ class Opcode(object):
 
 
 class LOAD_CONSTANT(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['name']
 
-    def __init__(self, index, name):
-        self.index = index
+    def __init__(self, name):
         self.name = name
 
     def eval(self, frame):
@@ -44,7 +43,7 @@ class LOAD_CONSTANT(Opcode):
         frame.push(value)
 
     def __str__(self):
-        return 'LOAD_CONSTANT %s, %s' % (self.index, self.name)
+        return 'LOAD_CONSTANT %s' % (self.name)
 
 
 class LOAD_VAR(Opcode):
@@ -88,10 +87,9 @@ class LOAD_REF(Opcode):
 
 
 class LOAD_FUNCTION(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['name']
 
-    def __init__(self, index, name):
-        self.index = index
+    def __init__(self, name):
         self.name = name
 
     def eval(self, frame):
@@ -101,7 +99,7 @@ class LOAD_FUNCTION(Opcode):
         frame.push(func)
 
     def __str__(self):
-        return 'LOAD_FUNCTION %s, %s' % (self.index, self.name)
+        return 'LOAD_FUNCTION %s' % (self.name)
 
 
 class DECLARE_FUNCTION(Opcode):

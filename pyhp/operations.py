@@ -86,9 +86,8 @@ class ExprStatement(Node):
 class Function(Node):
     """ A function
     """
-    def __init__(self, name, index, body, scope):
+    def __init__(self, name, body, scope):
         self.identifier = name.get_literal()
-        self.index = index
         self.body = body
         self.scope = scope
 
@@ -113,25 +112,22 @@ class Call(Node):
 
 
 class Identifier(Expression):
-    def __init__(self, identifier, index):
-        assert index >= 0
+    def __init__(self, identifier):
         self.identifier = identifier
-        self.index = index
 
     def get_literal(self):
         return self.identifier
 
     def compile(self, ctx):
-        ctx.emit('LOAD_FUNCTION', self.index, self.identifier)
+        ctx.emit('LOAD_FUNCTION', self.identifier)
 
 
 class Constant(Expression):
-    def __init__(self, identifier, index):
+    def __init__(self, identifier):
         self.identifier = identifier
-        self.index = index
 
     def compile(self, ctx):
-        ctx.emit('LOAD_CONSTANT', self.index, self.identifier)
+        ctx.emit('LOAD_CONSTANT', self.identifier)
 
 
 class ArgumentList(ListOp):

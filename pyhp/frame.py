@@ -60,10 +60,12 @@ class Frame(object):
         return jit.promote(self.valuestack_pos)
 
     def _store(self, index, value):
+        assert isinstance(index, int)
         assert index >= 0
         self.vars[index] = value
 
     def _load(self, index):
+        assert isinstance(index, int)
         assert index >= 0
         return self.vars[index]
 
@@ -83,12 +85,13 @@ class Frame(object):
 
         return ref
 
-    def set_reference(self, name, ref):
+    def set_reference(self, name, index, ref):
         assert isinstance(ref, W_Reference)
-        if self.symbols.contains(name):
-            index = self.symbols.lookup(name)
-        else:
-            raise Exception('Frame has no variable %s' % name)
+        if index < 0:
+            if self.symbols.contains(name):
+                index = self.symbols.lookup(name)
+            else:
+                raise Exception('Frame has no variable %s' % name)
 
         self._store(index, ref)
 
@@ -141,13 +144,15 @@ class FunctionFrame(Frame):
                     pass
                 else:
                     raise Exception("Was expecting a reference")
-            self.set_reference(param, argument)
+            # safe to set the reference by param_index because params
+            # are the first variables in he vars list
+            self.set_reference(param, param_index, argument)
             param_index += 1
 
         # every variable referenced in 'globals' needs to be initialized
         for name in code.globals():
             ref = parent_frame.get_reference(name)
-            self.set_reference(name, ref)
+            self.set_reference(name, -1, ref)
 
     def argv(self):
         return self.arguments
