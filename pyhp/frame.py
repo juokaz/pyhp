@@ -69,6 +69,18 @@ class Frame(object):
         assert index >= 0
         return self.vars[index]
 
+    def set_reference(self, name, index, value):
+        if index < 0:
+            if self.symbols.contains(name):
+                index = self.symbols.lookup(name)
+            else:
+                raise Exception('Frame has no variable %s' % name)
+
+        if not isinstance(value, W_Reference):
+            value = W_Reference(value)
+
+        self._store(index, value)
+
     def get_reference(self, name, index=-1):
         if index < 0:
             if self.symbols.contains(name):
@@ -76,24 +88,7 @@ class Frame(object):
             else:
                 raise Exception('Frame has no variable %s' % name)
 
-        ref = self._load(index)
-
-        if ref is None:
-            ref = W_Reference(None)
-
-            self._store(index, ref)
-
-        return ref
-
-    def set_reference(self, name, index, ref):
-        assert isinstance(ref, W_Reference)
-        if index < 0:
-            if self.symbols.contains(name):
-                index = self.symbols.lookup(name)
-            else:
-                raise Exception('Frame has no variable %s' % name)
-
-        self._store(index, ref)
+        return self._load(index)
 
     def declare_function(self, name, func):
         self.space.declare_function(name, func)
@@ -152,6 +147,8 @@ class FunctionFrame(Frame):
         # every variable referenced in 'globals' needs to be initialized
         for name in code.globals():
             ref = parent_frame.get_reference(name)
+            if ref is None:
+                raise Exception("Global variable %s does not exist" % name)
             self.set_reference(name, -1, ref)
 
     def argv(self):
