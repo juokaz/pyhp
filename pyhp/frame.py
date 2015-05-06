@@ -70,25 +70,56 @@ class Frame(object):
         return self.vars[index]
 
     def set_reference(self, name, index, value):
-        if index < 0:
-            if self.symbols.contains(name):
-                index = self.symbols.lookup(name)
-            else:
-                raise Exception('Frame has no variable %s' % name)
+        assert isinstance(value, W_Reference)
+        index = self._get_index(name, index)
+
+        old_value = self._load(index)
+
+        if not isinstance(old_value, W_Reference):
+            self._store(index, value)
+        else:
+            old_value.put_value(value.get_value())
+
+    def get_reference(self, name, index=-1):
+        index = self._get_index(name, index)
+
+        value = self._load(index)
 
         if not isinstance(value, W_Reference):
             value = W_Reference(value)
+            self._store(index, value)
 
-        self._store(index, value)
+        return value
 
-    def get_reference(self, name, index=-1):
+    def store_variable(self, name, index, value):
+        index = self._get_index(name, index)
+
+        old_value = self._load(index)
+
+        if not isinstance(old_value, W_Reference):
+            self._store(index, value)
+        else:
+            old_value.put_value(value)
+
+    def get_variable(self, name, index=-1):
+        index = self._get_index(name, index)
+        value = self._load(index)
+
+        if value is None:
+            return None
+
+        if not isinstance(value, W_Reference):
+            return value
+
+        return value.get_value()
+
+    def _get_index(self, name, index):
         if index < 0:
             if self.symbols.contains(name):
                 index = self.symbols.lookup(name)
             else:
                 raise Exception('Frame has no variable %s' % name)
-
-        return self._load(index)
+        return index
 
     def declare_function(self, name, func):
         self.space.declare_function(name, func)
@@ -123,7 +154,6 @@ class FunctionFrame(Frame):
     @jit.unroll_safe
     def declare(self, parent_frame):
         code = jit.promote(self.code)
-
         # set call arguments as variable values
         param_index = 0
         for param, by_value in code.params():
@@ -133,7 +163,6 @@ class FunctionFrame(Frame):
                     argument = argument.get_value()
                 # todo use copy.deepcopy for this
                 argument = argument.__deepcopy__()
-                argument = W_Reference(argument)
             else:
                 if isinstance(argument, W_Reference):
                     pass
@@ -141,7 +170,7 @@ class FunctionFrame(Frame):
                     raise Exception("Was expecting a reference")
             # safe to set the reference by param_index because params
             # are the first variables in he vars list
-            self.set_reference(param, param_index, argument)
+            self.store_variable(param, param_index, argument)
             param_index += 1
 
         # every variable referenced in 'globals' needs to be initialized

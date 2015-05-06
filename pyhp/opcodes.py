@@ -55,12 +55,11 @@ class LOAD_VAR(Opcode):
         self.name = name
 
     def eval(self, frame):
-        ref = frame.get_reference(self.name, self.index)
+        variable = frame.get_variable(self.name, self.index)
 
-        if ref is None:
+        if variable is None:
             raise Exception("Variable %s is not set" % self.name)
 
-        variable = ref.get_value()
         frame.push(variable)
 
     def __str__(self):
@@ -191,13 +190,11 @@ class LOAD_STRINGVAL(Opcode):
         stringval = self.value
         for variable in self.variables:
             search, identifier, indexes = variable
-            ref = frame.get_reference(identifier)
-            value = ref.get_value()
+            value = frame.get_variable(identifier)
             for key in indexes:
                 assert isinstance(key, str)
                 if key[0] == '$':
-                    ref = frame.get_reference(key)
-                    key = ref.get_value()
+                    key = frame.get_variable(key)
                 elif str(int(key)) == key:
                     key = newint(int(key))
                 else:
@@ -248,12 +245,11 @@ class LOAD_MEMBER_VAR(Opcode):
         self.name = name
 
     def eval(self, frame):
-        ref = frame.get_reference(self.name, self.index)
+        array = frame.get_variable(self.name, self.index)
 
-        if ref is None:
+        if array is None:
             raise Exception("Variable %s is not set" % self.name)
 
-        array = ref.get_value()
         assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
 
         member = frame.pop()
@@ -283,11 +279,7 @@ class ASSIGN(Opcode):
 
     def eval(self, frame):
         value = frame.pop()
-        ref = frame.get_reference(self.name, self.index)
-        if ref is None:
-            frame.set_reference(self.name, self.index, value)
-        else:
-            ref.put_value(value)
+        frame.store_variable(self.name, self.index, value)
 
         frame.push(value)
 

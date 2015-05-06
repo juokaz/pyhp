@@ -72,6 +72,10 @@ class W_Reference(W_Root):
 
     def put_value(self, value):
         self.value = value
+        return self
+
+    def __repr__(self):
+        return 'W_Reference(%s)' % (self.value,)
 
 
 class W_Number(W_Root):
