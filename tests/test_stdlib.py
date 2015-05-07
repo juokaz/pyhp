@@ -41,3 +41,8 @@ class TestStdlib(TestBase):
         $y = 'string';
         printf("Number is %.3f this %s", $x, $y);""", capfd)
         assert out == "Number is 0.046 this string"
+
+    def test_gettimeofday(self, capfd):
+        out = self.run("""$time = gettimeofday();
+        print $time['sec'];""", capfd)
+        assert long(out) > 1430943462

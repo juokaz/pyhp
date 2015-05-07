@@ -6,6 +6,7 @@ from pyhp.utils import printf as printf_, StringFormatter
 
 import time
 from rpython.rlib.rfloat import formatd
+from rpython.rlib.rarithmetic import intmask
 
 
 def define(space, args):
@@ -81,12 +82,13 @@ def array_range(space, args):
 
 def gettimeofday(space, args):
     seconds = time.time()
-    usec = int(seconds * 1000000) - int(seconds) * 1000000
-    sec = int(seconds)
+    seconds = str(formatd(seconds, "f", 6))
+    sec = int(seconds.split('.')[0])
+    usec = int(seconds.split('.')[1])
 
     array = W_Array()
-    array.put(newstring('sec'), newint(sec))
-    array.put(newstring('usec'), newint(usec))
+    array.put(newstring('sec'), newint(intmask(sec)))
+    array.put(newstring('usec'), newint(intmask(usec)))
     return array
 
 # ----- #

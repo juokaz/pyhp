@@ -28,28 +28,8 @@ node default {
         "libffi-dev": ensure => installed;
     }
 
-    file { "/usr/include/libffi":
-        ensure => "directory",
-    }
-
-    exec{ "copy_libffi-dev":
-        command => "cp /usr/include/x86_64-linux-gnu/ffi*  /usr/include/libffi/",
-        creates => "/usr/include/libffi/ffi.h",
-        require => [File["/usr/include/libffi"], Package["libffi-dev"]]
-    }
-
-    file { "/usr/lib/libffi":
-        ensure => "directory",
-    }
-
-    exec{ "copy_libffi":
-        command => "cp /usr/lib/x86_64-linux-gnu/libffi.so.6  /usr/lib/libffi/",
-        creates => "/usr/lib/libffi/libffi.so.6",
-        require => [File["/usr/lib/libffi"], Package["libffi-dev"]]
-    }
-
     exec{ "retrieve_pypy":
-        command => "/usr/bin/wget -q https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-linux64.tar.bz2 -O /home/vagrant/pypy.tar.bz2",
+        command => "/usr/bin/wget -q https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-linux.tar.bz2 -O /home/vagrant/pypy.tar.bz2",
         creates => "/home/vagrant/pypy.tar.bz2",
     }
 
@@ -79,6 +59,12 @@ node default {
     file {  "/home/vagrant/pypy-src":
         ensure => "directory",
         mode => 777,
+    }
+
+    file {  "/home/vagrant/pypy-src/rpython/_cache":
+        ensure => "directory",
+        mode => 777,
+        require => Exec["retrieve_pypy-src"]
     }
 
     exec { "extract_pypy-src":

@@ -3,6 +3,7 @@ from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
 from rpython.rlib.objectmodel import compute_hash
+from rpython.rlib.rarithmetic import intmask
 from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
@@ -87,8 +88,7 @@ class W_IntObject(W_Number):
     _immutable_fields_ = ['intval']
 
     def __init__(self, intval):
-        assert(isinstance(intval, int))
-        self.intval = intval
+        self.intval = intmask(intval)
 
     def to_number(self):
         return float(self.intval)
@@ -115,7 +115,6 @@ class W_FloatObject(W_Number):
     _immutable_fields_ = ['floatval']
 
     def __init__(self, floatval):
-        assert(isinstance(floatval, float))
         self.floatval = floatval
 
     def to_number(self):
