@@ -122,7 +122,10 @@ class Frame(object):
         return index
 
     def declare_function(self, name, func):
-        self.space.declare_function(name, func)
+        declared = self.space.declare_function(name, func)
+
+        if not declared:
+            raise Exception('Function %s alredy declared' % name)
 
     def get_function(self, name):
         return self.space.get_function(name)

@@ -9,6 +9,18 @@ class TestFunctions(TestBase):
         hello('Hello world');""", capfd)
         assert out == "Hello world"
 
+    def test_function_defined_twice(self, capfd):
+        try:
+            out = self.run("""function strlen($a) {
+                print 1;
+            }
+
+            strlen('Hello world');""", capfd)
+        except Exception as e:
+            assert str(e) == 'Function strlen alredy declared'
+        else:
+            assert False == True
+
     def test_function_call_multiple_args(self, capfd):
         out = self.run("""function hello($a, $b) {
             print $a;

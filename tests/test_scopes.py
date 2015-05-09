@@ -122,12 +122,18 @@ class TestScopes(TestBase):
         """, capfd)
         assert out == "100"
 
-    def test_constant(self, capfd):
+    def test_define_constant(self, capfd):
         out = self.run("""define("TEST", 1);
 
         print TEST;
         """, capfd)
         assert out == "1"
+
+    def test_define_constant_twice(self, capfd):
+        out = self.run("""define("TEST", 1);
+        print define("TEST", 1);
+        """, capfd)
+        assert out == "false"
 
     def test_constant_defined_in_a_function(self, capfd):
         out = self.run("""function test() {

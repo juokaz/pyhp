@@ -20,7 +20,10 @@ class ObjectSpace(object):
     def declare_function(self, name, func):
         assert isinstance(name, str)
         assert isinstance(func, W_CodeFunction)
+        if name in self.functions:
+            return False
         self.functions[name] = func
+        return True
 
     def get_function(self, name):
         assert isinstance(name, str)
@@ -28,7 +31,10 @@ class ObjectSpace(object):
 
     def declare_constant(self, name, value):
         assert isinstance(name, str)
+        if name in self.constants:
+            return False
         self.constants[name] = value
+        return True
 
     def get_constant(self, name):
         assert isinstance(name, str)

@@ -1,6 +1,7 @@
 
 from pyhp.datatypes import isint, isfloat, isstr
-from pyhp.objspace import w_Null, newint, newstring, new_native_function
+from pyhp.objspace import w_Null, newint, newstring, newbool, \
+    new_native_function
 from pyhp.datatypes import W_Array
 from pyhp.utils import printf as printf_, StringFormatter
 
@@ -13,7 +14,7 @@ def define(space, args):
     name = args[0].get_value()
     assert(isstr(name))
     value = args[1].get_value()
-    space.declare_constant(name.str(), value)
+    return newbool(space.declare_constant(name.str(), value))
 
 
 def strlen(space, args):
@@ -37,6 +38,7 @@ def printf(space, args):
     items = [arg.get_value() for arg in args[1:]]
     formatter = StringFormatter(template.str(), items)
     printf_(formatter.format())
+    return w_Null
 
 
 def print_r(space, args):

@@ -413,7 +413,10 @@ class W_CodeFunction(W_Root):
 
         from pyhp.frame import FunctionFrame
         new_frame = FunctionFrame(frame.space, frame, func, params)
-        return func.run(new_frame)
+        result = func.run(new_frame)
+
+        assert isinstance(result, W_Root)
+        return result
 
     def get_funcobj(self):
         return self.funcobj

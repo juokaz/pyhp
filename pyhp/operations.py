@@ -57,6 +57,9 @@ class SourceElements(Statement):
         else:
             ctx.emit('LOAD_NULL')
 
+        if self.nodes and not isinstance(self.nodes[-1], Return):
+            ctx.emit('RETURN')
+
 
 class Program(Statement):
     def __init__(self, body, scope):
