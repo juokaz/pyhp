@@ -9,5 +9,3 @@ ARRAYINDEX = r"\[(?:[0-9]+|%s)\]" % VARIABLENAME
 # match variables and array access
 VARIABLE = r"(%s(?:%s)*)" % (VARIABLENAME, ARRAYINDEX)
 CURLYVARIABLE = compile(r"{?" + VARIABLE + "}?")
-
-ARRAYINDEX = compile(r"\[([0-9]+|%s)\]" % VARIABLENAME)

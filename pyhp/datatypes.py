@@ -1,10 +1,8 @@
-from rpython.rlib.rstring import replace
 from rpython.rlib.rstring import StringBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
 from rpython.rlib.objectmodel import compute_hash
 from rpython.rlib.rarithmetic import intmask
-from constants import CURLYVARIABLE, ARRAYINDEX
 
 from rpython.rlib import jit
 
@@ -133,95 +131,6 @@ class W_FloatObject(W_Number):
 
     def __repr__(self):
         return 'W_FloatObject(%s)' % (self.floatval,)
-
-
-def string_unquote(string):
-    s = string
-    single_quotes = True
-    if s.startswith('"'):
-        assert s.endswith('"')
-        single_quotes = False
-    else:
-        assert s.startswith("'")
-        assert s.endswith("'")
-    s = s[:-1]
-    s = s[1:]
-
-    if not single_quotes:
-        variables_ = []
-        variables = CURLYVARIABLE.findall(s)
-
-        # remove curly braces around variables
-        for variable in variables:
-            s = replace(s, '{' + variable + '}', variable)
-
-            # is this an array access?
-            indexes = ARRAYINDEX.findall(variable)
-
-            identifier = variable
-            for index in indexes:
-                identifier = replace(identifier, '[' + index + ']', '')
-
-            variables_.append((variable, identifier, indexes))
-    else:
-        variables_ = []
-
-    return s, variables_
-
-
-def string_unescape(string):
-    s = string
-    size = len(string)
-
-    if size == 0:
-        return ''
-
-    builder = StringBuilder(size)
-    pos = 0
-    while pos < size:
-        ch = s[pos]
-
-        # Non-escape characters are interpreted as Unicode ordinals
-        if ch != '\\':
-            builder.append(ch)
-            pos += 1
-            continue
-
-        # - Escapes
-        pos += 1
-        if pos >= size:
-            message = "\\ at end of string"
-            raise Exception(message)
-
-        ch = s[pos]
-        pos += 1
-        # \x escapes
-        if ch == '\n':
-            pass
-        elif ch == '\\':
-            builder.append('\\')
-        elif ch == '\'':
-            builder.append('\'')
-        elif ch == '\"':
-            builder.append('\"')
-        elif ch == 'b':
-            builder.append('\b')
-        elif ch == 'f':
-            builder.append('\f')
-        elif ch == 't':
-            builder.append('\t')
-        elif ch == 'n':
-            builder.append('\n')
-        elif ch == 'r':
-            builder.append('\r')
-        elif ch == 'v':
-            builder.append('\v')
-        elif ch == 'a':
-            builder.append('\a')
-        else:
-            builder.append(ch)
-
-    return builder.build()
 
 
 class W_StringObject(W_Root):

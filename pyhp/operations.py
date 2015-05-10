@@ -196,12 +196,23 @@ class ConstantFloat(Node):
 class ConstantString(Node):
     """ Represent a constant
     """
-    def __init__(self, stringval, variables):
+    def __init__(self, stringval):
         self.stringval = stringval
-        self.variables = variables
 
     def compile(self, ctx):
-        ctx.emit('LOAD_STRINGVAL', self.stringval, self.variables)
+        ctx.emit('LOAD_STRINGVAL', self.stringval)
+
+
+class StringSubstitution(Node):
+    """ Represent a constant
+    """
+    def __init__(self, strings):
+        self.strings = strings
+
+    def compile(self, ctx):
+        for part in self.strings:
+            part.compile(ctx)
+        ctx.emit('LOAD_STRING_SUBSTITUTION', len(self.strings))
 
 
 class Boolean(Expression):

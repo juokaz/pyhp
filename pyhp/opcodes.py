@@ -8,8 +8,6 @@ from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
 
 from pyhp.utils import printf
 
-from rpython.rlib.rstring import replace
-
 from rpython.rlib import jit
 
 
@@ -178,35 +176,37 @@ class LOAD_FLOATVAL(Opcode):
 
 
 class LOAD_STRINGVAL(Opcode):
-    _immutable_fields_ = ['value', 'variables[*]']
+    _immutable_fields_ = ['value']
 
-    def __init__(self, value, variables):
+    def __init__(self, value):
         assert isinstance(value, str)
-        self.value = value
-        self.variables = variables
+        self.value = newstring(value)
 
-    @jit.unroll_safe
     def eval(self, frame):
-        stringval = self.value
-        for variable in self.variables:
-            search, identifier, indexes = variable
-            value = frame.get_variable(identifier)
-            for key in indexes:
-                assert isinstance(key, str)
-                if key[0] == '$':
-                    key = frame.get_variable(key)
-                elif str(int(key)) == key:
-                    key = newint(int(key))
-                else:
-                    key = newstring(key)
-                value = value.get(key)
-            replace_with = value.str()
-            stringval = replace(stringval, search, replace_with)
-
-        frame.push(newstring(stringval))
+        frame.push(self.value)
 
     def __str__(self):
         return 'LOAD_STRINGVAL %s' % (self.value)
+
+
+class LOAD_STRING_SUBSTITUTION(Opcode):
+    _immutable_fields_ = ['number']
+
+    def __init__(self, number):
+        self.number = number
+
+    @jit.unroll_safe
+    def eval(self, frame):
+        value = newstring('')
+        list_w = frame.pop_n(self.number)
+
+        for part in list_w:
+            value = value.append(part.str())
+
+        frame.push(value)
+
+    def __str__(self):
+        return 'LOAD_STRING_SUBSTITUTION %s' % (self.number)
 
 
 class LOAD_ARRAY(Opcode):
