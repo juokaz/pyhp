@@ -49,7 +49,6 @@ def bytecode(filename):
     data = read_file(filename)
     ast = source_to_ast(data)
     bc = ast_to_bytecode(ast)
-#    print bc
     return bc
 
 

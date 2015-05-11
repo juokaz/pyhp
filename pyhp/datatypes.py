@@ -201,6 +201,9 @@ class W_Array(W_Root):
     def __init__(self):
         self.data = {}
 
+    def len(self):
+        return len(self.data)
+
     def put(self, key, value):
         assert isinstance(key, W_Root)
         _key = key.hash()
@@ -234,13 +237,7 @@ class W_Array(W_Root):
 
     @jit.unroll_safe
     def to_iterator(self):
-        props = []
-        for element in self.data.itervalues():
-            props.append(element)
-
-        props.reverse()
-
-        iterator = W_Iterator(props)
+        iterator = W_Iterator(self)
         return iterator
 
     def __deepcopy__(self):
@@ -266,18 +263,31 @@ class W_List(W_Root):
 
 
 class W_Iterator(W_Root):
-    _immutable_fields_ = ['values[*]']
+    _immutable_fields_ = ['array']
 
-    def __init__(self, values):
-        self.values = values
-        self.index = len(values)
+    def __init__(self, array):
+        self.array = array
+        self.keys = array.data.keys()
+        self.index = 0
+        self.end = array.len()
+
+    def _current(self):
+        try:
+            return self.keys[self.index]
+        except IndexError:
+            return -1
+
+    def current(self):
+        key = self._current()
+        return self.array.data[key]
 
     def next(self):
-        self.index -= 1
-        return self.values[self.index]
+        value = self.current()
+        self.index += 1
+        return value
 
     def empty(self):
-        return self.index == 0
+        return self.index == self.end
 
     def to_string(self):
         return 'W_Iterator(%s)' % (str([str(v) for v in self.values]))

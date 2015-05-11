@@ -256,6 +256,9 @@ class LOAD_MEMBER_VAR(Opcode):
         value = array.get(member)
         frame.push(value)
 
+    def __str__(self):
+        return 'LOAD_MEMBER_VAR %d, %s' % (self.index, self.name)
+
 
 class STORE_MEMBER(Opcode):
     def eval(self, frame):
