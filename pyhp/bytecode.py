@@ -12,7 +12,7 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 """
 
-from pyhp.opcodes import opcodes, LABEL, BaseJump, RETURN
+from pyhp.opcodes import opcodes, LABEL, BaseJump, RETURN, DECLARE_FUNCTION
 from rpython.rlib import jit
 
 
@@ -28,9 +28,10 @@ driver = jit.JitDriver(greens=['pc', 'self'],
 
 class ByteCode(object):
     _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_variables[*]',
-                          '_globals[*]', '_parameters[*]']
+                          '_globals[*]', '_parameters[*]', 'name']
 
-    def __init__(self, scope):
+    def __init__(self, name, scope):
+        self.name = name
         self.opcodes = []
         self._symbols = scope.symbols
         self._variables = scope.variables[:]
@@ -171,17 +172,38 @@ class ByteCode(object):
             else:
                 pc += 1
 
+    def _functions(self):
+        """Returns the bytecode of all functions defined"""
+        functions = []
+        for opcode in self.opcodes:
+            if isinstance(opcode, DECLARE_FUNCTION):
+                functions.append(opcode.function.bytecode)
+        return functions
+
     def __repr__(self):
         lines = []
+
+        for function in self._functions():
+            lines.append('Function ' + str(function))
+            lines.append('')
+
+        if self.name == 'Main':
+            lines.append(self.name + ':')
+        else:
+            arguments = []
+            for param, by_value in self.params():
+                if by_value:
+                    arguments.append(param)
+                else:
+                    arguments.append('&' + param)
+            lines.append(self.name + '(' + ", ".join(arguments) + ')' + ':')
         for index, opcode in enumerate(self.opcodes):
             lines.append(str(index) + ": " + str(opcode))
         return "\n".join(lines)
 
 
-def compile_ast(ast, symbols):
-    bc = ByteCode(symbols)
+def compile_ast(ast, symbols, name='Main'):
+    bc = ByteCode(name, symbols)
     if ast is not None:
         ast.compile(bc)
-    # print 'Bytecode: '
-    # print bc
     return bc

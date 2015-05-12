@@ -111,7 +111,7 @@ class DECLARE_FUNCTION(Opcode):
         frame.declare_function(self.name, funcobj)
 
     def __str__(self):
-        return 'DECLARE_FUNCTION %s, %s' % (self.name, self.function)
+        return 'DECLARE_FUNCTION %s' % (self.name)
 
 
 class LOAD_LIST(Opcode):
@@ -159,7 +159,7 @@ class LOAD_INTVAL(Opcode):
         frame.push(self.value)
 
     def __str__(self):
-        return 'LOAD_INTVAL %s' % (self.value)
+        return 'LOAD_INTVAL %s' % (self.value.intval)
 
 
 class LOAD_FLOATVAL(Opcode):
@@ -172,7 +172,7 @@ class LOAD_FLOATVAL(Opcode):
         frame.push(self.value)
 
     def __str__(self):
-        return 'LOAD_FLOATVAL %s' % (self.value)
+        return 'LOAD_FLOATVAL %s' % (self.value.floatval)
 
 
 class LOAD_STRINGVAL(Opcode):
@@ -186,7 +186,7 @@ class LOAD_STRINGVAL(Opcode):
         frame.push(self.value)
 
     def __str__(self):
-        return 'LOAD_STRINGVAL %s' % (self.value)
+        return 'LOAD_STRINGVAL "%s"' % (self.value.stringval)
 
 
 class LOAD_STRING_SUBSTITUTION(Opcode):

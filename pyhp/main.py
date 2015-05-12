@@ -57,3 +57,27 @@ def run(filename):
     interpret(bc)
 
     return 0
+
+
+def main(argv):
+    filename = None
+    print_bytecode = False
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+        if arg.startswith('-'):
+            if arg == '--bytecode':
+                print_bytecode = True
+            else:
+                print "Unknown parameter %s" % arg
+                return 1
+        else:
+            filename = arg
+            break
+        i += 1
+
+    if print_bytecode:
+        print bytecode(filename)
+        return 0
+    else:
+        return run(filename)

@@ -64,6 +64,10 @@ process by 5x, but the produced interpreter runs much slower.
 
     ./pyhp-c fibonacci.php
 
+### Printing the bytecode
+
+    ./pyhp-c --bytecode fibonacci.php
+
 ### Debugging the interpreter
 
     PYPYLOG=jit-log-opt:jit.txt ./pyhp-c fibonacci.php
@@ -72,7 +76,7 @@ Plot the trace as a graph
 
     PYTHONPATH=$PYTHONPATH:/home/vagrant/pypy-src/ python ~/pypy-src/rpython/tool/logparser.py draw-time jit.txt --mainwidth=8000 filename.png
 
-### Running tests
+### Running the tests
 
     PYTHONPATH=$PYTHONPATH:/home/vagrant/pypy-src/ py.test tests
 

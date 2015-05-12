@@ -2,12 +2,24 @@ from tests import TestBase
 
 class TestMain(TestBase):
     def test_bytecode(self):
-        bytecode = self.bytecode("""$x = 1;
+        bytecode = self.bytecode("""function a($x) {
+            print $x;
+        }
+        $x = 1;
         print $x;""")
-        bytecode.compile()
-        assert str(bytecode) == "0: LOAD_INTVAL W_IntObject(1)\n" \
-        + "1: ASSIGN 0, $x\n2: DISCARD_TOP\n3: LOAD_VAR 0, $x\n4: PRINT\n" \
-        + "5: RETURN"
+        assert str(bytecode) == """Function a($x):
+0: LOAD_VAR 0, $x
+1: PRINT
+2: RETURN
+
+Main:
+0: DECLARE_FUNCTION a
+1: LOAD_INTVAL 1
+2: ASSIGN 0, $x
+3: DISCARD_TOP
+4: LOAD_VAR 0, $x
+5: PRINT
+6: RETURN"""
 
     def test_running(self, capfd):
         out = self.run("""$x = 1;

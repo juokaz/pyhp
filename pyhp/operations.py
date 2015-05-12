@@ -98,7 +98,7 @@ class Function(Node):
         body = self.body
         if body is None:
             body = Return(None)
-        body = compile_ast(body, self.scope)
+        body = compile_ast(body, self.scope, self.identifier)
 
         method = CodeFunction(self.identifier, body)
 

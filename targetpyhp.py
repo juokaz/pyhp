@@ -1,11 +1,6 @@
 import sys
 from rpython.jit.codewriter.policy import JitPolicy
-from pyhp.main import run
-
-
-def main(argv):
-    filename = argv[1]
-    return run(filename)
+from pyhp.main import main
 
 
 def target(driver, args):
