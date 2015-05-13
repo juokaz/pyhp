@@ -1,5 +1,5 @@
 import py, re, tempfile, os, sys
-from pyhp.main import run, bytecode
+from pyhp.main import run, bytecode, ast
 
 class TestBase(object):
     def setup_method(self, meth):
@@ -16,6 +16,10 @@ class TestBase(object):
     def bytecode(self, code):
         filename = self._init(code)
         return bytecode(filename)
+
+    def ast(self, code):
+        filename = self._init(code)
+        return ast(filename)
 
     def _init(self, code):
         tmpdir = py.path.local.make_numbered_dir('pyhp')

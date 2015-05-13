@@ -121,10 +121,6 @@ class Transformer(RPythonVisitor):
             self.declare_parameter(variable.get_literal(), by_value)
         return None
 
-    def visit_statementlist(self, node):
-        block = self.dispatch(node.children[0])
-        return operations.StatementList(block)
-
     def binaryop(self, node):
         left = self.dispatch(node.children[0])
         for i in range((len(node.children) - 1) // 2):

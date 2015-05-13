@@ -45,10 +45,15 @@ def read_file(filename):
     return data
 
 
-def bytecode(filename):
+def ast(filename):
     data = read_file(filename)
     ast = source_to_ast(data)
-    bc = ast_to_bytecode(ast)
+    return ast
+
+
+def bytecode(filename):
+    source = ast(filename)
+    bc = ast_to_bytecode(source)
     return bc
 
 
@@ -62,12 +67,15 @@ def run(filename):
 def main(argv):
     filename = None
     print_bytecode = False
+    print_ast = False
     i = 1
     while i < len(argv):
         arg = argv[i]
         if arg.startswith('-'):
             if arg == '--bytecode':
                 print_bytecode = True
+            elif arg == '--ast':
+                print_ast = True
             else:
                 print "Unknown parameter %s" % arg
                 return 1
@@ -76,7 +84,10 @@ def main(argv):
             break
         i += 1
 
-    if print_bytecode:
+    if print_ast:
+        print ast(filename)
+        return 0
+    elif print_bytecode:
         print bytecode(filename)
         return 0
     else:

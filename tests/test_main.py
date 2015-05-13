@@ -21,6 +21,24 @@ Main:
 5: PRINT
 6: RETURN"""
 
+    def test_ast(self):
+        ast = self.ast("""function a($x) {
+            print $x;
+        }
+        $x = 1;
+        print $x;""")
+        assert str(ast) == """Program (
+\tSourceElements (
+\t\tFunction (a,
+\t\t\tSourceElements (
+\t\t\t\tPrint (VariableIdentifier (0, $x))
+\t\t\t)
+\t\t)
+\t\tExprStatement (AssignmentOperation (VariableIdentifier (0, $x), =, ConstantInt 1))
+\t\tPrint (VariableIdentifier (0, $x))
+\t)
+)"""
+
     def test_running(self, capfd):
         out = self.run("""$x = 1;
         print $x;""", capfd)

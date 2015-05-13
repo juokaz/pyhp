@@ -68,6 +68,10 @@ process by 5x, but the produced interpreter runs much slower.
 
     ./pyhp-c --bytecode fibonacci.php
 
+### Printing the AST tree
+
+    ./pyhp-c --ast fibonacci.php
+
 ### Debugging the interpreter
 
     PYPYLOG=jit-log-opt:jit.txt ./pyhp-c fibonacci.php
