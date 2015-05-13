@@ -85,10 +85,10 @@ def main(argv):
         i += 1
 
     if print_ast:
-        print ast(filename)
+        print ast(filename).str()
         return 0
     elif print_bytecode:
-        print bytecode(filename)
+        print bytecode(filename).str()
         return 0
     else:
         return run(filename)

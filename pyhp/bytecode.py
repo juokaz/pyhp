@@ -17,8 +17,8 @@ from rpython.rlib import jit
 
 
 def printable_loc(pc, bc):
-    bytecode = bc._get_opcode(pc)
-    return str(pc) + ": " + str(bytecode)
+    opcode = bc._get_opcode(pc)
+    return str(pc) + ": " + opcode.str()
 
 driver = jit.JitDriver(greens=['pc', 'self'],
                        reds=['frame'],
@@ -180,11 +180,14 @@ class ByteCode(object):
                 functions.append(opcode.function.bytecode)
         return functions
 
-    def __repr__(self):
+    def __str__(self):
+        return self.str()
+
+    def str(self):
         lines = []
 
         for function in self._functions():
-            lines.append('Function ' + str(function))
+            lines.append('Function ' + function.str())
             lines.append('')
 
         if self.name == 'Main':
@@ -198,7 +201,7 @@ class ByteCode(object):
                     arguments.append('&' + param)
             lines.append(self.name + '(' + ", ".join(arguments) + ')' + ':')
         for index, opcode in enumerate(self.opcodes):
-            lines.append(str(index) + ": " + str(opcode))
+            lines.append(str(index) + ": " + opcode.str())
         return "\n".join(lines)
 
 

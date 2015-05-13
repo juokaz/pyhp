@@ -25,8 +25,11 @@ class Opcode(object):
         """
         raise NotImplementedError(self.get_name() + ".eval")
 
-    def __str__(self):
+    def str(self):
         return self.get_name()
+
+    def __str__(self):
+        return self.str()
 
 
 class LOAD_CONSTANT(Opcode):
@@ -41,7 +44,7 @@ class LOAD_CONSTANT(Opcode):
             raise Exception("Constant %s is not defined" % self.name)
         frame.push(value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_CONSTANT %s' % (self.name)
 
 
@@ -60,7 +63,7 @@ class LOAD_VAR(Opcode):
 
         frame.push(variable)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_VAR %s, %s' % (self.index, self.name)
 
 
@@ -79,7 +82,7 @@ class LOAD_REF(Opcode):
 
         frame.push(ref)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_REF %s, %s' % (self.index, self.name)
 
 
@@ -95,7 +98,7 @@ class LOAD_FUNCTION(Opcode):
             raise Exception("Function %s is not defined" % self.name)
         frame.push(func)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_FUNCTION %s' % (self.name)
 
 
@@ -110,7 +113,7 @@ class DECLARE_FUNCTION(Opcode):
         funcobj = W_CodeFunction(self.function)
         frame.declare_function(self.name, funcobj)
 
-    def __str__(self):
+    def str(self):
         return 'DECLARE_FUNCTION %s' % (self.name)
 
 
@@ -124,7 +127,7 @@ class LOAD_LIST(Opcode):
         list_w = frame.pop_n(self.number)
         frame.push(W_List(list_w))
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_LIST %d' % self.number
 
 
@@ -132,7 +135,7 @@ class LOAD_NULL(Opcode):
     def eval(self, frame):
         frame.push(w_Null)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_NULL'
 
 
@@ -145,7 +148,7 @@ class LOAD_BOOLEAN(Opcode):
     def eval(self, frame):
         frame.push(self.value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_BOOLEAN %s' % (self.value)
 
 
@@ -158,7 +161,7 @@ class LOAD_INTVAL(Opcode):
     def eval(self, frame):
         frame.push(self.value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_INTVAL %s' % (self.value.intval)
 
 
@@ -171,7 +174,7 @@ class LOAD_FLOATVAL(Opcode):
     def eval(self, frame):
         frame.push(self.value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_FLOATVAL %s' % (self.value.floatval)
 
 
@@ -185,7 +188,7 @@ class LOAD_STRINGVAL(Opcode):
     def eval(self, frame):
         frame.push(self.value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_STRINGVAL "%s"' % (self.value.stringval)
 
 
@@ -205,7 +208,7 @@ class LOAD_STRING_SUBSTITUTION(Opcode):
 
         frame.push(value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_STRING_SUBSTITUTION %s' % (self.number)
 
 
@@ -223,7 +226,7 @@ class LOAD_ARRAY(Opcode):
             array.put(newint(index), el)
         frame.push(array)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_ARRAY %d' % (self.number)
 
 
@@ -256,7 +259,7 @@ class LOAD_MEMBER_VAR(Opcode):
         value = array.get(member)
         frame.push(value)
 
-    def __str__(self):
+    def str(self):
         return 'LOAD_MEMBER_VAR %d, %s' % (self.index, self.name)
 
 
@@ -269,7 +272,7 @@ class STORE_MEMBER(Opcode):
 
         frame.push(array)
 
-    def __str__(self):
+    def str(self):
         return 'STORE_MEMBER'
 
 
@@ -286,7 +289,7 @@ class ASSIGN(Opcode):
 
         frame.push(value)
 
-    def __str__(self):
+    def str(self):
         return 'ASSIGN %s, %s' % (self.index, self.name)
 
 
@@ -306,7 +309,7 @@ class LABEL(Opcode):
     def __init__(self, num):
         self.num = num
 
-    def __str__(self):
+    def str(self):
         return 'LABEL %d' % (self.num)
 
 
@@ -327,7 +330,7 @@ class JUMP_IF_FALSE(BaseJump):
             return self.where
         return pos + 1
 
-    def __str__(self):
+    def str(self):
         return 'JUMP_IF_FALSE %d' % (self.where)
 
 
@@ -339,7 +342,7 @@ class JUMP_IF_FALSE_NOPOP(BaseJump):
         frame.pop()
         return pos + 1
 
-    def __str__(self):
+    def str(self):
         return 'JUMP_IF_FALSE_NOPOP %d' % (self.where)
 
 
@@ -351,7 +354,7 @@ class JUMP_IF_TRUE_NOPOP(BaseJump):
         frame.pop()
         return pos + 1
 
-    def __str__(self):
+    def str(self):
         return 'JUMP_IF_TRUE_NOPOP %d' % (self.where)
 
 
@@ -359,7 +362,7 @@ class JUMP(BaseJump):
     def do_jump(self, frame, pos):
         return self.where
 
-    def __str__(self):
+    def str(self):
         return 'JUMP %d' % (self.where)
 
 
@@ -383,7 +386,7 @@ class JUMP_IF_ITERATOR_EMPTY(BaseJump):
             return self.where
         return pos + 1
 
-    def __str__(self):
+    def str(self):
         return 'JUMP_IF_ITERATOR_EMPTY %d' % (self.where)
 
 

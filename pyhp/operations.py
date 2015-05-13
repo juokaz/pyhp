@@ -16,8 +16,14 @@ class Node(object):
     def __ne__(self, other):
         return not self == other
 
-    def __repr__(self):
+    def __str__(self):
+        return self.str()
+
+    def str(self):
         return self.__class__.__name__
+
+    def _indent(self, block):
+        return "\n".join(["\t" + line for line in block])
 
 
 class Statement(Node):
@@ -60,15 +66,15 @@ class SourceElements(Statement):
         if self.nodes and not isinstance(self.nodes[-1], Return):
             ctx.emit('RETURN')
 
-    def __repr__(self):
+    def str(self):
         string = []
         for node in self.func_decl.values():
-            for line in str(node).split("\n"):
+            for line in node.str().split("\n"):
                 string.append(line)
         for node in self.nodes:
-            for line in str(node).split("\n"):
+            for line in node.str().split("\n"):
                 string.append(line)
-        body = "\n".join(["\t" + line for line in string])
+        body = self._indent(string)
         return 'SourceElements (\n%s\n)' % body
 
 
@@ -80,9 +86,8 @@ class Program(Statement):
     def compile(self, ctx):
         self.body.compile(ctx)
 
-    def __repr__(self):
-        body = str(self.body)
-        body = "\n".join(["\t" + line for line in body.split("\n")])
+    def str(self):
+        body = self._indent(self.body.str().split("\n"))
         return 'Program (\n%s\n)' % body
 
 
@@ -93,8 +98,8 @@ class ExprStatement(Node):
     def compile(self, ctx):
         self.expr.compile(ctx)
 
-    def __repr__(self):
-        return 'ExprStatement (%s)' % self.expr
+    def str(self):
+        return 'ExprStatement (%s)' % self.expr.str()
 
 
 class Function(Node):
@@ -102,22 +107,21 @@ class Function(Node):
     """
     def __init__(self, name, body, scope):
         self.identifier = name.get_literal()
+        if body is None:
+            body = Return(None)
         self.body = body
         self.scope = scope
 
     def compile(self, ctx):
         body = self.body
-        if body is None:
-            body = Return(None)
         body = compile_ast(body, self.scope, self.identifier)
 
         method = CodeFunction(self.identifier, body)
 
         ctx.emit('DECLARE_FUNCTION', self.identifier, method)
 
-    def __repr__(self):
-        body = str(self.body)
-        body = "\n".join(["\t" + line for line in body.split("\n")])
+    def str(self):
+        body = self._indent(self.body.str().split("\n"))
         return 'Function (%s,\n%s\n)' % (self.identifier, body)
 
 
@@ -132,8 +136,8 @@ class Call(Node):
 
         ctx.emit('CALL')
 
-    def __repr__(self):
-        return 'Call (%s, %s)' % (self.left, self.params)
+    def str(self):
+        return 'Call (%s, %s)' % (self.left.str(), self.params.str())
 
 
 class Identifier(Expression):
@@ -146,7 +150,7 @@ class Identifier(Expression):
     def compile(self, ctx):
         ctx.emit('LOAD_FUNCTION', self.identifier)
 
-    def __repr__(self):
+    def str(self):
         return 'Identifier %s' % self.identifier
 
 
@@ -157,7 +161,7 @@ class Constant(Expression):
     def compile(self, ctx):
         ctx.emit('LOAD_CONSTANT', self.identifier)
 
-    def __repr__(self):
+    def str(self):
         return 'Constant (%s)' % self.identifier
 
 
@@ -170,8 +174,8 @@ class ArgumentList(ListOp):
                 node.compile(ctx)
         ctx.emit('LOAD_LIST', len(self.nodes))
 
-    def __repr__(self):
-        return 'ArgumentList (%s)' % self.nodes
+    def str(self):
+        return 'ArgumentList (%s)' % [node.str() for node in self.nodes]
 
 
 class Array(ListOp):
@@ -180,8 +184,8 @@ class Array(ListOp):
             element.compile(ctx)
         ctx.emit('LOAD_ARRAY', len(self.nodes))
 
-    def __repr__(self):
-        return 'Array (%s)' % self.nodes
+    def str(self):
+        return 'Array (%s)' % [node.str() for node in self.nodes]
 
 
 class Global(ListOp):
@@ -203,8 +207,8 @@ class Member(Expression):
             self.left.compile(ctx)
             ctx.emit('LOAD_MEMBER')
 
-    def __repr__(self):
-        return 'Member (%s, %s)' % (self.left, self.expr)
+    def str(self):
+        return 'Member (%s, %s)' % (self.left.str(), self.expr.str())
 
 
 class ConstantInt(Node):
@@ -216,7 +220,7 @@ class ConstantInt(Node):
     def compile(self, ctx):
         ctx.emit('LOAD_INTVAL', self.intval)
 
-    def __repr__(self):
+    def str(self):
         return 'ConstantInt %s' % self.intval
 
 
@@ -229,7 +233,7 @@ class ConstantFloat(Node):
     def compile(self, ctx):
         ctx.emit('LOAD_FLOATVAL', self.floatval)
 
-    def __repr__(self):
+    def str(self):
         return 'ConstantFloat %s' % self.floatval
 
 
@@ -242,7 +246,7 @@ class ConstantString(Node):
     def compile(self, ctx):
         ctx.emit('LOAD_STRINGVAL', self.stringval)
 
-    def __repr__(self):
+    def str(self):
         return 'ConstantString "%s"' % self.stringval
 
 
@@ -257,7 +261,7 @@ class StringSubstitution(Node):
             part.compile(ctx)
         ctx.emit('LOAD_STRING_SUBSTITUTION', len(self.strings))
 
-    def __repr__(self):
+    def str(self):
         return 'StringSubstitution (%s)' % (self.strings)
 
 
@@ -268,7 +272,7 @@ class Boolean(Expression):
     def compile(self, ctx):
         ctx.emit('LOAD_BOOLEAN', self.bool)
 
-    def __repr__(self):
+    def str(self):
         return 'Boolean "%s"' % self.bool
 
 
@@ -288,7 +292,7 @@ class VariableIdentifier(Expression):
     def compile(self, ctx):
         ctx.emit('LOAD_VAR', self.index, self.identifier)
 
-    def __repr__(self):
+    def str(self):
         return 'VariableIdentifier (%s, %s)' % (self.index, self.identifier)
 
 
@@ -361,9 +365,10 @@ class AssignmentOperation(BaseAssignment):
     def compile_store(self, ctx):
         ctx.emit('ASSIGN', self.index, self.left.get_literal())
 
-    def __repr__(self):
-        return 'AssignmentOperation (%s, %s, %s)' % (self.left, self.operand,
-                                                     self.right)
+    def str(self):
+        return 'AssignmentOperation (%s, %s, %s)' % (self.left.str(),
+                                                     self.operand,
+                                                     self.right.str())
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -384,10 +389,10 @@ class MemberAssignmentOperation(BaseAssignment):
         self.w_array.compile(ctx)
         ctx.emit('STORE_MEMBER')
 
-    def __repr__(self):
-        return 'MemberAssignmentOperation (%s, %s, %s)' % (self.left,
+    def str(self):
+        return 'MemberAssignmentOperation (%s, %s, %s)' % (self.left.str(),
                                                            self.operand,
-                                                           self.right)
+                                                           self.right.str())
 
 
 class Unconditional(Statement):
@@ -433,9 +438,16 @@ class If(Node):
 
         ctx.emit_label(endif)
 
-    def __repr__(self):
-        return 'If (%s,\n%s,\n%s\n)' % (self.condition, self.true_branch,
-                                        self.else_branch)
+    def str(self):
+        true_branch = self._indent(self.true_branch.str().split("\n"))
+        if self.else_branch:
+            else_branch = self._indent(self.else_branch.str().split("\n"))
+            return 'If (%s,\n%s,\n%s\n)' % (self.condition.str(),
+                                            true_branch,
+                                            else_branch)
+        else:
+            return 'If (%s,\n%s\n)' % (self.condition.str(),
+                                       true_branch)
 
 
 class WhileBase(Statement):
@@ -462,10 +474,9 @@ class While(WhileBase):
         ctx.emit_endloop_label(endlabel)
         ctx.done_continue()
 
-    def __repr__(self):
-        body = str(self.body)
-        body = "\n".join(["\t" + line for line in body.split("\n")])
-        return 'While (%s,\n%s\n)' % (self.condition, body)
+    def str(self):
+        body = self._indent(self.body.str().split("\n"))
+        return 'While (%s,\n%s\n)' % (self.condition.str(), body)
 
 
 class For(Statement):
@@ -498,11 +509,11 @@ class For(Statement):
         ctx.emit('JUMP', startlabel)
         ctx.emit_endloop_label(endlabel)
 
-    def __repr__(self):
-        body = str(self.body)
-        body = "\n".join(["\t" + line for line in body.split("\n")])
-        return 'For (%s, %s, %s,\n%s\n)' % (self.setup, self.condition,
-                                            self.update, body)
+    def str(self):
+        body = self._indent(self.body.str().split("\n"))
+        return 'For (%s, %s, %s,\n%s\n)' % (self.setup.str(),
+                                            self.condition.str(),
+                                            self.update.str(), body)
 
 
 class Foreach(Statement):
@@ -554,11 +565,11 @@ class Foreach(Statement):
         ctx.emit('JUMP', precond)
         ctx.emit_endloop_label(finish)
 
-    def __repr__(self):
-        body = str(self.body)
-        body = "\n".join(["\t" + line for line in body.split("\n")])
-        return 'Foreach (%s, %s, %s,\n%s\n)' % (self.w_object, self.key,
-                                                self.variable, body)
+    def str(self):
+        body = self._indent(self.body.str().split("\n"))
+        return 'Foreach (%s, %s, %s,\n%s\n)' % (self.w_object.str(),
+                                                self.key.str(),
+                                                self.variable.str(), body)
 
 
 class Print(Node):
@@ -569,8 +580,8 @@ class Print(Node):
         self.expr.compile(ctx)
         ctx.emit('PRINT')
 
-    def __repr__(self):
-        return 'Print (%s)' % self.expr
+    def str(self):
+        return 'Print (%s)' % self.expr.str()
 
 
 class Return(Statement):
@@ -584,8 +595,11 @@ class Return(Statement):
             self.expr.compile(ctx)
         ctx.emit('RETURN')
 
-    def __repr__(self):
-        return 'Return (%s)' % self.expr
+    def str(self):
+        if self.expr:
+            return 'Return (%s)' % self.expr.str()
+        else:
+            return 'Return'
 
 
 class Block(Statement):
@@ -604,12 +618,12 @@ class Block(Statement):
         else:
             ctx.emit('LOAD_NULL')
 
-    def __repr__(self):
+    def str(self):
         string = []
         for node in self.nodes:
-            for line in str(node).split("\n"):
+            for line in node.str().split("\n"):
                 string.append(line)
-        body = "\n".join(["\t" + line for line in string])
+        body = self._indent(string)
         return 'Block (\n%s\n)' % body
 
 
@@ -624,8 +638,8 @@ def create_binary_op(name):
             self.right.compile(ctx)
             ctx.emit(name)
 
-        def __repr__(self):
-            return name + ' (%s, %s)' % (self.left, self.right)
+        def str(self):
+            return name + ' (%s, %s)' % (self.left.str(), self.right.str())
     BinaryOp.__name__ = name
     return BinaryOp
 
@@ -639,8 +653,8 @@ def create_unary_op(name):
             self.expr.compile(ctx)
             ctx.emit(name)
 
-        def __repr__(self):
-            return name + ' (%s)' % (self.expr,)
+        def str(self):
+            return name + ' (%s)' % (self.expr.str(),)
     UnaryOp.__name__ = name
     return UnaryOp
 
@@ -657,8 +671,8 @@ class And(Expression):
         self.right.compile(ctx)
         ctx.emit_label(one)
 
-    def __repr__(self):
-        return 'And (%s, %s)' % (self.left, self.right)
+    def str(self):
+        return 'And (%s, %s)' % (self.left.str(), self.right.str())
 
 
 class Or(Expression):
@@ -673,8 +687,8 @@ class Or(Expression):
         self.right.compile(ctx)
         ctx.emit_label(one)
 
-    def __repr__(self):
-        return 'Or (%s, %s)' % (self.left, self.right)
+    def str(self):
+        return 'Or (%s, %s)' % (self.left.str(), self.right.str())
 
 Comma = create_binary_op('COMMA')
 
