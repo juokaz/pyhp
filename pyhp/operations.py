@@ -1,6 +1,7 @@
 from pyhp.bytecode import compile_ast
 from pyhp.functions import CodeFunction
 from rpython.rlib.unroll import unrolling_iterable
+from rpython.rlib.objectmodel import enforceargs
 
 
 class Node(object):
@@ -20,10 +21,13 @@ class Node(object):
         return self.str()
 
     def str(self):
-        return self.__class__.__name__
+        return unicode(self.__class__.__name__)
 
     def _indent(self, block):
-        return "\n".join(["\t" + line for line in block])
+        return u"\n".join([u"\t" + line for line in block])
+
+    def _indent_block(self, block):
+        return self._indent(block.str().split(u"\n"))
 
 
 class Statement(Node):
@@ -69,13 +73,13 @@ class SourceElements(Statement):
     def str(self):
         string = []
         for node in self.func_decl.values():
-            for line in node.str().split("\n"):
+            for line in node.str().split(u"\n"):
                 string.append(line)
         for node in self.nodes:
-            for line in node.str().split("\n"):
+            for line in node.str().split(u"\n"):
                 string.append(line)
         body = self._indent(string)
-        return 'SourceElements (\n%s\n)' % body
+        return u'SourceElements (\n%s\n)' % body
 
 
 class Program(Statement):
@@ -87,8 +91,8 @@ class Program(Statement):
         self.body.compile(ctx)
 
     def str(self):
-        body = self._indent(self.body.str().split("\n"))
-        return 'Program (\n%s\n)' % body
+        body = self._indent_block(self.body)
+        return u'Program (\n%s\n)' % body
 
 
 class ExprStatement(Node):
@@ -99,7 +103,7 @@ class ExprStatement(Node):
         self.expr.compile(ctx)
 
     def str(self):
-        return 'ExprStatement (%s)' % self.expr.str()
+        return u'ExprStatement (%s)' % self.expr.str()
 
 
 class Function(Node):
@@ -121,8 +125,8 @@ class Function(Node):
         ctx.emit('DECLARE_FUNCTION', self.identifier, method)
 
     def str(self):
-        body = self._indent(self.body.str().split("\n"))
-        return 'Function (%s,\n%s\n)' % (self.identifier, body)
+        body = self._indent_block(self.body)
+        return u'Function (%s,\n%s\n)' % (self.identifier, body)
 
 
 class Call(Node):
@@ -137,7 +141,7 @@ class Call(Node):
         ctx.emit('CALL')
 
     def str(self):
-        return 'Call (%s, %s)' % (self.left.str(), self.params.str())
+        return u'Call (%s, %s)' % (self.left.str(), self.params.str())
 
 
 class Identifier(Expression):
@@ -151,7 +155,7 @@ class Identifier(Expression):
         ctx.emit('LOAD_FUNCTION', self.identifier)
 
     def str(self):
-        return 'Identifier %s' % self.identifier
+        return u'Identifier %s' % self.identifier
 
 
 class Constant(Expression):
@@ -162,7 +166,7 @@ class Constant(Expression):
         ctx.emit('LOAD_CONSTANT', self.identifier)
 
     def str(self):
-        return 'Constant (%s)' % self.identifier
+        return u'Constant (%s)' % self.identifier
 
 
 class ArgumentList(ListOp):
@@ -175,7 +179,8 @@ class ArgumentList(ListOp):
         ctx.emit('LOAD_LIST', len(self.nodes))
 
     def str(self):
-        return 'ArgumentList (%s)' % [node.str() for node in self.nodes]
+        arguments = u", ".join([node.str() for node in self.nodes])
+        return u'ArgumentList (%s)' % arguments
 
 
 class Array(ListOp):
@@ -185,7 +190,8 @@ class Array(ListOp):
         ctx.emit('LOAD_ARRAY', len(self.nodes))
 
     def str(self):
-        return 'Array (%s)' % [node.str() for node in self.nodes]
+        array = u", ".join([node.str() for node in self.nodes])
+        return u'Array (%s)' % array
 
 
 class Global(ListOp):
@@ -208,7 +214,7 @@ class Member(Expression):
             ctx.emit('LOAD_MEMBER')
 
     def str(self):
-        return 'Member (%s, %s)' % (self.left.str(), self.expr.str())
+        return u'Member (%s, %s)' % (self.left.str(), self.expr.str())
 
 
 class ConstantInt(Node):
@@ -221,7 +227,7 @@ class ConstantInt(Node):
         ctx.emit('LOAD_INTVAL', self.intval)
 
     def str(self):
-        return 'ConstantInt %s' % self.intval
+        return u'ConstantInt %d' % self.intval
 
 
 class ConstantFloat(Node):
@@ -234,12 +240,13 @@ class ConstantFloat(Node):
         ctx.emit('LOAD_FLOATVAL', self.floatval)
 
     def str(self):
-        return 'ConstantFloat %s' % self.floatval
+        return u'ConstantFloat %s' % unicode(str(self.floatval))
 
 
 class ConstantString(Node):
     """ Represent a constant
     """
+    @enforceargs(None, unicode)
     def __init__(self, stringval):
         self.stringval = stringval
 
@@ -247,7 +254,7 @@ class ConstantString(Node):
         ctx.emit('LOAD_STRINGVAL', self.stringval)
 
     def str(self):
-        return 'ConstantString "%s"' % self.stringval
+        return u'ConstantString "%s"' % self.stringval
 
 
 class StringSubstitution(Node):
@@ -262,7 +269,8 @@ class StringSubstitution(Node):
         ctx.emit('LOAD_STRING_SUBSTITUTION', len(self.strings))
 
     def str(self):
-        return 'StringSubstitution (%s)' % (self.strings)
+        strings = u", ".join([node.str() for node in self.strings])
+        return u'StringSubstitution (%s)' % strings
 
 
 class Boolean(Expression):
@@ -273,7 +281,7 @@ class Boolean(Expression):
         ctx.emit('LOAD_BOOLEAN', self.bool)
 
     def str(self):
-        return 'Boolean "%s"' % self.bool
+        return u'Boolean %s' % unicode(str(self.bool))
 
 
 class Null(Expression):
@@ -293,7 +301,7 @@ class VariableIdentifier(Expression):
         ctx.emit('LOAD_VAR', self.index, self.identifier)
 
     def str(self):
-        return 'VariableIdentifier (%s, %s)' % (self.index, self.identifier)
+        return u'VariableIdentifier (%d, %s)' % (self.index, self.identifier)
 
 
 class Empty(Expression):
@@ -318,11 +326,10 @@ OPERATIONS = unrolling_iterable(OPERANDS.items())
 
 
 class BaseAssignment(Expression):
-    noops = ['=']
     post = False
 
     def has_operation(self):
-        return self.operand not in self.noops
+        return self.operand != '='
 
     def compile(self, ctx):
         if self.has_operation():
@@ -366,9 +373,9 @@ class AssignmentOperation(BaseAssignment):
         ctx.emit('ASSIGN', self.index, self.left.get_literal())
 
     def str(self):
-        return 'AssignmentOperation (%s, %s, %s)' % (self.left.str(),
-                                                     self.operand,
-                                                     self.right.str())
+        return u'AssignmentOperation (%s, %s, %s)' % (self.left.str(),
+                                                      unicode(self.operand),
+                                                      self.right.str())
 
 
 class MemberAssignmentOperation(BaseAssignment):
@@ -390,9 +397,10 @@ class MemberAssignmentOperation(BaseAssignment):
         ctx.emit('STORE_MEMBER')
 
     def str(self):
-        return 'MemberAssignmentOperation (%s, %s, %s)' % (self.left.str(),
-                                                           self.operand,
-                                                           self.right.str())
+        return u'MemberAssignmentOperation (%s, %s, %s)' % (
+            self.left.str(),
+            unicode(self.operand),
+            self.right.str())
 
 
 class Unconditional(Statement):
@@ -439,15 +447,15 @@ class If(Node):
         ctx.emit_label(endif)
 
     def str(self):
-        true_branch = self._indent(self.true_branch.str().split("\n"))
+        true_branch = self._indent_block(self.true_branch)
         if self.else_branch:
-            else_branch = self._indent(self.else_branch.str().split("\n"))
-            return 'If (%s,\n%s,\n%s\n)' % (self.condition.str(),
-                                            true_branch,
-                                            else_branch)
+            else_branch = self._indent_block(self.else_branch)
+            return u'If (%s,\n%s,\n%s\n)' % (self.condition.str(),
+                                             true_branch,
+                                             else_branch)
         else:
-            return 'If (%s,\n%s\n)' % (self.condition.str(),
-                                       true_branch)
+            return u'If (%s,\n%s\n)' % (self.condition.str(),
+                                        true_branch)
 
 
 class WhileBase(Statement):
@@ -475,8 +483,8 @@ class While(WhileBase):
         ctx.done_continue()
 
     def str(self):
-        body = self._indent(self.body.str().split("\n"))
-        return 'While (%s,\n%s\n)' % (self.condition.str(), body)
+        body = self._indent_block(self.body)
+        return u'While (%s,\n%s\n)' % (self.condition.str(), body)
 
 
 class For(Statement):
@@ -510,10 +518,10 @@ class For(Statement):
         ctx.emit_endloop_label(endlabel)
 
     def str(self):
-        body = self._indent(self.body.str().split("\n"))
-        return 'For (%s, %s, %s,\n%s\n)' % (self.setup.str(),
-                                            self.condition.str(),
-                                            self.update.str(), body)
+        body = self._indent_block(self.body)
+        return u'For (%s, %s, %s,\n%s\n)' % (self.setup.str(),
+                                             self.condition.str(),
+                                             self.update.str(), body)
 
 
 class Foreach(Statement):
@@ -566,10 +574,10 @@ class Foreach(Statement):
         ctx.emit_endloop_label(finish)
 
     def str(self):
-        body = self._indent(self.body.str().split("\n"))
-        return 'Foreach (%s, %s, %s,\n%s\n)' % (self.w_object.str(),
-                                                self.key.str(),
-                                                self.variable.str(), body)
+        body = self._indent_block(self.body)
+        return u'Foreach (%s, %s, %s,\n%s\n)' % (self.w_object.str(),
+                                                 self.key.str(),
+                                                 self.variable.str(), body)
 
 
 class Print(Node):
@@ -581,7 +589,7 @@ class Print(Node):
         ctx.emit('PRINT')
 
     def str(self):
-        return 'Print (%s)' % self.expr.str()
+        return u'Print (%s)' % self.expr.str()
 
 
 class Return(Statement):
@@ -597,9 +605,9 @@ class Return(Statement):
 
     def str(self):
         if self.expr:
-            return 'Return (%s)' % self.expr.str()
+            return u'Return (%s)' % self.expr.str()
         else:
-            return 'Return'
+            return u'Return'
 
 
 class Block(Statement):
@@ -621,10 +629,10 @@ class Block(Statement):
     def str(self):
         string = []
         for node in self.nodes:
-            for line in node.str().split("\n"):
+            for line in node.str().split(u"\n"):
                 string.append(line)
         body = self._indent(string)
-        return 'Block (\n%s\n)' % body
+        return u'Block (\n%s\n)' % body
 
 
 def create_binary_op(name):
@@ -639,7 +647,8 @@ def create_binary_op(name):
             ctx.emit(name)
 
         def str(self):
-            return name + ' (%s, %s)' % (self.left.str(), self.right.str())
+            return unicode(name) + u' (%s, %s)' % (self.left.str(),
+                                                   self.right.str())
     BinaryOp.__name__ = name
     return BinaryOp
 
@@ -654,7 +663,7 @@ def create_unary_op(name):
             ctx.emit(name)
 
         def str(self):
-            return name + ' (%s)' % (self.expr.str(),)
+            return unicode(name) + u' (%s)' % (self.expr.str(),)
     UnaryOp.__name__ = name
     return UnaryOp
 
@@ -672,7 +681,7 @@ class And(Expression):
         ctx.emit_label(one)
 
     def str(self):
-        return 'And (%s, %s)' % (self.left.str(), self.right.str())
+        return u'And (%s, %s)' % (self.left.str(), self.right.str())
 
 
 class Or(Expression):
@@ -688,7 +697,7 @@ class Or(Expression):
         ctx.emit_label(one)
 
     def str(self):
-        return 'Or (%s, %s)' % (self.left.str(), self.right.str())
+        return u'Or (%s, %s)' % (self.left.str(), self.right.str())
 
 Comma = create_binary_op('COMMA')
 

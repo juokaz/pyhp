@@ -24,5 +24,7 @@ class TestBase(object):
     def _init(self, code):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
         phpfile = tmpdir.join(self.tmpname + '.php')
-        phpfile.write(code)
+        f = open(str(phpfile), 'w')
+        f.write(code.encode('utf8'))
+        f.close()
         return str(phpfile)

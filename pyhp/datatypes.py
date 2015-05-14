@@ -1,4 +1,4 @@
-from rpython.rlib.rstring import StringBuilder
+from rpython.rlib.rstring import UnicodeBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
 from rpython.rlib.objectmodel import compute_hash
@@ -16,7 +16,7 @@ class W_Root(object):
         return False
 
     def str(self):
-        return ''
+        return u''
 
     def str_full(self):
         return self.str()
@@ -95,7 +95,7 @@ class W_IntObject(W_Number):
         return self.intval
 
     def str(self):
-        return str(self.intval)
+        return u"%d" % self.intval
 
     def hash(self):
         return compute_hash(self.intval)
@@ -119,7 +119,7 @@ class W_FloatObject(W_Number):
         return self.floatval
 
     def str(self):
-        return str(self.floatval)
+        return unicode(str(self.floatval))
 
     def hash(self):
         return compute_hash(self.floatval)
@@ -137,11 +137,12 @@ class W_StringObject(W_Root):
     _immutable_fields_ = ['stringval']
 
     def __init__(self, stringval):
-        assert(isinstance(stringval, str))
+        assert stringval is not None and isinstance(stringval, unicode)
         self.stringval = stringval
 
     def append(self, stringval):
-        builder = StringBuilder()
+        assert(isinstance(stringval, unicode))
+        builder = UnicodeBuilder()
         concat = W_ConcatStringObject(builder)
         concat.builder.append(self.stringval)
         concat.builder.append(stringval)
@@ -177,6 +178,7 @@ class W_ConcatStringObject(W_StringObject):
         self.builder = builder
 
     def append(self, stringval):
+        assert(isinstance(stringval, unicode))
         builder = self.builder
         concat = W_ConcatStringObject(builder)
         concat.builder.append(stringval)
@@ -219,20 +221,20 @@ class W_Array(W_Root):
             raise Exception("key %s not in %s" % (key, self))
 
     def str(self):
-        return 'Array'
+        return u'Array'
 
     @jit.unroll_safe
     def str_full(self):
-        result = "Array\n" + "(\n"
+        result = u"Array\n" + u"(\n"
         for key, value in self.data.itervalues():
-            lines = value.str_full().split("\n")
+            lines = value.str_full().split(u"\n")
             string = lines[0]
             end = len(lines)-1
             if end > 1:
-                offset = "\n".join(["\t" + line for line in lines[1:end]])
-                string = string + "\n" + offset
-            result += "\t[" + key.str() + "] => " + string + "\n"
-        result += ")\n"
+                offset = u"\n".join([u"\t" + line for line in lines[1:end]])
+                string = string + u"\n" + offset
+            result += u"\t[" + key.str() + u"] => " + string + u"\n"
+        result += u")\n"
         return result
 
     @jit.unroll_safe
@@ -258,7 +260,7 @@ class W_List(W_Root):
     def to_list(self):
         return self.values
 
-    def __str__(self):
+    def __repr__(self):
         return 'W_List(%s)' % (str([str(v) for v in self.values]))
 
 
@@ -302,8 +304,8 @@ class W_Boolean(W_Root):
 
     def str(self):
         if self.boolval is True:
-            return "true"
-        return "false"
+            return u"true"
+        return u"false"
 
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
@@ -316,7 +318,7 @@ class W_Boolean(W_Root):
 
 class W_Null(W_Root):
     def str(self):
-        return "null"
+        return u"null"
 
 
 class W_CodeFunction(W_Root):

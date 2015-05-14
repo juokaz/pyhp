@@ -20,6 +20,7 @@ and is a complete, working implementation.
 - global variables in function blocks using `global`
 - global constants using `define()`
 - (incomplete) standard library functions
+- unicode support for function/variable names and string values. PHP 6 compatible!
 
 ## Project structure
 

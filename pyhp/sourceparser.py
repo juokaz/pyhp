@@ -6,8 +6,10 @@ from rpython.rlib.rarithmetic import ovfcheck_float_to_int
 from pyhp import pyhpdir
 from pyhp import operations
 from pyhp.scopes import Scope
-from rpython.rlib.rstring import StringBuilder
-from constants import CURLYVARIABLE
+from pyhp.constants import CURLYVARIABLE
+from pyhp.utils import string_unquote, decode_str_utf8, string_unescape
+from rpython.rlib.objectmodel import enforceargs
+
 
 grammar_file = 'grammar.txt'
 grammar = py.path.local(pyhpdir).join(grammar_file).read("rt")
@@ -185,7 +187,8 @@ class Transformer(RPythonVisitor):
     def visit_constantexpression(self, node):
         node = node.children[0]
         name = node.additional_info
-        return operations.Constant(name)
+        n = unicode(name)
+        return operations.Constant(n)
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
@@ -319,17 +322,20 @@ class Transformer(RPythonVisitor):
 
     def visit_IDENTIFIERNAME(self, node):
         name = node.additional_info
-        return operations.Identifier(name)
+        n = unicode(name)
+        return operations.Identifier(n)
 
     def visit_VARIABLENAME(self, node):
         name = node.additional_info
-        index = self.declare_variable(name)
-        return operations.VariableIdentifier(name, index)
+        n = unicode(name)
+        index = self.declare_variable(n)
+        return operations.VariableIdentifier(n, index)
 
     def string(self, node):
         string = node.additional_info
-        string = string_unescape(string)
+        string = decode_str_utf8(string)
         string, single_quotes = string_unquote(string)
+        string = string_unescape(string)
         if single_quotes:
             return operations.ConstantString(string)
         else:
@@ -387,91 +393,27 @@ class Transformer(RPythonVisitor):
             return None
 
 
-def string_unquote(string):
-    s = string
-    single_quotes = True
-    if s.startswith('"'):
-        assert s.endswith('"')
-        single_quotes = False
-    else:
-        assert s.startswith("'")
-        assert s.endswith("'")
-    s = s[:-1]
-    s = s[1:]
-
-    return s, single_quotes
-
-
+@enforceargs(None, unicode)
 def double_quote_string_parse(transformer, string):
     s_ = []
 
     has_variable = False
     for part in CURLYVARIABLE.split(string):
+        # if the original string was just an empty string allow it to get
+        # handled by the else branch below
+        if part is None or (part == u'' and len(s_) > 0):
+            continue
+
         if len(part) > 0 and part[0] == '$':
             has_variable = True
             # force variable to be a valid php expression "$a;"
-            parsed = parse(part + ';')
+            # parse() works with strings only, but the part variable is unicode
+            # covert to a string before passing
+            parsed = parse(part.encode("utf-8") + ';')
             expression = parsed.children[0].children[0].children[0]
             part = transformer.dispatch(expression)
-        elif part == '' and len(s_) > 0:
-            continue
         else:
             part = operations.ConstantString(part)
         s_.append(part)
 
     return s_, has_variable
-
-
-def string_unescape(string):
-    s = string
-    size = len(string)
-
-    if size == 0:
-        return ''
-
-    builder = StringBuilder(size)
-    pos = 0
-    while pos < size:
-        ch = s[pos]
-
-        # Non-escape characters are interpreted as Unicode ordinals
-        if ch != '\\':
-            builder.append(ch)
-            pos += 1
-            continue
-
-        # - Escapes
-        pos += 1
-        if pos >= size:
-            message = "\\ at end of string"
-            raise Exception(message)
-
-        ch = s[pos]
-        pos += 1
-        # \x escapes
-        if ch == '\n':
-            pass
-        elif ch == '\\':
-            builder.append('\\')
-        elif ch == '\'':
-            builder.append('\'')
-        elif ch == '\"':
-            builder.append('\"')
-        elif ch == 'b':
-            builder.append('\b')
-        elif ch == 'f':
-            builder.append('\f')
-        elif ch == 't':
-            builder.append('\t')
-        elif ch == 'n':
-            builder.append('\n')
-        elif ch == 'r':
-            builder.append('\r')
-        elif ch == 'v':
-            builder.append('\v')
-        elif ch == 'a':
-            builder.append('\a')
-        else:
-            builder.append(ch)
-
-    return builder.build()

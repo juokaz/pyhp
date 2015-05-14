@@ -26,7 +26,7 @@ class Opcode(object):
         raise NotImplementedError(self.get_name() + ".eval")
 
     def str(self):
-        return self.get_name()
+        return unicode(self.get_name())
 
     def __str__(self):
         return self.str()
@@ -41,11 +41,11 @@ class LOAD_CONSTANT(Opcode):
     def eval(self, frame):
         value = frame.get_constant(self.name)
         if value is None:
-            raise Exception("Constant %s is not defined" % self.name)
+            raise Exception(u"Constant %s is not defined" % self.name)
         frame.push(value)
 
     def str(self):
-        return 'LOAD_CONSTANT %s' % (self.name)
+        return u'LOAD_CONSTANT %s' % (self.name)
 
 
 class LOAD_VAR(Opcode):
@@ -59,12 +59,12 @@ class LOAD_VAR(Opcode):
         variable = frame.get_variable(self.name, self.index)
 
         if variable is None:
-            raise Exception("Variable %s is not set" % self.name)
+            raise Exception(u"Variable %s is not set" % self.name)
 
         frame.push(variable)
 
     def str(self):
-        return 'LOAD_VAR %s, %s' % (self.index, self.name)
+        return u'LOAD_VAR %d, %s' % (self.index, self.name)
 
 
 class LOAD_REF(Opcode):
@@ -78,12 +78,12 @@ class LOAD_REF(Opcode):
         ref = frame.get_reference(self.name, self.index)
 
         if ref is None:
-            raise Exception("Variable %s is not set" % self.name)
+            raise Exception(u"Variable %s is not set" % self.name)
 
         frame.push(ref)
 
     def str(self):
-        return 'LOAD_REF %s, %s' % (self.index, self.name)
+        return u'LOAD_REF %d, %s' % (self.index, self.name)
 
 
 class LOAD_FUNCTION(Opcode):
@@ -95,11 +95,11 @@ class LOAD_FUNCTION(Opcode):
     def eval(self, frame):
         func = frame.get_function(self.name)
         if func is None:
-            raise Exception("Function %s is not defined" % self.name)
+            raise Exception(u"Function %s is not defined" % self.name)
         frame.push(func)
 
     def str(self):
-        return 'LOAD_FUNCTION %s' % (self.name)
+        return u'LOAD_FUNCTION %s' % (self.name)
 
 
 class DECLARE_FUNCTION(Opcode):
@@ -114,7 +114,7 @@ class DECLARE_FUNCTION(Opcode):
         frame.declare_function(self.name, funcobj)
 
     def str(self):
-        return 'DECLARE_FUNCTION %s' % (self.name)
+        return u'DECLARE_FUNCTION %s' % (self.name)
 
 
 class LOAD_LIST(Opcode):
@@ -128,7 +128,7 @@ class LOAD_LIST(Opcode):
         frame.push(W_List(list_w))
 
     def str(self):
-        return 'LOAD_LIST %d' % self.number
+        return u'LOAD_LIST %d' % self.number
 
 
 class LOAD_NULL(Opcode):
@@ -136,7 +136,7 @@ class LOAD_NULL(Opcode):
         frame.push(w_Null)
 
     def str(self):
-        return 'LOAD_NULL'
+        return u'LOAD_NULL'
 
 
 class LOAD_BOOLEAN(Opcode):
@@ -149,7 +149,7 @@ class LOAD_BOOLEAN(Opcode):
         frame.push(self.value)
 
     def str(self):
-        return 'LOAD_BOOLEAN %s' % (self.value)
+        return u'LOAD_BOOLEAN %s' % (self.value.str())
 
 
 class LOAD_INTVAL(Opcode):
@@ -162,7 +162,7 @@ class LOAD_INTVAL(Opcode):
         frame.push(self.value)
 
     def str(self):
-        return 'LOAD_INTVAL %s' % (self.value.intval)
+        return u'LOAD_INTVAL %s' % (self.value.str())
 
 
 class LOAD_FLOATVAL(Opcode):
@@ -175,21 +175,20 @@ class LOAD_FLOATVAL(Opcode):
         frame.push(self.value)
 
     def str(self):
-        return 'LOAD_FLOATVAL %s' % (self.value.floatval)
+        return u'LOAD_FLOATVAL %s' % (self.value.str())
 
 
 class LOAD_STRINGVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        assert isinstance(value, str)
         self.value = newstring(value)
 
     def eval(self, frame):
         frame.push(self.value)
 
     def str(self):
-        return 'LOAD_STRINGVAL "%s"' % (self.value.stringval)
+        return u'LOAD_STRINGVAL "%s"' % (self.value.str())
 
 
 class LOAD_STRING_SUBSTITUTION(Opcode):
@@ -200,7 +199,7 @@ class LOAD_STRING_SUBSTITUTION(Opcode):
 
     @jit.unroll_safe
     def eval(self, frame):
-        value = newstring('')
+        value = newstring(u'')
         list_w = frame.pop_n(self.number)
 
         for part in list_w:
@@ -209,7 +208,7 @@ class LOAD_STRING_SUBSTITUTION(Opcode):
         frame.push(value)
 
     def str(self):
-        return 'LOAD_STRING_SUBSTITUTION %s' % (self.number)
+        return u'LOAD_STRING_SUBSTITUTION %d' % (self.number)
 
 
 class LOAD_ARRAY(Opcode):
@@ -227,7 +226,7 @@ class LOAD_ARRAY(Opcode):
         frame.push(array)
 
     def str(self):
-        return 'LOAD_ARRAY %d' % (self.number)
+        return u'LOAD_ARRAY %d' % (self.number)
 
 
 class LOAD_MEMBER(Opcode):
@@ -251,7 +250,7 @@ class LOAD_MEMBER_VAR(Opcode):
         array = frame.get_variable(self.name, self.index)
 
         if array is None:
-            raise Exception("Variable %s is not set" % self.name)
+            raise Exception(u"Variable %s is not set" % self.name)
 
         assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
 
@@ -260,7 +259,7 @@ class LOAD_MEMBER_VAR(Opcode):
         frame.push(value)
 
     def str(self):
-        return 'LOAD_MEMBER_VAR %d, %s' % (self.index, self.name)
+        return u'LOAD_MEMBER_VAR %d, %s' % (self.index, self.name)
 
 
 class STORE_MEMBER(Opcode):
@@ -273,7 +272,7 @@ class STORE_MEMBER(Opcode):
         frame.push(array)
 
     def str(self):
-        return 'STORE_MEMBER'
+        return u'STORE_MEMBER'
 
 
 class ASSIGN(Opcode):
@@ -290,7 +289,7 @@ class ASSIGN(Opcode):
         frame.push(value)
 
     def str(self):
-        return 'ASSIGN %s, %s' % (self.index, self.name)
+        return u'ASSIGN %d, %s' % (self.index, self.name)
 
 
 class DISCARD_TOP(Opcode):
@@ -310,7 +309,7 @@ class LABEL(Opcode):
         self.num = num
 
     def str(self):
-        return 'LABEL %d' % (self.num)
+        return u'LABEL %d' % (self.num)
 
 
 class BaseJump(Opcode):
@@ -331,7 +330,7 @@ class JUMP_IF_FALSE(BaseJump):
         return pos + 1
 
     def str(self):
-        return 'JUMP_IF_FALSE %d' % (self.where)
+        return u'JUMP_IF_FALSE %d' % (self.where)
 
 
 class JUMP_IF_FALSE_NOPOP(BaseJump):
@@ -343,7 +342,7 @@ class JUMP_IF_FALSE_NOPOP(BaseJump):
         return pos + 1
 
     def str(self):
-        return 'JUMP_IF_FALSE_NOPOP %d' % (self.where)
+        return u'JUMP_IF_FALSE_NOPOP %d' % (self.where)
 
 
 class JUMP_IF_TRUE_NOPOP(BaseJump):
@@ -355,7 +354,7 @@ class JUMP_IF_TRUE_NOPOP(BaseJump):
         return pos + 1
 
     def str(self):
-        return 'JUMP_IF_TRUE_NOPOP %d' % (self.where)
+        return u'JUMP_IF_TRUE_NOPOP %d' % (self.where)
 
 
 class JUMP(BaseJump):
@@ -363,7 +362,7 @@ class JUMP(BaseJump):
         return self.where
 
     def str(self):
-        return 'JUMP %d' % (self.where)
+        return u'JUMP %d' % (self.where)
 
 
 class LOAD_ITERATOR(Opcode):
@@ -387,7 +386,7 @@ class JUMP_IF_ITERATOR_EMPTY(BaseJump):
         return pos + 1
 
     def str(self):
-        return 'JUMP_IF_ITERATOR_EMPTY %d' % (self.where)
+        return u'JUMP_IF_ITERATOR_EMPTY %d' % (self.where)
 
 
 class NEXT_ITERATOR(Opcode):

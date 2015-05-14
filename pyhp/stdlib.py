@@ -52,7 +52,7 @@ def print_r(space, args):
 def dechex(space, args):
     number = args[0].get_value()
     assert(isint(number))
-    return newstring(hex(number.get_int()))
+    return newstring(unicode(hex(number.get_int())))
 
 
 def number_format(space, args):
@@ -64,7 +64,7 @@ def number_format(space, args):
     number = number.to_number()
     positions = positions.get_int()
 
-    formatted = str(formatd(number, "f", positions))
+    formatted = unicode(formatd(number, "f", positions))
 
     return newstring(formatted)
 
@@ -89,20 +89,20 @@ def gettimeofday(space, args):
     usec = int(seconds.split('.')[1])
 
     array = W_Array()
-    array.put(newstring('sec'), newint(intmask(sec)))
-    array.put(newstring('usec'), newint(intmask(usec)))
+    array.put(newstring(u'sec'), newint(intmask(sec)))
+    array.put(newstring(u'usec'), newint(intmask(usec)))
     return array
 
 # ----- #
 
 functions = [
-    new_native_function('define', define),
-    new_native_function('strlen', strlen),
-    new_native_function('str_repeat', str_repeat),
-    new_native_function('printf', printf),
-    new_native_function('print_r', print_r),
-    new_native_function('dechex', dechex),
-    new_native_function('number_format', number_format),
-    new_native_function('range', array_range),
-    new_native_function('gettimeofday', gettimeofday),
+    new_native_function(u'define', define),
+    new_native_function(u'strlen', strlen),
+    new_native_function(u'str_repeat', str_repeat),
+    new_native_function(u'printf', printf),
+    new_native_function(u'print_r', print_r),
+    new_native_function(u'dechex', dechex),
+    new_native_function(u'number_format', number_format),
+    new_native_function(u'range', array_range),
+    new_native_function(u'gettimeofday', gettimeofday),
 ]

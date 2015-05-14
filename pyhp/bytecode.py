@@ -18,7 +18,9 @@ from rpython.rlib import jit
 
 def printable_loc(pc, bc):
     opcode = bc._get_opcode(pc)
-    return str(pc) + ": " + opcode.str()
+    # get_printable_location function must return a string
+    # opcode string representation is a unicode string and thus needs encoding
+    return "%d: %s" % (pc, opcode.str().encode("utf-8"))
 
 driver = jit.JitDriver(greens=['pc', 'self'],
                        reds=['frame'],
@@ -187,25 +189,25 @@ class ByteCode(object):
         lines = []
 
         for function in self._functions():
-            lines.append('Function ' + function.str())
-            lines.append('')
+            lines.append(u'Function ' + function.str())
+            lines.append(u'')
 
-        if self.name == 'Main':
-            lines.append(self.name + ':')
+        if self.name == u'Main':
+            lines.append(self.name + u':')
         else:
             arguments = []
             for param, by_value in self.params():
                 if by_value:
                     arguments.append(param)
                 else:
-                    arguments.append('&' + param)
-            lines.append(self.name + '(' + ", ".join(arguments) + ')' + ':')
+                    arguments.append(u'&' + param)
+            lines.append(self.name + u'(' + u", ".join(arguments) + u'):')
         for index, opcode in enumerate(self.opcodes):
-            lines.append(str(index) + ": " + opcode.str())
-        return "\n".join(lines)
+            lines.append(u"%d: %s" % (index, opcode.str()))
+        return u"\n".join(lines)
 
 
-def compile_ast(ast, symbols, name='Main'):
+def compile_ast(ast, symbols, name=u'Main'):
     bc = ByteCode(name, symbols)
     if ast is not None:
         ast.compile(bc)

@@ -3,7 +3,7 @@ from rpython.rlib import jit
 
 from pyhp.functions import NativeFunction
 from pyhp.datatypes import W_CodeFunction, W_Null, W_Boolean, W_FloatObject, \
-    W_IntObject, W_StringObject
+    W_IntObject, W_StringObject, W_Root
 
 
 class ObjectSpace(object):
@@ -18,7 +18,6 @@ class ObjectSpace(object):
             self.declare_function(func.name, func)
 
     def declare_function(self, name, func):
-        assert isinstance(name, str)
         assert isinstance(func, W_CodeFunction)
         if name in self.functions:
             return False
@@ -26,18 +25,16 @@ class ObjectSpace(object):
         return True
 
     def get_function(self, name):
-        assert isinstance(name, str)
         return self.functions.get(name, None)
 
     def declare_constant(self, name, value):
-        assert isinstance(name, str)
+        assert isinstance(value, W_Root)
         if name in self.constants:
             return False
         self.constants[name] = value
         return True
 
     def get_constant(self, name):
-        assert isinstance(name, str)
         return self.constants.get(name, None)
 
 
@@ -51,7 +48,7 @@ def newfloat(f):
     return W_FloatObject(f)
 
 
-@enforceargs(str)
+@enforceargs(unicode)
 def newstring(s):
     return W_StringObject(s)
 

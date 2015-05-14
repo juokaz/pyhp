@@ -118,14 +118,14 @@ class Frame(object):
             if self.symbols.contains(name):
                 index = self.symbols.lookup(name)
             else:
-                raise Exception('Frame has no variable %s' % name)
+                raise Exception(u'Frame has no variable %s' % name)
         return index
 
     def declare_function(self, name, func):
         declared = self.space.declare_function(name, func)
 
         if not declared:
-            raise Exception('Function %s alredy declared' % name)
+            raise Exception(u'Function %s alredy declared' % name)
 
     def get_function(self, name):
         return self.space.get_function(name)

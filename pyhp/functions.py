@@ -27,7 +27,7 @@ class NativeFunction(BaseFunction):
     _immutable_fields_ = ['_name', 'function']
 
     def __init__(self, name, function):
-        assert isinstance(name, str)
+        assert isinstance(name, unicode)
         self._name = name
         self.function = function
 
@@ -83,7 +83,7 @@ class CodeFunction(ExecutableCode):
     _immutable_fields_ = ['bytecode', '_name']
 
     def __init__(self, name, bytecode):
-        assert isinstance(name, str)
+        assert isinstance(name, unicode)
         ExecutableCode.__init__(self, bytecode)
         self._name = name
 
