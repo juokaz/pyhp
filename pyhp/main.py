@@ -8,6 +8,8 @@ from pyhp.stdlib import functions as global_functions
 from pyhp.functions import GlobalCode
 from pyhp.objspace import ObjectSpace
 
+from pyhp.server import open_socket, wait_for_connection, return_response, read_request
+
 
 def source_to_ast(source):
     """ Parse the source code and produce an AST
@@ -68,6 +70,7 @@ def main(argv):
     filename = None
     print_bytecode = False
     print_ast = False
+    server = False
     i = 1
     while i < len(argv):
         arg = argv[i]
@@ -76,6 +79,8 @@ def main(argv):
                 print_bytecode = True
             elif arg == '--ast':
                 print_ast = True
+            elif arg == '--server':
+                server = True
             else:
                 print "Unknown parameter %s" % arg
                 return 1
@@ -89,6 +94,18 @@ def main(argv):
         return 0
     elif print_bytecode:
         print bytecode(filename).str()
+        return 0
+    elif server:
+        bc = bytecode(filename)
+        socket = open_socket('localhost', 8080)
+
+        while True:
+            client = wait_for_connection(socket)
+            request = read_request(client)
+            # todo result of the interpreter should go to the client
+            interpret(bc)
+            response = 'Hello world!'
+            return_response(client, response)
         return 0
     else:
         return run(filename)
