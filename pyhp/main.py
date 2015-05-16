@@ -6,7 +6,6 @@ from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.interpreter import Interpreter
 from pyhp.stdlib import functions as global_functions
-from pyhp.functions import GlobalCode
 from pyhp.objspace import ObjectSpace
 
 from pyhp.server import open_socket, wait_for_connection, return_response, \
@@ -38,10 +37,9 @@ def interpret(bc, interp=None):
     if interp is None:
         interp = interpreter()
 
-    code = GlobalCode(bc)
-    frame = GlobalFrame(code)
+    frame = GlobalFrame(bc)
+    interp.execute(bc, frame)
 
-    code.run(interp, frame)
     return frame  # for tests and later introspection
 
 

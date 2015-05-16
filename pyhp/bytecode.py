@@ -124,7 +124,7 @@ class ByteCode(object):
         functions = []
         for opcode in self.opcodes:
             if isinstance(opcode, DECLARE_FUNCTION):
-                functions.append(opcode.function.bytecode)
+                functions.append(opcode.bytecode)
         return functions
 
     def __str__(self):
@@ -156,4 +156,5 @@ def compile_ast(ast, symbols, name=u'Main'):
     bc = ByteCode(name, symbols)
     if ast is not None:
         ast.compile(bc)
+    bc.compile()
     return bc

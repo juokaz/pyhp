@@ -32,17 +32,17 @@ by calling `compile()` on the tree. Produces a `ByteCode` instance consisting of
 `opcodes.py` nodes
 - `frame.py` - execution frame. Contains the stack and the variables/functions map
 for the function or the global program. A frame instance is passed to `execute`
-method of a `ByteCode` instance as the only parameter
+method of a `Interpreter` instance as the only parameter
+- `interpreter.py` - loops over a list of bytecodes and evaluates a `opcodes.py`
+handler
 - `grammar.txt` - EBNF PHP grammar used by `sourceparcer.py`
 
 Additional files:
 - `operations.py` - AST tree nodes
 - `opcodes.py` - class per each opcode. Each opcode has a `eval(frame)` method which gets
-called by the `Bytecode.execute()` method
+called by the `Interpreter.execute()` method
 - `symbols.py` - contains an optimized `Map` class used for symbols map in `scopes.py`
 - `stdlib.py` - various PHP standard library methods like `strlen`
-- `functions.py` - wraps a `ByteCode` instance or a native function from `stdlib.py` into an object
-which then gets used to run a function or the main program
 - `datatypes.py` - all datatypes' box classes used to store the variables,
 like int, float, array, etc.
 

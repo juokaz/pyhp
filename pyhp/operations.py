@@ -1,5 +1,4 @@
 from pyhp.bytecode import compile_ast
-from pyhp.functions import CodeFunction
 from rpython.rlib.unroll import unrolling_iterable
 from rpython.rlib.objectmodel import enforceargs
 
@@ -120,9 +119,7 @@ class Function(Node):
         body = self.body
         body = compile_ast(body, self.scope, self.identifier)
 
-        method = CodeFunction(self.identifier, body)
-
-        ctx.emit('DECLARE_FUNCTION', self.identifier, method)
+        ctx.emit('DECLARE_FUNCTION', self.identifier, body)
 
     def str(self):
         body = self._indent_block(self.body)

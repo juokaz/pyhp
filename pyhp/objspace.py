@@ -1,9 +1,8 @@
 from rpython.rlib.objectmodel import enforceargs
 from rpython.rlib import jit
 
-from pyhp.functions import NativeFunction
-from pyhp.datatypes import W_CodeFunction, W_Null, W_Boolean, W_FloatObject, \
-    W_IntObject, W_StringObject, W_Root
+from pyhp.datatypes import W_Function, W_NativeFunction, W_Null, \
+    W_Boolean, W_FloatObject, W_IntObject, W_StringObject, W_Root
 
 
 class ObjectSpace(object):
@@ -18,7 +17,7 @@ class ObjectSpace(object):
             self.declare_function(func.name, func)
 
     def declare_function(self, name, func):
-        assert isinstance(func, W_CodeFunction)
+        assert isinstance(func, W_Function)
         if name in self.functions:
             return False
         self.functions[name] = func
@@ -68,6 +67,4 @@ def newbool(val):
 
 
 def new_native_function(name, function, params=[]):
-    func = NativeFunction(name, function)
-    obj = W_CodeFunction(func)
-    return obj
+    return W_NativeFunction(name, function)

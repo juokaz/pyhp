@@ -1,6 +1,6 @@
 from pyhp.datatypes import W_StringObject, \
     W_Array, W_List, \
-    W_CodeFunction, W_Iterator
+    W_Function, W_CodeFunction, W_Iterator
 from pyhp.objspace import w_Null, newbool, newint, newfloat, newstring
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
@@ -101,14 +101,14 @@ class LOAD_FUNCTION(Opcode):
 
 
 class DECLARE_FUNCTION(Opcode):
-    _immutable_fields_ = ['name', 'function']
+    _immutable_fields_ = ['name', 'bytecode']
 
-    def __init__(self, name, function):
+    def __init__(self, name, bytecode):
         self.name = name
-        self.function = function
+        self.bytecode = bytecode
 
     def eval(self, interpreter, frame):
-        funcobj = W_CodeFunction(self.function)
+        funcobj = W_CodeFunction(self.bytecode)
         interpreter.declare_function(self.name, funcobj)
 
     def str(self):
@@ -412,7 +412,7 @@ class CALL(Opcode):
         method = frame.pop()
         params = frame.pop()
 
-        assert isinstance(method, W_CodeFunction)
+        assert isinstance(method, W_Function)
         assert isinstance(params, W_List)
 
         res = method.call(interpreter, frame, params.to_list())
