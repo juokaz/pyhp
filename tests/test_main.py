@@ -44,6 +44,11 @@ Main:
         print $x;""", capfd)
         assert out == "1"
 
+    def test_running_return(self, capfd):
+        out = self.run_return("""$x = 1;
+        print $x;""")
+        assert out == "1"
+
     def test_echo(self, capfd):
         out = self.run("""$x = 1;
         echo $x;""", capfd)

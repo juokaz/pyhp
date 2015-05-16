@@ -93,6 +93,23 @@ def gettimeofday(interpreter, args):
     array.put(newstring(u'usec'), newint(intmask(usec)))
     return array
 
+
+def ob_start(interpreter, args):
+    interpreter.start_buffering()
+    return w_Null
+
+
+def ob_end_clean(interpreter, args):
+    interpreter.end_buffer()
+    return w_Null
+
+
+def ob_flush(interpreter, args):
+    buffer = interpreter.end_buffer()
+    interpreter.output(buffer)
+    return w_Null
+
+
 # ----- #
 
 functions = [
@@ -105,4 +122,7 @@ functions = [
     new_native_function(u'number_format', number_format),
     new_native_function(u'range', array_range),
     new_native_function(u'gettimeofday', gettimeofday),
+    new_native_function(u'ob_start', ob_start),
+    new_native_function(u'ob_end_clean', ob_end_clean),
+    new_native_function(u'ob_flush', ob_flush),
 ]

@@ -1,7 +1,6 @@
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib.parsing.parsing import ParseError
 
-from pyhp.frame import GlobalFrame
 from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
 from pyhp.interpreter import Interpreter
@@ -37,10 +36,7 @@ def interpret(bc, interp=None):
     if interp is None:
         interp = interpreter()
 
-    frame = GlobalFrame(bc)
-    interp.execute(bc, frame)
-
-    return frame  # for tests and later introspection
+    interp.run(bc)
 
 
 def interpreter():
@@ -73,6 +69,12 @@ def run(filename):
     interpret(bc)
 
     return 0
+
+
+def run_return(filename):
+    bc = bytecode(filename)
+    interp = interpreter()
+    return interp.run_return(bc)
 
 
 def main(argv):
@@ -113,10 +115,7 @@ def main(argv):
             request = read_request(client, 1024)
             if request != "":
                 interp = interpreter()
-                interp.start_buffering()
-                # todo result of the interpreter should go to the client
-                interpret(bc, interp)
-                response = interp.get_buffer()
+                response = interp.run_return(bc)
                 return_response(client, response)
             connection_close(client)
         return 0

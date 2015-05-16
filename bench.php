@@ -362,7 +362,7 @@ function getmicrotime()
 
 function start_test()
 {
-    //ob_start();
+    ob_start();
   return getmicrotime();
 }
 
@@ -370,13 +370,13 @@ function end_test($start, $name)
 {
   global $total;
   $end = getmicrotime();
- // ob_end_clean();
+  ob_end_clean();
   $total += $end-$start;
   $num = number_format($end-$start,3);
   $pad = str_repeat(" ", 24-strlen($name)-strlen($num));
 
   echo $name.$pad.$num."\n";
-  //  ob_start();
+    ob_start();
   return getmicrotime();
 }
 

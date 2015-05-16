@@ -13,8 +13,11 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 """
 
 from pyhp.opcodes import BaseJump, RETURN
+from pyhp.frame import GlobalFrame
+
 from rpython.rlib import jit
 from rpython.rlib.rstring import UnicodeBuilder
+
 import os
 
 
@@ -35,7 +38,30 @@ class Interpreter(object):
 
     def __init__(self, space):
         self.space = space
-        self.output_buffer = None
+        self.output_buffer = []
+
+    def run(self, bytecode):
+        frame = GlobalFrame(bytecode)
+        self.execute(bytecode, frame)
+
+        # close any remaining buffers
+        while len(self.output_buffer) > 0:
+            buffer = self.end_buffer()
+            self.output(buffer)
+
+    def run_return(self, bytecode):
+        self.start_buffering()
+
+        frame = GlobalFrame(bytecode)
+        self.execute(bytecode, frame)
+
+        # close any remaining buffers
+        while len(self.output_buffer) > 0:
+            buffer = self.end_buffer()
+            if len(self.output_buffer) > 0:
+                self.output(buffer)
+            else:
+                return buffer
 
     def execute(self, bytecode, frame):
         if bytecode._opcode_count() == 0:
@@ -83,14 +109,16 @@ class Interpreter(object):
         return self.space.get_constant(name)
 
     def start_buffering(self):
-        self.output_buffer = UnicodeBuilder()
+        self.output_buffer.append(UnicodeBuilder())
 
-    def get_buffer(self):
-        return self.output_buffer.build()
+    def end_buffer(self):
+        buffer = self.output_buffer[-1].build()
+        self.output_buffer.pop()
+        return buffer
 
     def output(self, string, buffer=True):
-        if buffer and self.output_buffer is not None:
-            self.output_buffer.append(string)
+        if buffer and len(self.output_buffer) > 0:
+            self.output_buffer[-1].append(string)
         else:
             self._output(string)
 

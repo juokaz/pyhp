@@ -1,5 +1,5 @@
 import py, re, tempfile, os, sys
-from pyhp.main import run, bytecode, ast
+from pyhp.main import run, run_return, bytecode, ast
 
 class TestBase(object):
     def setup_method(self, meth):
@@ -12,6 +12,10 @@ class TestBase(object):
         out, err = capfd.readouterr()
         assert r == expected_exitcode
         return out
+
+    def run_return(self, code):
+        filename = self._init(code)
+        return run_return(filename)
 
     def bytecode(self, code):
         filename = self._init(code)
