@@ -65,6 +65,12 @@ process by 5x, but the produced interpreter runs much slower.
 
     ./pyhp-c fibonacci.php
 
+### Starting the web server
+
+    ./pyhp-c --server fibonacci.php
+
+Accessible through http://localhost:8080/
+
 ### Printing the bytecode
 
     ./pyhp-c --bytecode fibonacci.php
