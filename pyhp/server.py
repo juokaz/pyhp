@@ -1,4 +1,6 @@
 from rpython.rlib import rsocket
+from rpython.rlib.objectmodel import enforceargs
+
 
 def open_socket(hostname, port):
     hostip = rsocket.gethostbyname(hostname)
@@ -10,6 +12,7 @@ def open_socket(hostname, port):
 
     return socket
 
+
 def wait_for_connection(socket):
     (fd, client_addr) = socket.accept()
 
@@ -17,14 +20,16 @@ def wait_for_connection(socket):
 
     return client_sock
 
-def read_request(client_sock, buffer_size=1024):
+
+@enforceargs(None, int)
+def read_request(client_sock, buffer_size):
+    if buffer_size < 0:
+        raise Exception()
     msg = client_sock.recv(buffer_size)
     msg = msg.rstrip("\n")
     print "rcv: '%s'" % msg
-    if msg == "":
-        client_sock.close()
-        return;
     return msg
+
 
 def return_response(client_sock, response):
     http_response = """HTTP/1.1 200 OK
@@ -34,3 +39,7 @@ Content-Length: %d
 %s""" % (len(response), response)
     client_sock.send(http_response)
     print 'sent: %s' % http_response
+
+
+def connection_close(client_sock):
+    client_sock.close()

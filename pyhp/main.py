@@ -8,7 +8,8 @@ from pyhp.stdlib import functions as global_functions
 from pyhp.functions import GlobalCode
 from pyhp.objspace import ObjectSpace
 
-from pyhp.server import open_socket, wait_for_connection, return_response, read_request
+from pyhp.server import open_socket, wait_for_connection, return_response, \
+    read_request, connection_close
 
 
 def source_to_ast(source):
@@ -101,11 +102,13 @@ def main(argv):
 
         while True:
             client = wait_for_connection(socket)
-            request = read_request(client)
-            # todo result of the interpreter should go to the client
-            interpret(bc)
-            response = 'Hello world!'
-            return_response(client, response)
+            request = read_request(client, 1024)
+            if request != "":
+                # todo result of the interpreter should go to the client
+                interpret(bc)
+                response = 'Hello world!'
+                return_response(client, response)
+            connection_close(client)
         return 0
     else:
         return run(filename)
