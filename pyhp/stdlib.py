@@ -3,27 +3,27 @@ from pyhp.datatypes import isint, isfloat, isstr
 from pyhp.objspace import w_Null, newint, newstring, newbool, \
     new_native_function
 from pyhp.datatypes import W_Array
-from pyhp.utils import printf as printf_, StringFormatter
+from pyhp.utils import StringFormatter
 
 import time
 from rpython.rlib.rfloat import formatd
 from rpython.rlib.rarithmetic import intmask
 
 
-def define(space, args):
+def define(interpreter, args):
     name = args[0].get_value()
     assert(isstr(name))
     value = args[1].get_value()
-    return newbool(space.declare_constant(name.str(), value))
+    return newbool(interpreter.declare_constant(name.str(), value))
 
 
-def strlen(space, args):
+def strlen(interpreter, args):
     string = args[0].get_value()
     assert(isstr(string))
     return newint(string.len())
 
 
-def str_repeat(space, args):
+def str_repeat(interpreter, args):
     string = args[0].get_value()
     repeat = args[1].get_value()
     assert(isstr(string))
@@ -32,30 +32,30 @@ def str_repeat(space, args):
     return newstring(repeated)
 
 
-def printf(space, args):
+def printf(interpreter, args):
     template = args[0]
     assert(isstr(template))
     items = [arg.get_value() for arg in args[1:]]
     formatter = StringFormatter(template.str(), items)
-    printf_(formatter.format())
+    interpreter.output(formatter.format())
     return w_Null
 
 
-def print_r(space, args):
+def print_r(interpreter, args):
     array = args[0].get_value()
     assert(isinstance(array, W_Array))
     result = array.str_full()
-    printf_(result)
+    interpreter.output(result)
     return w_Null
 
 
-def dechex(space, args):
+def dechex(interpreter, args):
     number = args[0].get_value()
     assert(isint(number))
     return newstring(unicode(hex(number.get_int())))
 
 
-def number_format(space, args):
+def number_format(interpreter, args):
     number = args[0].get_value()
     assert(isfloat(number))
     positions = args[1].get_value()
@@ -69,7 +69,7 @@ def number_format(space, args):
     return newstring(formatted)
 
 
-def array_range(space, args):
+def array_range(interpreter, args):
     start = args[0].get_value()
     finish = args[1].get_value()
     assert(isint(start))
@@ -82,7 +82,7 @@ def array_range(space, args):
     return array
 
 
-def gettimeofday(space, args):
+def gettimeofday(interpreter, args):
     seconds = time.time()
     seconds = str(formatd(seconds, "f", 6))
     sec = int(seconds.split('.')[0])

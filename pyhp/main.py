@@ -4,6 +4,7 @@ from rpython.rlib.parsing.parsing import ParseError
 from pyhp.frame import GlobalFrame
 from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
+from pyhp.interpreter import Interpreter
 from pyhp.stdlib import functions as global_functions
 from pyhp.functions import GlobalCode
 from pyhp.objspace import ObjectSpace
@@ -31,14 +32,23 @@ def ast_to_bytecode(ast):
     return bc
 
 
-def interpret(bc):
+def interpret(bc, interp=None):
     """ Interpret bytecode and execute it
     """
-    space = ObjectSpace(global_functions)
+    if interp is None:
+        interp = interpreter()
+
     code = GlobalCode(bc)
-    frame = GlobalFrame(space, code)
-    code.run(frame)
+    frame = GlobalFrame(code)
+
+    code.run(interp, frame)
     return frame  # for tests and later introspection
+
+
+def interpreter():
+    space = ObjectSpace(global_functions)
+    intrepreter = Interpreter(space)
+    return intrepreter
 
 
 def read_file(filename):
@@ -97,16 +107,18 @@ def main(argv):
         print bytecode(filename).str()
         return 0
     elif server:
-        bc = bytecode(filename)
         socket = open_socket('localhost', 8080)
+        bc = bytecode(filename)
 
         while True:
             client = wait_for_connection(socket)
             request = read_request(client, 1024)
             if request != "":
+                interp = interpreter()
+                interp.start_buffering()
                 # todo result of the interpreter should go to the client
-                interpret(bc)
-                response = 'Hello world!'
+                interpret(bc, interp)
+                response = interp.get_buffer()
                 return_response(client, response)
             connection_close(client)
         return 0

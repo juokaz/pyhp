@@ -4,11 +4,11 @@ from pyhp.datatypes import W_Reference
 
 class Frame(object):
     _settled_ = True
-    _immutable_fields_ = ['code', 'space', 'symbols',
+    _immutable_fields_ = ['code', 'symbols',
                           'arguments[*]']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
-    def __init__(self, space, code):
+    def __init__(self, code):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.valuestack = [None] * 10  # safe estimate!
         self.valuestack_pos = 0
@@ -16,7 +16,6 @@ class Frame(object):
         self.vars = [None] * code.env_size()
 
         self.code = code
-        self.space = space
         self.symbols = code.symbols()
 
     def push(self, v):
@@ -121,33 +120,18 @@ class Frame(object):
                 raise Exception(u'Frame has no variable %s' % name)
         return index
 
-    def declare_function(self, name, func):
-        declared = self.space.declare_function(name, func)
-
-        if not declared:
-            raise Exception(u'Function %s alredy declared' % name)
-
-    def get_function(self, name):
-        return self.space.get_function(name)
-
-    def declare_constant(self, name, value):
-        self.space.declare_constant(name, value)
-
-    def get_constant(self, name):
-        return self.space.get_constant(name)
-
     def __repr__(self):
         return "Frame %s" % (self.code)
 
 
 class GlobalFrame(Frame):
-    def __init__(self, space, code):
-        Frame.__init__(self, space, code)
+    def __init__(self, code):
+        Frame.__init__(self, code)
 
 
 class FunctionFrame(Frame):
-    def __init__(self, space, parent_frame, code, arguments=None):
-        Frame.__init__(self, space, code)
+    def __init__(self, parent_frame, code, arguments=None):
+        Frame.__init__(self, code)
         assert isinstance(parent_frame, Frame)
 
         self.arguments = arguments

@@ -1,7 +1,7 @@
 class BaseFunction(object):
     _settled_ = True
 
-    def run(self, ctx):
+    def run(self, interpreter, frame):
         raise NotImplementedError
 
     def symbols(self):
@@ -34,8 +34,8 @@ class NativeFunction(BaseFunction):
     def name(self):
         return self._name
 
-    def run(self, frame):
-        return self.function(frame.space, frame.argv())
+    def run(self, interpreter, frame):
+        return self.function(interpreter, frame.argv())
 
 
 class ExecutableCode(BaseFunction):
@@ -50,9 +50,9 @@ class ExecutableCode(BaseFunction):
     def get_bytecode(self):
         return self.bytecode
 
-    def run(self, frame):
+    def run(self, interpreter, frame):
         code = self.get_bytecode()
-        result = code.execute(frame)
+        result = interpreter.execute(code, frame)
         return result
 
     def symbols(self):

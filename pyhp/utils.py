@@ -1,12 +1,3 @@
-import os
-
-
-def printf(str, *args):
-    """ Default `print` operation adds a newline """
-    assert isinstance(str, unicode)
-    # 1 here represents stdout
-    os.write(1, str.encode('utf-8'))
-
 from rpython.rlib import jit
 from rpython.rlib.rfloat import formatd
 from rpython.rlib.unroll import unrolling_iterable

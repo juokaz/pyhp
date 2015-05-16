@@ -32,13 +32,12 @@ def read_request(client_sock, buffer_size):
 
 
 def return_response(client_sock, response):
-    http_response = """HTTP/1.1 200 OK
+    http_response = u"""HTTP/1.1 200 OK
 Content-Type: text/html;charset=utf-8
 Content-Length: %d
 
 %s""" % (len(response), response)
-    client_sock.send(http_response)
-    print 'sent: %s' % http_response
+    client_sock.send(http_response.encode('utf-8'))
 
 
 def connection_close(client_sock):

@@ -328,13 +328,13 @@ class W_CodeFunction(W_Root):
         self.name = funcobj.name()
         self.funcobj = funcobj
 
-    def call(self, params, frame):
+    def call(self, interpreter, frame, params):
         func = self.get_funcobj()
         jit.promote(func)
 
         from pyhp.frame import FunctionFrame
-        new_frame = FunctionFrame(frame.space, frame, func, params)
-        result = func.run(new_frame)
+        new_frame = FunctionFrame(frame, func, params)
+        result = func.run(interpreter, new_frame)
 
         assert isinstance(result, W_Root)
         return result
