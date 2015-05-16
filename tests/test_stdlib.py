@@ -46,3 +46,23 @@ class TestStdlib(TestBase):
         out = self.run("""$time = gettimeofday();
         print $time['sec'];""", capfd)
         assert long(out) > 1430943462
+
+    def test_ob_start(self, capfd):
+        out = self.run("""ob_start();
+        print 1;
+        ob_end_clean();""", capfd)
+        assert out == ""
+
+    def test_ob_start_without_close(self, capfd):
+        out = self.run("""ob_start();
+        print 1;""", capfd)
+        assert out == "1"
+
+    def test_ob_start_nested(self, capfd):
+        out = self.run("""ob_start();
+        print 1;
+        ob_start();
+        print 2;
+        ob_end_clean();
+        ob_flush();""", capfd)
+        assert out == "1"

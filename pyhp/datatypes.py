@@ -321,29 +321,47 @@ class W_Null(W_Root):
         return u"null"
 
 
-class W_CodeFunction(W_Root):
+class W_Function(W_Root):
+    pass
+
+
+class W_CodeFunction(W_Function):
     _immutable_fields_ = ['name', 'funcobj']
 
-    def __init__(self, funcobj):
-        self.name = funcobj.name()
-        self.funcobj = funcobj
+    def __init__(self, bytecode):
+        self.name = bytecode.name
+        self.bytecode = bytecode
 
-    def call(self, params, frame):
-        func = self.get_funcobj()
-        jit.promote(func)
+    def call(self, interpreter, frame, params):
+        bytecode = self.bytecode
+        jit.promote(bytecode)
 
         from pyhp.frame import FunctionFrame
-        new_frame = FunctionFrame(frame.space, frame, func, params)
-        result = func.run(new_frame)
+        new_frame = FunctionFrame(frame, bytecode, params)
+        result = interpreter.execute(bytecode, new_frame)
 
         assert isinstance(result, W_Root)
         return result
 
-    def get_funcobj(self):
-        return self.funcobj
-
     def __repr__(self):
         return 'W_CodeFunction(%s)' % (self.name,)
+
+
+class W_NativeFunction(W_Function):
+    _immutable_fields_ = ['name', 'function']
+
+    def __init__(self, name, function):
+        self.name = name
+        self.function = function
+
+    def call(self, interpreter, frame, params):
+        result = self.function(interpreter, params)
+
+        assert isinstance(result, W_Root)
+        return result
+
+    def __repr__(self):
+        return 'W_NativeFunction(%s)' % (self.name,)
 
 
 def isint(w):

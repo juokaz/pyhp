@@ -1,12 +1,10 @@
 from pyhp.datatypes import W_StringObject, \
     W_Array, W_List, \
-    W_CodeFunction, W_Iterator
+    W_Function, W_CodeFunction, W_Iterator
 from pyhp.objspace import w_Null, newbool, newint, newfloat, newstring
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
-
-from pyhp.utils import printf
 
 from rpython.rlib import jit
 
@@ -20,7 +18,7 @@ class Opcode(object):
     def get_name(self):
         return self.__class__.__name__
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         """ Execute in frame
         """
         raise NotImplementedError(self.get_name() + ".eval")
@@ -38,8 +36,8 @@ class LOAD_CONSTANT(Opcode):
     def __init__(self, name):
         self.name = name
 
-    def eval(self, frame):
-        value = frame.get_constant(self.name)
+    def eval(self, interpreter, frame):
+        value = interpreter.get_constant(self.name)
         if value is None:
             raise Exception(u"Constant %s is not defined" % self.name)
         frame.push(value)
@@ -55,7 +53,7 @@ class LOAD_VAR(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         variable = frame.get_variable(self.name, self.index)
 
         if variable is None:
@@ -74,7 +72,7 @@ class LOAD_REF(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         ref = frame.get_reference(self.name, self.index)
 
         if ref is None:
@@ -92,8 +90,8 @@ class LOAD_FUNCTION(Opcode):
     def __init__(self, name):
         self.name = name
 
-    def eval(self, frame):
-        func = frame.get_function(self.name)
+    def eval(self, interpreter, frame):
+        func = interpreter.get_function(self.name)
         if func is None:
             raise Exception(u"Function %s is not defined" % self.name)
         frame.push(func)
@@ -103,15 +101,15 @@ class LOAD_FUNCTION(Opcode):
 
 
 class DECLARE_FUNCTION(Opcode):
-    _immutable_fields_ = ['name', 'function']
+    _immutable_fields_ = ['name', 'bytecode']
 
-    def __init__(self, name, function):
+    def __init__(self, name, bytecode):
         self.name = name
-        self.function = function
+        self.bytecode = bytecode
 
-    def eval(self, frame):
-        funcobj = W_CodeFunction(self.function)
-        frame.declare_function(self.name, funcobj)
+    def eval(self, interpreter, frame):
+        funcobj = W_CodeFunction(self.bytecode)
+        interpreter.declare_function(self.name, funcobj)
 
     def str(self):
         return u'DECLARE_FUNCTION %s' % (self.name)
@@ -123,7 +121,7 @@ class LOAD_LIST(Opcode):
     def __init__(self, number):
         self.number = number
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         list_w = frame.pop_n(self.number)
         frame.push(W_List(list_w))
 
@@ -132,7 +130,7 @@ class LOAD_LIST(Opcode):
 
 
 class LOAD_NULL(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(w_Null)
 
     def str(self):
@@ -145,7 +143,7 @@ class LOAD_BOOLEAN(Opcode):
     def __init__(self, value):
         self.value = newbool(value)
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(self.value)
 
     def str(self):
@@ -158,7 +156,7 @@ class LOAD_INTVAL(Opcode):
     def __init__(self, value):
         self.value = newint(value)
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(self.value)
 
     def str(self):
@@ -171,7 +169,7 @@ class LOAD_FLOATVAL(Opcode):
     def __init__(self, value):
         self.value = newfloat(value)
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(self.value)
 
     def str(self):
@@ -184,7 +182,7 @@ class LOAD_STRINGVAL(Opcode):
     def __init__(self, value):
         self.value = newstring(value)
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(self.value)
 
     def str(self):
@@ -198,7 +196,7 @@ class LOAD_STRING_SUBSTITUTION(Opcode):
         self.number = number
 
     @jit.unroll_safe
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         value = newstring(u'')
         list_w = frame.pop_n(self.number)
 
@@ -218,7 +216,7 @@ class LOAD_ARRAY(Opcode):
         self.number = number
 
     @jit.unroll_safe
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         array = W_Array()
         list_w = frame.pop_n(self.number)
         for index, el in enumerate(list_w):
@@ -230,7 +228,7 @@ class LOAD_ARRAY(Opcode):
 
 
 class LOAD_MEMBER(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         array = frame.pop()
         assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
 
@@ -246,7 +244,7 @@ class LOAD_MEMBER_VAR(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         array = frame.get_variable(self.name, self.index)
 
         if array is None:
@@ -263,7 +261,7 @@ class LOAD_MEMBER_VAR(Opcode):
 
 
 class STORE_MEMBER(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         array = frame.pop()
         index = frame.pop()
         value = frame.pop()
@@ -282,7 +280,7 @@ class ASSIGN(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         value = frame.pop()
         frame.store_variable(self.name, self.index, value)
 
@@ -293,12 +291,12 @@ class ASSIGN(Opcode):
 
 
 class DISCARD_TOP(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.pop()
 
 
 class DUP(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         frame.push(frame.top())
 
 
@@ -318,7 +316,7 @@ class BaseJump(Opcode):
     def __init__(self, where):
         self.where = where
 
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         pass
 
 
@@ -366,7 +364,7 @@ class JUMP(BaseJump):
 
 
 class LOAD_ITERATOR(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         obj = frame.pop()
         iterator = obj.to_iterator()
 
@@ -390,7 +388,7 @@ class JUMP_IF_ITERATOR_EMPTY(BaseJump):
 
 
 class NEXT_ITERATOR(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         iterator = frame.top()
         assert isinstance(iterator, W_Iterator)
         key, value = iterator.next()
@@ -399,30 +397,30 @@ class NEXT_ITERATOR(Opcode):
 
 
 class RETURN(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         return frame.pop()
 
 
 class PRINT(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         item = frame.top()
-        printf(item.str())
+        interpreter.output(item.str())
 
 
 class CALL(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         method = frame.pop()
         params = frame.pop()
 
-        assert isinstance(method, W_CodeFunction)
+        assert isinstance(method, W_Function)
         assert isinstance(params, W_List)
 
-        res = method.call(params.to_list(), frame)
+        res = method.call(interpreter, frame, params.to_list())
         frame.push(res)
 
 
 class BaseDecision(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         res = self.decision(left, right)
@@ -458,35 +456,35 @@ class LE(BaseDecision):
 
 
 class ADD(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         frame.push(plus(left, right))
 
 
 class SUB(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         frame.push(sub(left, right))
 
 
 class MUL(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         frame.push(mult(left, right))
 
 
 class DIV(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         frame.push(division(left, right))
 
 
 class MOD(Opcode):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         right = frame.pop()
         left = frame.pop()
         frame.push(mod(left, right))
@@ -497,26 +495,26 @@ class BaseUnaryOperation(Opcode):
 
 
 class NOT(BaseUnaryOperation):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         val = frame.pop()
         boolval = val.is_true()
         frame.push(newbool(not boolval))
 
 
 class INCR(BaseUnaryOperation):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         left = frame.pop()
         frame.push(increment(left))
 
 
 class DECR(BaseUnaryOperation):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         left = frame.pop()
         frame.push(decrement(left))
 
 
 class COMMA(BaseUnaryOperation):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         one = frame.pop()
         frame.pop()
         frame.push(one)
@@ -527,7 +525,7 @@ class BaseBinaryBitwiseOp(Opcode):
 
 
 class URSH(BaseBinaryBitwiseOp):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         rval = frame.pop()
         lval = frame.pop()
 
@@ -541,7 +539,7 @@ class URSH(BaseBinaryBitwiseOp):
 
 
 class RSH(BaseBinaryBitwiseOp):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         rval = frame.pop()
         lval = frame.pop()
 
@@ -555,7 +553,7 @@ class RSH(BaseBinaryBitwiseOp):
 
 
 class LSH(BaseBinaryBitwiseOp):
-    def eval(self, frame):
+    def eval(self, interpreter, frame):
         rval = frame.pop()
         lval = frame.pop()
 

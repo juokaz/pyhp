@@ -1,12 +1,14 @@
 from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib.parsing.parsing import ParseError
 
-from pyhp.frame import GlobalFrame
 from pyhp.sourceparser import parse, Transformer
 from pyhp.bytecode import compile_ast
+from pyhp.interpreter import Interpreter
 from pyhp.stdlib import functions as global_functions
-from pyhp.functions import GlobalCode
 from pyhp.objspace import ObjectSpace
+
+from pyhp.server import open_socket, wait_for_connection, return_response, \
+    read_request, connection_close
 
 
 def source_to_ast(source):
@@ -28,14 +30,19 @@ def ast_to_bytecode(ast):
     return bc
 
 
-def interpret(bc):
+def interpret(bc, interp=None):
     """ Interpret bytecode and execute it
     """
+    if interp is None:
+        interp = interpreter()
+
+    interp.run(bc)
+
+
+def interpreter():
     space = ObjectSpace(global_functions)
-    code = GlobalCode(bc)
-    frame = GlobalFrame(space, code)
-    code.run(frame)
-    return frame  # for tests and later introspection
+    intrepreter = Interpreter(space)
+    return intrepreter
 
 
 def read_file(filename):
@@ -64,10 +71,17 @@ def run(filename):
     return 0
 
 
+def run_return(filename):
+    bc = bytecode(filename)
+    interp = interpreter()
+    return interp.run_return(bc)
+
+
 def main(argv):
     filename = None
     print_bytecode = False
     print_ast = False
+    server = False
     i = 1
     while i < len(argv):
         arg = argv[i]
@@ -76,6 +90,8 @@ def main(argv):
                 print_bytecode = True
             elif arg == '--ast':
                 print_ast = True
+            elif arg == '--server':
+                server = True
             else:
                 print "Unknown parameter %s" % arg
                 return 1
@@ -89,6 +105,19 @@ def main(argv):
         return 0
     elif print_bytecode:
         print bytecode(filename).str()
+        return 0
+    elif server:
+        socket = open_socket('localhost', 8080)
+        bc = bytecode(filename)
+
+        while True:
+            client = wait_for_connection(socket)
+            request = read_request(client, 1024)
+            if request != "":
+                interp = interpreter()
+                response = interp.run_return(bc)
+                return_response(client, response)
+            connection_close(client)
         return 0
     else:
         return run(filename)

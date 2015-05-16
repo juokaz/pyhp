@@ -4,20 +4,17 @@ from pyhp.datatypes import W_Reference
 
 class Frame(object):
     _settled_ = True
-    _immutable_fields_ = ['code', 'space', 'symbols',
-                          'arguments[*]']
+    _immutable_fields_ = ['symbols', 'arguments[*]']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
-    def __init__(self, space, code):
+    def __init__(self, bytecode):
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.valuestack = [None] * 10  # safe estimate!
         self.valuestack_pos = 0
 
-        self.vars = [None] * code.env_size()
+        self.vars = [None] * bytecode.symbols().len()
 
-        self.code = code
-        self.space = space
-        self.symbols = code.symbols()
+        self.symbols = bytecode.symbols()
 
     def push(self, v):
         pos = self.get_pos()
@@ -121,45 +118,29 @@ class Frame(object):
                 raise Exception(u'Frame has no variable %s' % name)
         return index
 
-    def declare_function(self, name, func):
-        declared = self.space.declare_function(name, func)
-
-        if not declared:
-            raise Exception(u'Function %s alredy declared' % name)
-
-    def get_function(self, name):
-        return self.space.get_function(name)
-
-    def declare_constant(self, name, value):
-        self.space.declare_constant(name, value)
-
-    def get_constant(self, name):
-        return self.space.get_constant(name)
-
     def __repr__(self):
-        return "Frame %s" % (self.code)
+        return "Frame"
 
 
 class GlobalFrame(Frame):
-    def __init__(self, space, code):
-        Frame.__init__(self, space, code)
+    def __init__(self, bytecode):
+        Frame.__init__(self, bytecode)
 
 
 class FunctionFrame(Frame):
-    def __init__(self, space, parent_frame, code, arguments=None):
-        Frame.__init__(self, space, code)
+    def __init__(self, parent_frame, bytecode, arguments=None):
+        Frame.__init__(self, bytecode)
         assert isinstance(parent_frame, Frame)
 
         self.arguments = arguments
 
-        self.declare(parent_frame)
+        self.declare(bytecode.params(), bytecode.globals(), parent_frame)
 
     @jit.unroll_safe
-    def declare(self, parent_frame):
-        code = jit.promote(self.code)
+    def declare(self, parameters, globals, parent_frame):
         # set call arguments as variable values
         param_index = 0
-        for param, by_value in code.params():
+        for param, by_value in parameters:
             argument = self.arguments[param_index]
             if by_value:
                 if isinstance(argument, W_Reference):
@@ -177,7 +158,7 @@ class FunctionFrame(Frame):
             param_index += 1
 
         # every variable referenced in 'globals' needs to be initialized
-        for name in code.globals():
+        for name in globals:
             ref = parent_frame.get_reference(name)
             if ref is None:
                 raise Exception("Global variable %s does not exist" % name)
