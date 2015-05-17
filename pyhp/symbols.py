@@ -40,9 +40,6 @@ class Map(object):
     def _key(self):
         return (self.name)
 
-    def empty(self):
-        return True
-
     @jit.elidable
     def len(self):
         return self.index + 1
@@ -69,9 +66,6 @@ class MapNode(Map):
         self.back = back
         self.name = name
         self.index = back.index + 1
-
-    def empty(self):
-        return False
 
 
 ROOT_MAP = MapRoot()

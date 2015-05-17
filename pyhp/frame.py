@@ -8,6 +8,9 @@ class Frame(object):
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
     def __init__(self, bytecode):
+        from pyhp.bytecode import ByteCode
+        assert(isinstance(bytecode, ByteCode))
+
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
         self.valuestack = [None] * 10  # safe estimate!
         self.valuestack_pos = 0
@@ -163,6 +166,3 @@ class FunctionFrame(Frame):
             if ref is None:
                 raise Exception("Global variable %s does not exist" % name)
             self.set_reference(name, -1, ref)
-
-    def argv(self):
-        return self.arguments
