@@ -14,6 +14,8 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 from pyhp.opcodes import BaseJump, RETURN
 from pyhp.frame import GlobalFrame
+from pyhp.objspace import ObjectSpace
+from pyhp.stdlib import functions as global_functions
 
 from rpython.rlib import jit
 from rpython.rlib.rstring import UnicodeBuilder
@@ -36,8 +38,8 @@ driver = jit.JitDriver(reds=['frame', 'self'],
 class Interpreter(object):
     _immutable_fields_ = ['space']
 
-    def __init__(self, space):
-        self.space = space
+    def __init__(self):
+        self.space = ObjectSpace(global_functions)
         self.output_buffer = []
 
     def run(self, bytecode):
@@ -64,6 +66,11 @@ class Interpreter(object):
                 return buffer
 
     def execute(self, bytecode, frame):
+        from pyhp.bytecode import ByteCode
+        assert(isinstance(bytecode, ByteCode))
+        from pyhp.frame import Frame
+        assert(isinstance(frame, Frame))
+
         if bytecode._opcode_count() == 0:
             return None
 
