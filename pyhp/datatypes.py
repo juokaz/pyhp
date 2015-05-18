@@ -137,11 +137,11 @@ class W_StringObject(W_Root):
     _immutable_fields_ = ['stringval']
 
     def __init__(self, stringval):
-        assert stringval is not None and isinstance(stringval, unicode)
+        assert stringval is not None
+        assert isinstance(stringval, unicode)
         self.stringval = stringval
 
     def append(self, stringval):
-        assert(isinstance(stringval, unicode))
         builder = UnicodeBuilder()
         concat = W_ConcatStringObject(builder)
         concat.builder.append(self.stringval)
@@ -178,14 +178,12 @@ class W_ConcatStringObject(W_StringObject):
         self.builder = builder
 
     def append(self, stringval):
-        assert(isinstance(stringval, unicode))
         builder = self.builder
         concat = W_ConcatStringObject(builder)
         concat.builder.append(stringval)
         return concat
 
     def get(self, key):
-        assert isinstance(key, W_IntObject)
         key = key.get_int()
         return W_StringObject(self.str()[key])
 
@@ -207,13 +205,10 @@ class W_Array(W_Root):
         return len(self.data)
 
     def put(self, key, value):
-        assert isinstance(key, W_Root)
-        assert isinstance(value, W_Root)
         _key = key.hash()
         self.data[_key] = (key, value)
 
     def get(self, key):
-        assert isinstance(key, W_Root)
         _key = key.hash()
         try:
             element = self.data[_key]
@@ -300,7 +295,6 @@ class W_Boolean(W_Root):
     _immutable_fields_ = ['boolval']
 
     def __init__(self, boolval):
-        assert(isinstance(boolval, bool))
         self.boolval = boolval
 
     def str(self):
@@ -327,21 +321,50 @@ class W_Function(W_Root):
 
 
 class W_CodeFunction(W_Function):
-    _immutable_fields_ = ['name', 'funcobj']
+    _immutable_fields_ = ['name', 'bytecode', 'globals[*]', 'parameters[*]']
 
     def __init__(self, bytecode):
         self.name = bytecode.name
         self.bytecode = bytecode
+        self.globals = bytecode.globals()
+        self.parameters = bytecode.params()
 
+    @jit.unroll_safe
     def call(self, interpreter, frame, params):
         bytecode = self.bytecode
-        jit.promote(bytecode)
 
-        from pyhp.frame import FunctionFrame
-        new_frame = FunctionFrame(interpreter, frame, bytecode, params)
+        from pyhp.frame import Frame
+        new_frame = Frame(interpreter, bytecode)
+
+        # set call arguments as variable values
+        param_index = 0
+        for param, by_value in self.parameters:
+            argument = params[param_index]
+            if by_value:
+                if isinstance(argument, W_Reference):
+                    argument = argument.get_value()
+                # todo use copy.deepcopy for this
+                argument = argument.__deepcopy__()
+            else:
+                if isinstance(argument, W_Reference):
+                    pass
+                else:
+                    raise Exception("Was expecting a reference")
+            # safe to set the reference by param_index because params
+            # are the first variables in he vars list
+            new_frame.store_variable(param, param_index, argument)
+            param_index += 1
+
+        # every variable referenced in 'globals' needs to be initialized
+        for name in self.globals:
+            ref = frame.get_reference(name)
+            if ref is None:
+                raise Exception("Global variable %s does not exist" % name)
+            new_frame.set_reference(name, -1, ref)
+
         result = interpreter.execute(bytecode, new_frame)
 
-        assert isinstance(result, W_Root)
+        assert result is not None
         return result
 
     def __repr__(self):
@@ -358,7 +381,7 @@ class W_NativeFunction(W_Function):
     def call(self, interpreter, frame, params):
         result = self.function(interpreter, params)
 
-        assert isinstance(result, W_Root)
+        assert result is not None
         return result
 
     def __repr__(self):

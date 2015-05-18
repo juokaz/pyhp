@@ -7,6 +7,7 @@ class Frame(object):
     _immutable_fields_ = ['symbols', 'arguments[*]']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
+    @jit.unroll_safe
     def __init__(self, interpreter, bytecode):
         from pyhp.bytecode import ByteCode
         assert(isinstance(bytecode, ByteCode))
@@ -129,46 +130,3 @@ class Frame(object):
 
     def __repr__(self):
         return "Frame"
-
-
-class GlobalFrame(Frame):
-    def __init__(self, interpreter, bytecode):
-        Frame.__init__(self, interpreter, bytecode)
-
-
-class FunctionFrame(Frame):
-    def __init__(self, interpreter, parent_frame, bytecode, arguments=None):
-        Frame.__init__(self, interpreter, bytecode)
-        assert isinstance(parent_frame, Frame)
-
-        self.arguments = arguments
-
-        self.declare(bytecode.params(), bytecode.globals(), parent_frame)
-
-    @jit.unroll_safe
-    def declare(self, parameters, globals, parent_frame):
-        # set call arguments as variable values
-        param_index = 0
-        for param, by_value in parameters:
-            argument = self.arguments[param_index]
-            if by_value:
-                if isinstance(argument, W_Reference):
-                    argument = argument.get_value()
-                # todo use copy.deepcopy for this
-                argument = argument.__deepcopy__()
-            else:
-                if isinstance(argument, W_Reference):
-                    pass
-                else:
-                    raise Exception("Was expecting a reference")
-            # safe to set the reference by param_index because params
-            # are the first variables in he vars list
-            self.store_variable(param, param_index, argument)
-            param_index += 1
-
-        # every variable referenced in 'globals' needs to be initialized
-        for name in globals:
-            ref = parent_frame.get_reference(name)
-            if ref is None:
-                raise Exception("Global variable %s does not exist" % name)
-            self.set_reference(name, -1, ref)

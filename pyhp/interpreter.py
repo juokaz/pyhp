@@ -13,7 +13,7 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 """
 
 from pyhp.opcodes import BaseJump, RETURN
-from pyhp.frame import GlobalFrame
+from pyhp.frame import Frame
 from pyhp.objspace import ObjectSpace, newstring
 from pyhp.stdlib import functions as global_functions
 from pyhp.datatypes import W_Reference, W_Array
@@ -45,7 +45,7 @@ class Interpreter(object):
         self.superglobals = []
 
     def run(self, bytecode):
-        frame = GlobalFrame(self, bytecode)
+        frame = Frame(self, bytecode)
         self.execute(bytecode, frame)
 
         # close any remaining buffers
@@ -56,7 +56,7 @@ class Interpreter(object):
     def run_return(self, bytecode):
         self.start_buffering()
 
-        frame = GlobalFrame(self, bytecode)
+        frame = Frame(self, bytecode)
         self.execute(bytecode, frame)
 
         # close any remaining buffers
