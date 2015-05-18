@@ -38,6 +38,7 @@ class Server(object):
             response = u"<html><body><p>404: File not found</p></body></html>"
             code = 404
         else:
+            intrepreter.setup(request)
             response = intrepreter.run_return(bytecode)
             code = 200
 

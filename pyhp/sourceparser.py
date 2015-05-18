@@ -368,18 +368,15 @@ class Transformer(RPythonVisitor):
         self.scopes.append(new_scope)
 
     def declare_variable(self, symbol):
-        s = symbol
-        idx = self.scopes[-1].add_variable(s)
+        idx = self.scopes[-1].add_variable(symbol)
         return idx
 
     def declare_global(self, symbol):
-        s = symbol
-        idx = self.scopes[-1].add_global(s)
+        idx = self.scopes[-1].add_global(symbol)
         return idx
 
     def declare_parameter(self, symbol, by_value):
-        s = symbol
-        idx = self.scopes[-1].add_parameter(s, by_value)
+        idx = self.scopes[-1].add_parameter(symbol, by_value)
         return idx
 
     def exit_scope(self):

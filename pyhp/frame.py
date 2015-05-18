@@ -7,7 +7,7 @@ class Frame(object):
     _immutable_fields_ = ['symbols', 'arguments[*]']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
-    def __init__(self, bytecode):
+    def __init__(self, interpreter, bytecode):
         from pyhp.bytecode import ByteCode
         assert(isinstance(bytecode, ByteCode))
 
@@ -18,6 +18,12 @@ class Frame(object):
         self.vars = [None] * bytecode.symbols().len()
 
         self.symbols = bytecode.symbols()
+
+        # initialize superglobals like $_GET and $_POST
+        for num, i in enumerate(bytecode.superglobals()):
+            # if i is -1 superglobal is not used in the code
+            if i >= 0:
+                self.vars[i] = interpreter.superglobals[num]
 
     def push(self, v):
         pos = self.get_pos()
@@ -126,13 +132,13 @@ class Frame(object):
 
 
 class GlobalFrame(Frame):
-    def __init__(self, bytecode):
-        Frame.__init__(self, bytecode)
+    def __init__(self, interpreter, bytecode):
+        Frame.__init__(self, interpreter, bytecode)
 
 
 class FunctionFrame(Frame):
-    def __init__(self, parent_frame, bytecode, arguments=None):
-        Frame.__init__(self, bytecode)
+    def __init__(self, interpreter, parent_frame, bytecode, arguments=None):
+        Frame.__init__(self, interpreter, bytecode)
         assert isinstance(parent_frame, Frame)
 
         self.arguments = arguments

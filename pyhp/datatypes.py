@@ -208,6 +208,7 @@ class W_Array(W_Root):
 
     def put(self, key, value):
         assert isinstance(key, W_Root)
+        assert isinstance(value, W_Root)
         _key = key.hash()
         self.data[_key] = (key, value)
 
@@ -337,7 +338,7 @@ class W_CodeFunction(W_Function):
         jit.promote(bytecode)
 
         from pyhp.frame import FunctionFrame
-        new_frame = FunctionFrame(frame, bytecode, params)
+        new_frame = FunctionFrame(interpreter, frame, bytecode, params)
         result = interpreter.execute(bytecode, new_frame)
 
         assert isinstance(result, W_Root)

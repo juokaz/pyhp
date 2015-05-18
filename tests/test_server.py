@@ -20,8 +20,7 @@ class TestServer(TestBase):
         code = """function a($x) {
             print $x;
         }
-        $x = 1;
-        print $x;"""
+        print $_GET['x'];"""
         filename = self.store(code)
         folder = os.path.dirname(filename)
 
@@ -46,7 +45,7 @@ class TestServer(TestBase):
         addr = IpAddress()
         socket.accept.return_value = (1, addr)
 
-        request = """GET /test_running.php"""
+        request = """GET /test_running.php?x=HelloWorld"""
 
         class ClientSocket(object):
             pass
@@ -65,11 +64,11 @@ class TestServer(TestBase):
         # response sent in return_response()
         client_socket.send.assert_called_with("""HTTP/1.1 200 OK
 Content-Type: text/html;charset=utf-8
-Content-Length: 1
+Content-Length: 10
 Server: PyHP-Server
 Connection: close
 
-1""")
+HelloWorld""")
 
         # close in connection_close()
         client_socket.close.assert_called_with()
