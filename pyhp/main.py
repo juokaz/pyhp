@@ -16,16 +16,11 @@ def ast_to_bytecode(ast, filename):
     return bc
 
 
-def interpret(bc, return_output=False):
+def interpret(bc):
     """ Interpret bytecode and execute it
     """
     intrepreter = Interpreter()
-
-    if return_output:
-        return intrepreter.run_return(bc)
-    else:
-        intrepreter.run(bc)
-        return None
+    intrepreter.run(bc)
 
 
 def read_file(filename):
@@ -53,11 +48,6 @@ def run(filename, source):
     interpret(bc)
 
     return 0
-
-
-def run_return(filename, source):
-    bc = bytecode(filename, source)
-    return interpret(bc, True)
 
 
 def main(argv):

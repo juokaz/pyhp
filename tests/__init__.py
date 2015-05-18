@@ -1,20 +1,16 @@
 import py
-from pyhp.main import run, run_return, bytecode, ast
+from pyhp.main import bytecode, ast
+from pyhp.interpreter import Interpreter
 
 
 class TestBase(object):
     def setup_method(self, meth):
         self.tmpname = meth.im_func.func_name
 
-    def run(self, code, capfd, expected_exitcode=0,
-            cgi=False, args=[]):
-        r = run('/tmp/example.php', code)
-        out, err = capfd.readouterr()
-        assert r == expected_exitcode
-        return out
-
-    def run_return(self, code):
-        return run_return('/tmp/example.php', code)
+    def run(self, code):
+        bc = bytecode('/tmp/example.php', code)
+        intrepreter = Interpreter()
+        return intrepreter.run_return(bc)
 
     def bytecode(self, code):
         return bytecode('/tmp/example.php', code)
