@@ -17,10 +17,7 @@ class TestServer(TestBase):
     @patch('rpython.rlib.rsocket.INETAddress')
     @patch('rpython.rlib.rsocket.RSocket')
     def test_running(self, socket_mock, inetaddress_mock, fromfd):
-        code = """function a($x) {
-            print $x;
-        }
-        print $_GET['x'];"""
+        code = """print $_GET['x'];"""
         filename = self.store(code)
         folder = os.path.dirname(filename)
 
