@@ -115,16 +115,13 @@ class Interpreter(object):
                 pc += 1
 
     def declare_function(self, name, func):
-        declared = self.space.declare_function(name, func)
-
-        if not declared:
-            raise Exception(u'Function %s alredy declared' % name)
+        self.space.declare_function(name, func)
 
     def get_function(self, name):
         return self.space.get_function(name)
 
     def declare_constant(self, name, value):
-        return self.space.declare_constant(name, value)
+        self.space.declare_constant(name, value)
 
     def get_constant(self, name):
         return self.space.get_constant(name)

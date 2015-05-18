@@ -109,6 +109,10 @@ class DECLARE_FUNCTION(Opcode):
 
     def eval(self, interpreter, frame):
         funcobj = W_CodeFunction(self.bytecode)
+
+        if interpreter.get_function(self.name):
+            raise Exception(u'Function %s alredy declared' % self.name)
+
         interpreter.declare_function(self.name, funcobj)
 
     def str(self):

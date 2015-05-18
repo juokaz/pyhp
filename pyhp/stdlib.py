@@ -1,6 +1,6 @@
 
 from pyhp.datatypes import isint, isfloat, isstr
-from pyhp.objspace import w_Null, newint, newstring, newbool, \
+from pyhp.objspace import w_Null, newint, newstring, w_True, w_False, \
     new_native_function
 from pyhp.datatypes import W_Array
 from pyhp.utils import StringFormatter
@@ -14,7 +14,12 @@ def define(interpreter, args):
     name = args[0].get_value()
     assert(isstr(name))
     value = args[1].get_value()
-    return newbool(interpreter.declare_constant(name.str(), value))
+
+    if interpreter.get_constant(name.str()):
+        return w_False
+
+    interpreter.declare_constant(name.str(), value)
+    return w_True
 
 
 def strlen(interpreter, args):
