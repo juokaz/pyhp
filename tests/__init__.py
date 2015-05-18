@@ -8,25 +8,21 @@ class TestBase(object):
 
     def run(self, code, capfd, expected_exitcode=0,
             cgi=False, args=[]):
-        filename = self._init(code)
-        r = run(filename)
+        r = run('/tmp/example.php', code)
         out, err = capfd.readouterr()
         assert r == expected_exitcode
         return out
 
     def run_return(self, code):
-        filename = self._init(code)
-        return run_return(filename)
+        return run_return('/tmp/example.php', code)
 
     def bytecode(self, code):
-        filename = self._init(code)
-        return bytecode(filename)
+        return bytecode('/tmp/example.php', code)
 
     def ast(self, code):
-        filename = self._init(code)
-        return ast(filename)
+        return ast(code)
 
-    def _init(self, code):
+    def store(self, code):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
         phpfile = tmpdir.join(self.tmpname + '.php')
         f = open(str(phpfile), 'w')

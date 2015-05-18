@@ -417,3 +417,15 @@ def double_quote_string_parse(transformer, string):
         s_.append(part)
 
     return s_, has_variable
+
+
+def source_to_ast(source):
+    """ Parse the source code and produce an AST
+    """
+    try:
+        ast = parse(source)
+    except ParseError, e:
+        print e.nice_error_message(source=source)
+        raise
+    transformer = Transformer()
+    return transformer.dispatch(ast)

@@ -1,33 +1,17 @@
 from rpython.rlib.streamio import open_file_as_stream
-from rpython.rlib.parsing.parsing import ParseError
 
-from pyhp.sourceparser import parse, Transformer
+from pyhp.sourceparser import source_to_ast
 from pyhp.bytecode import compile_ast
 from pyhp.interpreter import Interpreter
 
 from pyhp.server import Server
-
-
-def source_to_ast(source):
-    """ Parse the source code and produce an AST
-    """
-    try:
-        ast = parse(source)
-    except ParseError, e:
-        print e.nice_error_message(source=source)
-        raise
-    transformer = Transformer()
-    return transformer.dispatch(ast)
+import os
 
 
 def ast_to_bytecode(ast, filename):
     """ Compile the AST into a bytecode
     """
-    last = filename.rfind('/') + 1
-    if last > 0:
-        filename = unicode(filename[last:])
-    else:
-        filename = unicode(filename)
+    filename = unicode(os.path.abspath(filename))
     bc = compile_ast(ast, ast.scope, filename)
     return bc
 
@@ -45,33 +29,34 @@ def interpret(bc, return_output=False):
 
 
 def read_file(filename):
+    if filename is None:
+        raise OSError("invalid filename")
     f = open_file_as_stream(filename)
     data = f.readall()
     f.close()
     return data
 
 
-def ast(filename):
-    data = read_file(filename)
-    ast = source_to_ast(data)
+def ast(source):
+    ast = source_to_ast(source)
     return ast
 
 
-def bytecode(filename):
-    source = ast(filename)
+def bytecode(filename, source):
+    source = ast(source)
     bc = ast_to_bytecode(source, filename)
     return bc
 
 
-def run(filename):
-    bc = bytecode(filename)
+def run(filename, source):
+    bc = bytecode(filename, source)
     interpret(bc)
 
     return 0
 
 
-def run_return(filename):
-    bc = bytecode(filename)
+def run_return(filename, source):
+    bc = bytecode(filename, source)
     return interpret(bc, True)
 
 
@@ -108,23 +93,32 @@ def main(argv):
             break
         i += 1
 
+    source = ''
+    if filename is not None or server is False:
+        try:
+            source = read_file(filename)
+        except OSError:
+            print 'File not found %s' % filename
+            return 1
+
     if print_ast:
-        print ast(filename).str()
+        print ast(source).str()
         return 0
     elif print_bytecode:
-        print bytecode(filename).str()
+        print bytecode(filename, source).str()
         return 0
     elif server:
-        bc = bytecode(filename)
-        server = Server(bc)
+        server = Server(os.getcwd())
         try:
             server.listen(server_port)
         except Exception:
             print("Failed to acquire a socket for port %s " % server_port)
             return 1
-        print 'Listening on http://localhost:%d\n' % (server_port,)
+        print 'Listening on http://localhost:%d' % (server_port,)
+        print 'Document root is %s' % server.root
+        print 'Press Ctrl-C to quit.'
         while True:
             server.run()
         return 0
     else:
-        return run(filename)
+        return run(filename, source)

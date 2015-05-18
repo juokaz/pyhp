@@ -1,7 +1,13 @@
 from pyhp.interpreter import Interpreter
+from pyhp.sourceparser import source_to_ast
+from pyhp.bytecode import compile_ast
 
+from rpython.rlib.streamio import open_file_as_stream
 from rpython.rlib import rsocket
 from rpython.rlib.objectmodel import enforceargs
+
+import time
+import os
 
 
 class Request(object):
@@ -11,11 +17,10 @@ class Request(object):
 
 
 class Server(object):
-    _immutable_fields_ = ['bytecode']
-
-    def __init__(self, bytecode):
-        self.bytecode = bytecode
+    def __init__(self, root=''):
+        self.root = root
         self.socket = None
+        self.cached_files = {}
 
     def listen(self, port):
         self.socket = self.open_socket(port)
@@ -24,19 +29,55 @@ class Server(object):
         # each new run needs a a new interpreter
         intrepreter = Interpreter()
 
-        client = self.wait_for_connection()
+        client, client_addr = self.wait_for_connection()
         request = self.read_request(client, 1024)
 
-        # bytecode object name can be a function name or a filename, in unicode
-        if request.filename != self.bytecode.name.encode('utf-8'):
-            raise Exception("Requested %s, had %s bytecode" % (
-                request.filename, self.bytecode.name.encode('utf-8')
-            ))
+        bytecode = self._bytecode(request.filename)
 
-        response = intrepreter.run_return(self.bytecode)
-        self.return_response(client, response)
+        if bytecode is None:
+            response = u"<html><body><p>404: File not found</p></body></html>"
+            code = 404
+        else:
+            response = intrepreter.run_return(bytecode)
+            code = 200
+
+        self.return_response(client, code, response)
+
+        current_date = str(time.time())
+        client_addr = '%s:%d' % (client_addr.get_host(),
+                                 client_addr.get_port())
+        print "[%s] %s [%d]: %s" % (current_date, client_addr, code,
+                                    request.filename)
 
         self.connection_close(client)
+
+    def _bytecode(self, filename):
+        filename = os.path.abspath(self.root + filename)
+
+        # bytecode cache based on the filename
+        try:
+            return self.cached_files[filename]
+        except KeyError:
+            data = self._read_file(filename)
+            if data is None:
+                return None
+
+            ast = source_to_ast(data)
+            bc = compile_ast(ast, ast.scope, unicode(filename))
+
+            self.cached_files[filename] = bc
+
+        return bc
+
+    def _read_file(self, filename):
+        try:
+            f = open_file_as_stream(filename)
+        except OSError:
+            print 'File not found %s' % filename
+            return None
+        data = f.readall()
+        f.close()
+        return data
 
     def open_socket(self, port):
         host = rsocket.INETAddress('', port)
@@ -54,7 +95,7 @@ class Server(object):
 
         client_sock = rsocket.fromfd(fd, rsocket.AF_INET, rsocket.SOCK_STREAM)
 
-        return client_sock
+        return client_sock, client_addr
 
     @enforceargs(None, None, int)
     def read_request(self, client_sock, buffer_size):
@@ -87,12 +128,21 @@ class Server(object):
         else:
             raise Exception("Unknown HTTP request method: %s" % request_method)
 
-    def return_response(self, client_sock, response):
-        http_response = u"""HTTP/1.1 200 OK
-Content-Type: text/html;charset=utf-8
-Content-Length: %d
+    def return_response(self, client_sock, code, response):
+        h = u''
+        if code == 200:
+            h = u'HTTP/1.1 200 OK\n'
+        elif code == 404:
+            h = u'HTTP/1.1 404 Not Found\n'
 
-%s""" % (len(response), response)
+        h += u'Content-Type: text/html;charset=utf-8\n'
+        h += u'Content-Length: %d\n' % len(response)
+        h += u'Server: PyHP-Server\n'
+        # signal that the conection wil be closed after complting the request
+        h += u'Connection: close\n\n'
+
+        http_response = h + response
+
         client_sock.send(http_response.encode('utf-8'))
 
     def connection_close(self, client_sock):

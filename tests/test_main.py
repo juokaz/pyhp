@@ -13,7 +13,7 @@ class TestMain(TestBase):
 1: PRINT
 2: RETURN
 
-test_bytecode.php:
+/tmp/example.php:
 0: DECLARE_FUNCTION a
 1: LOAD_INTVAL 1
 2: ASSIGN 0, $x

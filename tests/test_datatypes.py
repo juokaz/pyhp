@@ -11,7 +11,7 @@ class TestDatatypes(TestBase):
 
     def test_string_unicode(self, capfd):
         out = self.run(u"""$x = 'Juozas Kaziukėnas';
-        print $x[13];""", capfd)
+        print $x[13];""".encode('utf-8'), capfd)
         assert out == u"ė"
 
     def test_string_array_access(self, capfd):
