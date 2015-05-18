@@ -137,7 +137,7 @@ class ByteCode(object):
             lines.append(u'Function ' + function.str())
             lines.append(u'')
 
-        if self.name == u'Main':
+        if self.name.find(".php") != -1:
             lines.append(self.name + u':')
         else:
             arguments = []
@@ -152,7 +152,7 @@ class ByteCode(object):
         return u"\n".join(lines)
 
 
-def compile_ast(ast, symbols, name=u'Main'):
+def compile_ast(ast, symbols, name):
     bc = ByteCode(name, symbols)
     if ast is not None:
         ast.compile(bc)

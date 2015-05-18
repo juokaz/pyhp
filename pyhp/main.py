@@ -20,10 +20,13 @@ def source_to_ast(source):
     return transformer.dispatch(ast)
 
 
-def ast_to_bytecode(ast):
+def ast_to_bytecode(ast, filename):
     """ Compile the AST into a bytecode
     """
-    bc = compile_ast(ast, ast.scope)
+    last = filename.rfind('/') + 1
+    assert last > 0
+    filename = unicode(filename[last:])
+    bc = compile_ast(ast, ast.scope, filename)
     return bc
 
 
@@ -54,7 +57,7 @@ def ast(filename):
 
 def bytecode(filename):
     source = ast(filename)
-    bc = ast_to_bytecode(source)
+    bc = ast_to_bytecode(source, filename)
     return bc
 
 
@@ -111,8 +114,9 @@ def main(argv):
         return 0
     elif server:
         bc = bytecode(filename)
+        server = Server(bc)
         try:
-            server = Server(bc, server_port)
+            server.listen(server_port)
         except Exception:
             print("Failed to acquire a socket for port %s " % server_port)
             return 1
