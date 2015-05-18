@@ -1,5 +1,6 @@
-import py, re, tempfile, os, sys
+import py
 from pyhp.main import run, run_return, bytecode, ast
+
 
 class TestBase(object):
     def setup_method(self, meth):

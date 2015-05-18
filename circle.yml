@@ -11,6 +11,6 @@ dependencies:
     - pip install -r requirements.txt
 test:
   override:
-    - flake8 pyhp
+    - flake8 .
     - PYTHONPATH=$PYTHONPATH:pypy-2.5.1-src py.test --cov pyhp tests
     - pypy-2.5.1/bin/pypy pypy-2.5.1-src/rpython/bin/rpython targetpyhp.py

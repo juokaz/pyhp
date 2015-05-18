@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestFibonacci(TestBase):
     def test_running(self, capfd):
         out = self.run("""function fib ($n)

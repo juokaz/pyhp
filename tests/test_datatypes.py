@@ -2,6 +2,7 @@
 
 from tests import TestBase
 
+
 class TestDatatypes(TestBase):
     def test_string_single_quotes(self, capfd):
         out = self.run("""$x = 'Hello world';

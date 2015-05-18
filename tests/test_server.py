@@ -2,6 +2,7 @@ from tests import TestBase
 from pyhp.server import Server
 from mock import patch, MagicMock
 
+
 class TestServer(TestBase):
     def test_parse_request(self):
         server = Server(None)

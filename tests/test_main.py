@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestMain(TestBase):
     def test_bytecode(self):
         bytecode = self.bytecode("""function a($x) {
@@ -37,7 +38,7 @@ test_bytecode.php:
 \t\tExprStatement (AssignmentOperation (VariableIdentifier (0, $x), =, ConstantInt 1))
 \t\tPrint (VariableIdentifier (0, $x))
 \t)
-)"""
+)"""  # NOQA
 
     def test_running(self, capfd):
         out = self.run("""$x = 1;

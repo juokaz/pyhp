@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestBench(TestBase):
     def test_simple(self, capfd):
         out = self.run("""function simple() {
@@ -12,7 +13,7 @@ class TestBench(TestBase):
             $thisisanotherlongname++;
         }
 
-        simple();""", capfd)
+        simple();""", capfd)  # NOQA
         assert out == ""
 
     def test_simplecall(self, capfd):
@@ -87,7 +88,7 @@ class TestBench(TestBase):
         }
 
         mandel();""", capfd)
-        assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"
+        assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"  # NOQA
 
     def test_mandel2(self, capfd):
         out = self.run("""function mandel2() {
@@ -102,7 +103,7 @@ class TestBench(TestBase):
           }
         }
 
-        mandel2();""", capfd)
+        mandel2();""", capfd)  # NOQA
         assert out == """\n!!!!!!!!!!
 ;;;!!!!!!!
 ;;;;;!!!!!

@@ -1,5 +1,5 @@
-import pytest
 from tests import TestBase
+
 
 class TestScopes(TestBase):
     def test_function_call_pass_by_value(self, capfd):
@@ -65,7 +65,7 @@ class TestScopes(TestBase):
 
     def test_function_out_of_scope(self, capfd):
         try:
-            out = self.run("""function test() {
+            self.run("""function test() {
                 return $a;
             }
 
@@ -77,7 +77,7 @@ class TestScopes(TestBase):
         except Exception as e:
             assert str(e) == 'Variable $a is not set'
         else:
-            assert False == True
+            assert False is True
 
     def test_function_global(self, capfd):
         out = self.run("""function test() {

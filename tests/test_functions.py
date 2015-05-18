@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestFunctions(TestBase):
     def test_function_call(self, capfd):
         out = self.run("""function hello($a) {
@@ -11,7 +12,7 @@ class TestFunctions(TestBase):
 
     def test_function_defined_twice(self, capfd):
         try:
-            out = self.run("""function strlen($a) {
+            self.run("""function strlen($a) {
                 print 1;
             }
 
@@ -19,7 +20,7 @@ class TestFunctions(TestBase):
         except Exception as e:
             assert str(e) == 'Function strlen alredy declared'
         else:
-            assert False == True
+            assert False is True
 
     def test_function_call_multiple_args(self, capfd):
         out = self.run("""function hello($a, $b) {

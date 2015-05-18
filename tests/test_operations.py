@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestMain(TestBase):
     def test_if(self, capfd):
         out = self.run("""

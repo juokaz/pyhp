@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestAsignmentOperations(TestBase):
     def test_assign_print(self, capfd):
         out = self.run("""$i = 1;

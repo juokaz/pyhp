@@ -1,5 +1,6 @@
 from tests import TestBase
 
+
 class TestStdlib(TestBase):
     def test_strlen(self, capfd):
         out = self.run("""$x = 'Hello world';
