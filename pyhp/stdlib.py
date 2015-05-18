@@ -117,17 +117,17 @@ def ob_flush(interpreter, args):
 
 # ----- #
 
-functions = [
-    new_native_function(u'define', define),
-    new_native_function(u'strlen', strlen),
-    new_native_function(u'str_repeat', str_repeat),
-    new_native_function(u'printf', printf),
-    new_native_function(u'print_r', print_r),
-    new_native_function(u'dechex', dechex),
-    new_native_function(u'number_format', number_format),
-    new_native_function(u'range', array_range),
-    new_native_function(u'gettimeofday', gettimeofday),
-    new_native_function(u'ob_start', ob_start),
-    new_native_function(u'ob_end_clean', ob_end_clean),
-    new_native_function(u'ob_flush', ob_flush),
-]
+functions = {
+    u'define': new_native_function(u'define', define),
+    u'strlen': new_native_function(u'strlen', strlen),
+    u'str_repeat': new_native_function(u'str_repeat', str_repeat),
+    u'printf': new_native_function(u'printf', printf),
+    u'print_r': new_native_function(u'print_r', print_r),
+    u'dechex': new_native_function(u'dechex', dechex),
+    u'number_format': new_native_function(u'number_format', number_format),
+    u'range': new_native_function(u'range', array_range),
+    u'gettimeofday': new_native_function(u'gettimeofday', gettimeofday),
+    u'ob_start': new_native_function(u'ob_start', ob_start),
+    u'ob_end_clean': new_native_function(u'ob_end_clean', ob_end_clean),
+    u'ob_flush': new_native_function(u'ob_flush', ob_flush),
+}

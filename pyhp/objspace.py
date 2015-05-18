@@ -12,8 +12,8 @@ class VersionTag(object):
 # based on http://morepypy.blogspot.com/2011/03/controlling
 # -tracing-of-interpreter-with_21.html
 class NamesMap(object):
-    def __init__(self):
-        self.methods = {}
+    def __init__(self, initdict={}):
+        self.methods = initdict
         self.version = VersionTag()
 
     def find(self, name):
@@ -35,14 +35,8 @@ class NamesMap(object):
 
 class ObjectSpace(object):
     def __init__(self, global_functions):
-        self.functions = NamesMap()
+        self.functions = NamesMap(global_functions.copy())
         self.constants = NamesMap()
-
-        self._declare_global_functions(global_functions)
-
-    def _declare_global_functions(self, functions):
-        for func in functions:
-            self.declare_function(func.name, func)
 
     def declare_function(self, name, func):
         assert isinstance(func, W_Function)
