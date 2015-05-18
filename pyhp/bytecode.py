@@ -3,14 +3,15 @@ from rpython.rlib import jit
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_variables[*]',
-                          '_globals[*]', '_parameters[*]', '_superglobals[*]',
-                          'name']
+    _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_symbol_size',
+                          '_variables[*]', '_globals[*]', '_parameters[*]',
+                          '_superglobals[*]', 'name']
 
     def __init__(self, name, scope):
         self.name = name
         self.opcodes = []
         self._symbols = scope.symbols
+        self._symbol_size = scope.symbols.len()
         self._variables = scope.variables[:]
         self._globals = scope.globals[:]
         self._parameters = scope.parameters[:]
@@ -43,6 +44,9 @@ class ByteCode(object):
 
     def symbols(self):
         return self._symbols
+
+    def symbol_size(self):
+        return self._symbol_size
 
     def variables(self):
         return self._variables

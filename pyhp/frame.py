@@ -16,7 +16,9 @@ class Frame(object):
         self.valuestack = [None] * 10  # safe estimate!
         self.valuestack_pos = 0
 
-        self.vars = [None] * bytecode.symbols().len()
+        vars_len = bytecode.symbol_size()
+        assert vars_len >= 0
+        self.vars = [None] * vars_len
 
         self.symbols = bytecode.symbols()
 
