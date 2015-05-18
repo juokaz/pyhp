@@ -24,8 +24,10 @@ def ast_to_bytecode(ast, filename):
     """ Compile the AST into a bytecode
     """
     last = filename.rfind('/') + 1
-    assert last > 0
-    filename = unicode(filename[last:])
+    if last > 0:
+        filename = unicode(filename[last:])
+    else:
+        filename = unicode(filename)
     bc = compile_ast(ast, ast.scope, filename)
     return bc
 
