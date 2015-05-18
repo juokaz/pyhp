@@ -1,7 +1,8 @@
 from tests import TestBase
 
+
 class TestBench(TestBase):
-    def test_simple(self, capfd):
+    def test_simple(self):
         out = self.run("""function simple() {
           $a = 0;
           for ($i = 0; $i < 100; $i++)
@@ -12,19 +13,19 @@ class TestBench(TestBase):
             $thisisanotherlongname++;
         }
 
-        simple();""", capfd)
+        simple();""")  # NOQA
         assert out == ""
 
-    def test_simplecall(self, capfd):
+    def test_simplecall(self):
         out = self.run("""function simplecall() {
           for ($i = 0; $i < 100; $i++)
             strlen("hallo");
         }
 
-        simplecall();""", capfd)
+        simplecall();""")
         assert out == ""
 
-    def test_simpleucall(self, capfd):
+    def test_simpleucall(self):
         out = self.run("""function hallo($a) {
         }
 
@@ -33,10 +34,10 @@ class TestBench(TestBase):
             hallo("hallo");
         }
 
-        simpleucall();""", capfd)
+        simpleucall();""")
         assert out == ""
 
-    def test_simpleudcall(self, capfd):
+    def test_simpleudcall(self):
         out = self.run("""function simpleudcall() {
           for ($i = 0; $i < 10; $i++)
             hallo2("hallo");
@@ -45,10 +46,10 @@ class TestBench(TestBase):
         function hallo2($a) {
         }
 
-        simpleudcall();""", capfd)
+        simpleudcall();""")
         assert out == ""
 
-    def test_mandel(self, capfd):
+    def test_mandel(self):
         out = self.run("""function mandel() {
           $w1=5;
           $h1=10;
@@ -86,10 +87,10 @@ class TestBench(TestBase):
           }
         }
 
-        mandel();""", capfd)
-        assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"
+        mandel();""")
+        assert out == "###########<br>###########<br>###########<br>###########<br>###########<br>###########<br>"  # NOQA
 
-    def test_mandel2(self, capfd):
+    def test_mandel2(self):
         out = self.run("""function mandel2() {
           $b = " .:,;!/>)|&IH%*#";
           //float r, i, z, Z, t, c, C;
@@ -102,7 +103,7 @@ class TestBench(TestBase):
           }
         }
 
-        mandel2();""", capfd)
+        mandel2();""")  # NOQA
         assert out == """\n!!!!!!!!!!
 ;;;!!!!!!!
 ;;;;;!!!!!
@@ -114,7 +115,7 @@ class TestBench(TestBase):
 ;;;;;;;;;;
 ;;;;;;;;;;\n"""
 
-    def test_ackermann(self, capfd):
+    def test_ackermann(self):
         out = self.run("""function Ack($m, $n) {
           if($m == 0) return $n+1;
           if($n == 0) return Ack($m-1, 1);
@@ -126,10 +127,10 @@ class TestBench(TestBase):
           print "Ack(3,$n): $r\n";
         }
 
-        ackermann(1);""", capfd)
+        ackermann(1);""")
         assert out == "Ack(3,1): 13\n"
 
-    def test_ary(self, capfd):
+    def test_ary(self):
         out = self.run("""function ary($n) {
           $X = [];
           $Y = [];
@@ -143,10 +144,10 @@ class TestBench(TestBase):
           print "$Y[$last]\n";
         }
 
-        ary(10);""", capfd)
+        ary(10);""")
         assert out == "9\n"
 
-    def test_ary2(self, capfd):
+    def test_ary2(self):
         out = self.run("""function ary2($n) {
           $X = [];
           $Y = [];
@@ -180,10 +181,10 @@ class TestBench(TestBase):
           print "$Y[$last]\n";
         }
 
-        ary2(10);""", capfd)
+        ary2(10);""")
         assert out == "9\n"
 
-    def test_ary3(self, capfd):
+    def test_ary3(self):
         out = self.run("""function ary3($n) {
           $X = [];
           $Y = [];
@@ -200,10 +201,10 @@ class TestBench(TestBase):
           print "$Y[0] $Y[$last]\n";
         }
 
-        ary3(10);""", capfd)
+        ary3(10);""")
         assert out == "10 100\n"
 
-    def test_fibo(self, capfd):
+    def test_fibo(self):
         out = self.run("""function fibo_r($n){
             return(($n < 2) ? 1 : fibo_r($n - 2) + fibo_r($n - 1));
         }
@@ -213,10 +214,10 @@ class TestBench(TestBase):
           print "$r\n";
         }
 
-        fibo(10);""", capfd)
+        fibo(10);""")
         assert out == "89\n"
 
-    def test_hash1(self, capfd):
+    def test_hash1(self):
         out = self.run("""function hash1($n) {
           $X = [];
           for ($i = 1; $i <= $n; $i++) {
@@ -229,10 +230,10 @@ class TestBench(TestBase):
           print "$c\n";
         }
 
-        hash1(10);""", capfd)
+        hash1(10);""")
         assert out == "10\n"
 
-    def test_hash2(self, capfd):
+    def test_hash2(self):
         out = self.run("""function hash2($n) {
           $hash1 = [];
           $hash2 = [];
@@ -248,10 +249,10 @@ class TestBench(TestBase):
           print "$hash1[$first] $hash1[$last] $hash2[$first] $hash2[$last]\n";
         }
 
-        hash2(10);""", capfd)
+        hash2(10);""")
         assert out == "0 9 0 90\n"
 
-    def test_heapsort(self, capfd):
+    def test_heapsort(self):
         out = self.run("""function gen_random ($n) {
             global $LAST;
             return( ($n * ($LAST = ($LAST * IA + IC) % IM)) / IM );
@@ -306,10 +307,10 @@ class TestBench(TestBase):
         }
 
         $LAST = 0;
-        heapsort(3);""", capfd)
+        heapsort(3);""")
         assert out == "0.7290237769\n"
 
-    def test_mkmatrix(self, capfd):
+    def test_mkmatrix(self):
         out = self.run("""function mkmatrix ($rows, $cols) {
             $count = 1;
             $mx = array();
@@ -347,10 +348,10 @@ class TestBench(TestBase):
           print "{$mm[0][0]} {$mm[2][3]} {$mm[3][2]} {$mm[4][4]}\n";
         }
 
-        matrix(1);""", capfd)
+        matrix(1);""")
         assert out == "3355 13320 17865 23575\n"
 
-    def test_nestedloop(self, capfd):
+    def test_nestedloop(self):
         out = self.run("""function nestedloop($n) {
           $x = 0;
           for ($a=0; $a<$n; $a++)
@@ -363,10 +364,10 @@ class TestBench(TestBase):
           print "$x\n";
         }
 
-        nestedloop(2);""", capfd)
+        nestedloop(2);""")
         assert out == "64\n"
 
-    def test_sieve(self, capfd):
+    def test_sieve(self):
         out = self.run("""function sieve($n) {
           $count = 0;
           while ($n-- > 0) {
@@ -384,10 +385,10 @@ class TestBench(TestBase):
           print "Count: $count\n";
         }
 
-        sieve(2);""", capfd)
+        sieve(2);""")
         assert out == "Count: 5\n"
 
-    def test_strcat(self, capfd):
+    def test_strcat(self):
         out = self.run("""function strcat($n) {
           $str = "";
           while ($n-- > 0) {
@@ -397,5 +398,5 @@ class TestBench(TestBase):
           print "$len\n";
         }
 
-        strcat(2);""", capfd)
+        strcat(2);""")
         assert out == "12\n"

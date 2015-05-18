@@ -1,74 +1,75 @@
 from tests import TestBase
 
+
 class TestFunctions(TestBase):
-    def test_function_call(self, capfd):
+    def test_function_call(self):
         out = self.run("""function hello($a) {
             print 'Hello world';
         }
 
-        hello('Hello world');""", capfd)
+        hello('Hello world');""")
         assert out == "Hello world"
 
-    def test_function_defined_twice(self, capfd):
+    def test_function_defined_twice(self):
         try:
-            out = self.run("""function strlen($a) {
+            self.run("""function strlen($a) {
                 print 1;
             }
 
-            strlen('Hello world');""", capfd)
+            strlen('Hello world');""")
         except Exception as e:
             assert str(e) == 'Function strlen alredy declared'
         else:
-            assert False == True
+            assert False is True
 
-    def test_function_call_multiple_args(self, capfd):
+    def test_function_call_multiple_args(self):
         out = self.run("""function hello($a, $b) {
             print $a;
             print ' ';
             print $b;
         }
 
-        hello('Hello', 'world');""", capfd)
+        hello('Hello', 'world');""")
         assert out == "Hello world"
 
-    def test_function_call_return(self, capfd):
+    def test_function_call_return(self):
         out = self.run("""function hello($a) {
             return $a;
         }
 
-        print hello('Hello world');""", capfd)
+        print hello('Hello world');""")
         assert out == "Hello world"
 
-    def test_function_call_empty_return(self, capfd):
+    def test_function_call_empty_return(self):
         out = self.run("""function hello($a) {
             return;
         }
 
-        print hello('Hello world');""", capfd)
+        print hello('Hello world');""")
         assert out == "null"
 
-    def test_function_call_no_return(self, capfd):
+    def test_function_call_no_return(self):
         out = self.run("""function hello($a) {
 
         }
 
-        print hello('Hello world');""", capfd)
+        print hello('Hello world');""")
         assert out == "null"
 
-    def test_function_call_return_null(self, capfd):
+    def test_function_call_return_null(self):
         out = self.run("""function hello($a) {
             return null;
         }
 
-        print hello('Hello world');""", capfd)
+        print hello('Hello world');""")
         assert out == "null"
 
-    def test_function_call_return_breaks(self, capfd):
+    def test_function_call_return_breaks(self):
         out = self.run("""function hello() {
             print 'hello';
             return;
             print 'world';
         }
 
-        hello();""", capfd)
+        hello();""")
         assert out == "hello"

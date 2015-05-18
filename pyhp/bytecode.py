@@ -4,7 +4,8 @@ from rpython.rlib import jit
 
 class ByteCode(object):
     _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_variables[*]',
-                          '_globals[*]', '_parameters[*]', 'name']
+                          '_globals[*]', '_parameters[*]', '_superglobals[*]',
+                          'name']
 
     def __init__(self, name, scope):
         self.name = name
@@ -13,6 +14,7 @@ class ByteCode(object):
         self._variables = scope.variables[:]
         self._globals = scope.globals[:]
         self._parameters = scope.parameters[:]
+        self._superglobals = scope.superglobals[:]
 
         self.label_count = 100000
         self.startlooplabel = []
@@ -44,6 +46,9 @@ class ByteCode(object):
 
     def variables(self):
         return self._variables
+
+    def superglobals(self):
+        return self._superglobals
 
     def globals(self):
         return self._globals
@@ -137,7 +142,7 @@ class ByteCode(object):
             lines.append(u'Function ' + function.str())
             lines.append(u'')
 
-        if self.name == u'Main':
+        if self.name.find(".php") != -1:
             lines.append(self.name + u':')
         else:
             arguments = []
@@ -152,7 +157,7 @@ class ByteCode(object):
         return u"\n".join(lines)
 
 
-def compile_ast(ast, symbols, name=u'Main'):
+def compile_ast(ast, symbols, name):
     bc = ByteCode(name, symbols)
     if ast is not None:
         ast.compile(bc)

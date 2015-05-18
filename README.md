@@ -67,9 +67,10 @@ process by 5x, but the produced interpreter runs much slower.
 
 ### Starting the web server
 
-    ./pyhp-c --server 8080 fibonacci.php
+    ./pyhp-c --server 8080
 
-Accessible through http://33.33.33.20:8080/ or from http://localhost:8080/ inside the VM.
+Accessible through http://33.33.33.20:8080/fibonacci.php or from
+http://localhost:8080/fibonacci.php inside the VM.
 
 ### Printing the bytecode
 

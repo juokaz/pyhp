@@ -1,31 +1,24 @@
-import py, re, tempfile, os, sys
-from pyhp.main import run, run_return, bytecode, ast
+import py
+from pyhp.main import bytecode, ast
+from pyhp.interpreter import Interpreter
+
 
 class TestBase(object):
     def setup_method(self, meth):
         self.tmpname = meth.im_func.func_name
 
-    def run(self, code, capfd, expected_exitcode=0,
-            cgi=False, args=[]):
-        filename = self._init(code)
-        r = run(filename)
-        out, err = capfd.readouterr()
-        assert r == expected_exitcode
-        return out
-
-    def run_return(self, code):
-        filename = self._init(code)
-        return run_return(filename)
+    def run(self, code):
+        bc = bytecode('/tmp/example.php', code)
+        intrepreter = Interpreter()
+        return intrepreter.run_return(bc)
 
     def bytecode(self, code):
-        filename = self._init(code)
-        return bytecode(filename)
+        return bytecode('/tmp/example.php', code)
 
     def ast(self, code):
-        filename = self._init(code)
-        return ast(filename)
+        return ast(code)
 
-    def _init(self, code):
+    def store(self, code):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
         phpfile = tmpdir.join(self.tmpname + '.php')
         f = open(str(phpfile), 'w')
