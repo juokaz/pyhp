@@ -25,7 +25,7 @@ RPYTHON_BIN = $(RPYTHON)/rpython/bin/rpython
 
 DOCKER_IMAGE = juokaz/pyhp
 
-DOCKER_ARGS = -ti --rm -v $(CURDIR):$(CURDIR) -w $(CURDIR) -e "IN_DOCKER=1" -e "PYTHONPATH=$$PYTHONPATH:$(RPYTHON)"
+DOCKER_ARGS = -ti -v $(CURDIR):$(CURDIR) -w $(CURDIR) -e "IN_DOCKER=1" -e "PYTHONPATH=$$PYTHONPATH:$(RPYTHON)"
 
 ifeq ($(IN_DOCKER), 1)
     DOCKER =
