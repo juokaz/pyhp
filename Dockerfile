@@ -24,5 +24,7 @@ RUN cd /tmp \
 RUN cd /tmp \
     && wget -q -O - https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-src.tar.bz2 | tar jx
 
-ADD requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install pytest \
+    && pip install pytest-cov \
+    && pip install flake8 \
+    && pip install mock

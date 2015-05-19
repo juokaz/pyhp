@@ -1,6 +1,12 @@
 machine:
   services:
     - docker
+dependencies:
+  cache_directories:
+    - "~/docker"
+  override:
+    - docker info
+    - docker build -t juokaz/pyhp .
 test:
   override:
     - make flake8
