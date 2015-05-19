@@ -5,6 +5,7 @@ MAINTAINER Juozas Kaziukenas <juozas@juokaz.com>
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update -y \
     && apt-get install -y --no-install-recommends \
+        php5-cli \
         ca-certificates \
         git-core \
         wget \
