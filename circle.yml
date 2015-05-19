@@ -9,4 +9,5 @@ test:
   override:
     - make flake8
     - make tests-cov
-    - make build-nojit
+    - make build
+    - make bench
