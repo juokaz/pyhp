@@ -44,9 +44,6 @@ PYPY = $(DOCKER) pypy
 .PHONY: build
 build: ./build/pyhp
 
-.PHONY: build-nojit
-build-nojit: ./build/pyhp-nojit
-
 ./build/pyhp:
 	mkdir -p build
 	$(PYPY) $(RPYTHON_BIN) -Ojit  --output=./build/pyhp targetpyhp.py
@@ -55,6 +52,9 @@ build-nojit: ./build/pyhp-nojit
 # investigating the size or performance of the core interpreter.
 # Emits the `-Ojit`. Speeds up the build process by 5x, but the produced
 # interpreter runs much slower.
+
+.PHONY: build-nojit
+build-nojit: ./build/pyhp-nojit
 
 ./build/pyhp-nojit:
 	mkdir -p build
@@ -71,14 +71,11 @@ shell:
 tests:
 	$(DOCKER) py.test tests
 
-.PHONY: tests-cov
 tests-cov:
 	$(DOCKER) py.test --cov pyhp tests
 
-.PHONY: flake8
 flake8:
 	$(DOCKER) flake8 pyhp tests
 
-.PHONY: bench
-bench:
+bench: ./build/pyhp
 	$(DOCKER) ./build/pyhp bench.php
