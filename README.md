@@ -48,41 +48,43 @@ like int, float, array, etc.
 
 ## Building
 
-### Starting the VM
+### Building the docker container
 
-    vagrant up
-    vagrant ssh
-    cd /var/www/pyhp
+    docker build -t juokaz/pyhp .
 
 ### Building the interpreter
 
-    rpython -Ojit targetpyhp.py
+    make build
 
-Emit the `-Ojit` to compile an interpreter without JIT support. Speeds up the build
-process by 5x, but the produced interpreter runs much slower.
+Or to build without JIT support
 
-### Running the interpreter
+    make build-nojit
 
-    ./pyhp-c fibonacci.php
+### Running the benchmark
+
+    make bench
+
+Or run any PHP file
+
+    ./build/pyhp bench.php
 
 ### Starting the web server
 
-    ./pyhp-c --server 8080
+    ./build/pyhp --server 8080
 
-Accessible through http://33.33.33.20:8080/fibonacci.php or from
-http://localhost:8080/fibonacci.php inside the VM.
+Accessible through http://localhost:8080/bench.php.
 
 ### Printing the bytecode
 
-    ./pyhp-c --bytecode fibonacci.php
+    ./build/pyhp --bytecode bench.php
 
 ### Printing the AST tree
 
-    ./pyhp-c --ast fibonacci.php
+    ./build/pyhp --ast bench.php
 
 ### Debugging the interpreter
 
-    PYPYLOG=jit-log-opt:jit.txt ./pyhp-c fibonacci.php
+    PYPYLOG=jit-log-opt:jit.txt ./build/pyhp bench.php
 
 Plot the trace as a graph
 
@@ -90,7 +92,11 @@ Plot the trace as a graph
 
 ### Running the tests
 
-    PYTHONPATH=$PYTHONPATH:/home/vagrant/pypy-src/ py.test tests
+    make tests
+
+Or to run with coverage information
+
+    make tests-cov
 
 ## Attributions and inspirations
 

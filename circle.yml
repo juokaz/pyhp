@@ -1,16 +1,8 @@
 machine:
-  python:
-    version: 2.7.9
-dependencies:
-  cache_directories:
-    - pypy-2.5.1
-    - pypy-2.5.1-src
-  pre:
-    - if [[ ! -e pypy-2.5.1 ]]; then wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-linux64.tar.bz2 && mkdir pypy-2.5.1 && tar xfv pypy-2.5.1-linux64.tar.bz2 -C pypy-2.5.1 --strip-components 1; fi
-    - if [[ ! -e pypy-2.5.1-src ]]; then wget https://bitbucket.org/pypy/pypy/downloads/pypy-2.5.1-src.tar.bz2 && mkdir pypy-2.5.1-src && tar xfv pypy-2.5.1-src.tar.bz2 -C pypy-2.5.1-src --strip-components 1; fi
-    - pip install -r requirements.txt
+  services:
+    - docker
 test:
   override:
-    - flake8 pyhp tests
-    - PYTHONPATH=$PYTHONPATH:pypy-2.5.1-src py.test --cov pyhp tests
-    - pypy-2.5.1/bin/pypy pypy-2.5.1-src/rpython/bin/rpython targetpyhp.py
+    - make flake8
+    - make tests-cov
+    - make build-nojit
