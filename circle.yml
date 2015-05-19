@@ -11,3 +11,6 @@ test:
     - make tests-cov
     - make build
     - make bench
+general:
+  artifacts:
+    - "build/pyhp"
