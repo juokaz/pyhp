@@ -48,12 +48,9 @@ like int, float, array, etc.
 
 ## Building
 
-### Building the docker container
-
-    docker build -t juokaz/pyhp .
-
 ### Building the interpreter
 
+    docker pull juokaz/pyhp
     make build
 
 Or to build without JIT support
@@ -97,6 +94,10 @@ Plot the trace as a graph
 Or to run with coverage information
 
     make tests-cov
+
+### Building the docker container
+
+    docker build -t juokaz/pyhp .
 
 ## Attributions and inspirations
 

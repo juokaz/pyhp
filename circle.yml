@@ -2,13 +2,9 @@ machine:
   services:
     - docker
 dependencies:
-  cache_directories:
-    - "~/docker"
   override:
-    - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - docker info
-    - docker build -t juokaz/pyhp .
-    - mkdir -p ~/docker; docker save juokaz/pyhp > ~/docker/image.tar
+    - docker pull juokaz/pyhp
 test:
   override:
     - make flake8
