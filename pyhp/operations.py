@@ -324,7 +324,7 @@ OPERANDS = {
     '-=': 'SUB',
     '++': 'INCR',
     '--': 'DECR',
-    '.=': 'ADD',
+    '.=': 'CONCAT',
 }
 
 OPERATIONS = unrolling_iterable(OPERANDS.items())
@@ -711,6 +711,7 @@ class Or(Expression):
 
 Comma = create_binary_op('COMMA')
 
+Concat = create_binary_op('CONCAT')  # +
 Plus = create_binary_op('ADD')  # +
 Mult = create_binary_op('MUL')  # *
 Mod = create_binary_op('MOD')  # %

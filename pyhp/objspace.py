@@ -57,6 +57,12 @@ class ObjectSpace(object):
     def get_constant(self, name):
         return self.constants.find(name)
 
+    def increment(self, left, constval=1):
+        return left.increment(constval)
+
+    def decrement(self, left, constval=1):
+        return left.increment(-1 * constval)
+
     @specialize.argtype(1)
     def wrap(self, value):
         if value is None:
@@ -81,6 +87,25 @@ class ObjectSpace(object):
 
     def newdictarray(self, value):
         return newdictarray(value)
+
+
+def _new_binop(name):
+    def func(self, left, right):
+        if isinstance(left, W_IntObject):
+            if isinstance(right, W_IntObject):
+                return getattr(left, name)(right)
+            left = W_FloatObject(left.float())
+        else:
+            if isinstance(right, W_IntObject):
+                right = W_FloatObject(right.float())
+        return getattr(left, name)(right)
+    func.func_name = name
+    return func
+
+binary_operations = ['add', 'sub', 'mult', 'mod', 'div']
+for _name in binary_operations:
+    if not hasattr(ObjectSpace, _name):
+        setattr(ObjectSpace, _name, _new_binop(_name))
 
 
 @enforceargs(int)

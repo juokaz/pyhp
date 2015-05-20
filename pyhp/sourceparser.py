@@ -39,7 +39,7 @@ class Transformer(RPythonVisitor):
         '>=': operations.Ge,
         '<': operations.Lt,
         '<=': operations.Le,
-        '.': operations.Plus,
+        '.': operations.Concat,
         '&&': operations.And,
         '||': operations.Or,
         '==': operations.Eq,

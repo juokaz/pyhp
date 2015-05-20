@@ -1,7 +1,6 @@
 from pyhp.datatypes import W_Function, W_CodeFunction, W_Iterator
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
-from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
 
 from rpython.rlib import jit
 
@@ -503,39 +502,46 @@ class BaseMathOperation(Opcode):
     _stack_change = -1
 
 
+class CONCAT(BaseMathOperation):
+    def eval(self, interpreter, bytecode, frame, space):
+        right = frame.pop()
+        left = frame.pop()
+        frame.push(left.concat(right))
+
+
 class ADD(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
-        frame.push(plus(left, right))
+        frame.push(space.add(left, right))
 
 
 class SUB(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
-        frame.push(sub(left, right))
+        frame.push(space.sub(left, right))
 
 
 class MUL(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
-        frame.push(mult(left, right))
+        frame.push(space.mult(left, right))
 
 
 class DIV(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
-        frame.push(division(left, right))
+        frame.push(space.div(left, right))
 
 
 class MOD(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
-        frame.push(mod(left, right))
+        frame.push(space.mod(left, right))
 
 
 class BaseUnaryOperation(Opcode):
@@ -552,13 +558,13 @@ class NOT(BaseUnaryOperation):
 class INCR(BaseUnaryOperation):
     def eval(self, interpreter, bytecode, frame, space):
         left = frame.pop()
-        frame.push(increment(left))
+        frame.push(space.increment(left))
 
 
 class DECR(BaseUnaryOperation):
     def eval(self, interpreter, bytecode, frame, space):
         left = frame.pop()
-        frame.push(decrement(left))
+        frame.push(space.decrement(left))
 
 
 class COMMA(BaseUnaryOperation):

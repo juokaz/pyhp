@@ -10,43 +10,11 @@ import math
 
 
 class W_Root(object):
-    _settled_ = True
-
-    def is_true(self):
-        return False
-
     def str(self):
         return u''
 
     def str_full(self):
         return self.str()
-
-    def len(self):
-        return 0
-
-    def append(self, stringval):
-        pass
-
-    def to_number(self):
-        return 0.0
-
-    def get_int(self):
-        return 0
-
-    def put(self, key, value):
-        pass
-
-    def get(self, key):
-        pass
-
-    def to_iterator(self):
-        return None
-
-    def empty(self):
-        return False
-
-    def set_value(self, value):
-        pass
 
     def get_value(self):
         return self
@@ -91,6 +59,61 @@ class W_IntObject(W_Number):
     def str(self):
         return u"%d" % self.intval
 
+    def float(self):
+        return float(self.intval)
+
+    def increment(self, i):
+        return self.__class__(self.intval + i)
+
+    def add(self, other):
+        assert isinstance(other, W_IntObject)
+        x = self.intval
+        y = other.intval
+        try:
+            z = ovfcheck(x + y)
+        except OverflowError:
+            return W_FloatObject(float(x) + float(y))
+        return W_IntObject(z)
+
+    def sub(self, other):
+        assert isinstance(other, W_IntObject)
+        x = self.intval
+        y = other.intval
+        try:
+            z = ovfcheck(x - y)
+        except OverflowError:
+            return W_FloatObject(float(x) - float(y))
+        return W_IntObject(z)
+
+    def mod(self, other):
+        assert isinstance(other, W_IntObject)
+        x = self.intval
+        y = other.intval
+        if x == 0:
+            return self
+
+        return W_IntObject(int(math.fmod(x, y)))
+
+    def div(self, other):
+        assert isinstance(other, W_IntObject)
+        x = self.intval
+        y = other.float()
+        result = x / y
+        if int(result) == result:
+            return W_IntObject(int(result))
+        else:
+            return W_FloatObject(result)
+
+    def mult(self, other):
+        assert isinstance(other, W_IntObject)
+        x = self.intval
+        y = other.intval
+        try:
+            z = ovfcheck(x * y)
+        except OverflowError:
+            return W_FloatObject(float(x) * float(y))
+        return W_IntObject(z)
+
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         obj.intval = self.intval
@@ -112,6 +135,36 @@ class W_FloatObject(W_Number):
     def str(self):
         return unicode(str(self.floatval))
 
+    def float(self):
+        return self.floatval
+
+    def increment(self, i):
+        return self.__class__(self.floatval + i)
+
+    def add(self, other):
+        assert isinstance(other, W_FloatObject)
+        x = self.floatval
+        y = other.floatval
+        return W_FloatObject(x+y)
+
+    def sub(self, other):
+        assert isinstance(other, W_FloatObject)
+        x = self.floatval
+        y = other.floatval
+        return W_FloatObject(x-y)
+
+    def div(self, other):
+        assert isinstance(other, W_FloatObject)
+        x = self.floatval
+        y = other.floatval
+        return W_FloatObject(x/y)
+
+    def mult(self, other):
+        assert isinstance(other, W_FloatObject)
+        x = self.floatval
+        y = other.floatval
+        return W_FloatObject(x*y)
+
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         obj.floatval = self.floatval
@@ -129,12 +182,11 @@ class W_StringObject(W_Root):
         assert isinstance(stringval, unicode)
         self.stringval = stringval
 
-    def append(self, stringval):
+    def concat(self, other):
         builder = UnicodeBuilder()
-        concat = W_ConcatStringObject(builder)
-        concat.builder.append(self.stringval)
-        concat.builder.append(stringval)
-        return concat
+        builder.append(self.stringval)
+        builder.append(other.str())
+        return W_ConcatStringObject(builder)
 
     def get(self, key):
         assert isinstance(key, W_IntObject)
@@ -157,16 +209,16 @@ class W_StringObject(W_Root):
 
 
 class W_ConcatStringObject(W_StringObject):
-    _immutable_fields_ = ['builder']
+    _immutable_fields_ = ['builder', 'length']
 
     def __init__(self, builder):
         self.builder = builder
+        self.length = builder.getlength()
 
-    def append(self, stringval):
+    def concat(self, other):
         builder = self.builder
-        concat = W_ConcatStringObject(builder)
-        concat.builder.append(stringval)
-        return concat
+        builder.append(other.str())
+        return W_ConcatStringObject(builder)
 
     def get(self, key):
         key = key.get_int()
@@ -176,7 +228,10 @@ class W_ConcatStringObject(W_StringObject):
         return self.builder.build()
 
     def len(self):
-        return len(self.str())
+        return self.length
+
+    def __repr__(self):
+        return 'W_ConcatStringObject(%s)' % (self.str(),)
 
 
 class W_StringSubstitution(W_Root):
@@ -459,93 +514,6 @@ def isfloat(w):
 
 def isnumber(w):
     return isinstance(w, W_Number)
-
-
-@specialize.argtype(0, 1)
-def plus(left, right):
-    if isstr(left) or isstr(right):
-        sright = right.str()
-        return left.append(sright)
-    # hot path
-    if isint(left) and isint(right):
-        ileft = left.get_int()
-        iright = right.get_int()
-        try:
-            return W_IntObject(ovfcheck(ileft + iright))
-        except OverflowError:
-            return W_FloatObject(float(ileft) + float(iright))
-    else:
-        fleft = left.to_number()
-        fright = right.to_number()
-        return W_FloatObject(fleft + fright)
-
-
-@specialize.argtype(0)
-def increment(nleft, constval=1):
-    if isint(nleft):
-        return W_IntObject(nleft.get_int() + constval)
-    else:
-        return plus(nleft, W_IntObject(constval))
-
-
-@specialize.argtype(0)
-def decrement(nleft, constval=1):
-    if isint(nleft):
-        return W_IntObject(nleft.get_int() - constval)
-    else:
-        return sub(nleft, W_IntObject(constval))
-
-
-@specialize.argtype(0, 1)
-def sub(left, right):
-    if isint(left) and isint(right):
-        # XXX fff
-        ileft = left.get_int()
-        iright = right.get_int()
-        try:
-            return W_IntObject(ovfcheck(ileft - iright))
-        except OverflowError:
-            return W_FloatObject(float(ileft) - float(iright))
-    fleft = left.to_number()
-    fright = right.to_number()
-    return W_FloatObject(fleft - fright)
-
-
-@specialize.argtype(0, 1)
-def mult(left, right):
-    if isint(left) and isint(right):
-        # XXXX test & stuff
-        ileft = left.get_int()
-        iright = right.get_int()
-        try:
-            return W_IntObject(ovfcheck(ileft * iright))
-        except OverflowError:
-            return W_FloatObject(float(ileft) * float(iright))
-    fleft = left.to_number()
-    fright = right.to_number()
-    return W_FloatObject(fleft * fright)
-
-
-@specialize.argtype(0, 1)
-def division(left, right):
-    fleft = left.to_number()
-    fright = right.to_number()
-    result = fleft / fright
-    if int(result) == result:
-        return W_IntObject(int(result))
-    else:
-        return W_FloatObject(result)
-
-
-@specialize.argtype(0, 1)
-def mod(left, right):
-    fleft = left.get_int()
-    fright = right.get_int()
-
-    if fleft == 0:
-        return left
-
-    return W_IntObject(int(math.fmod(fleft, fright)))
 
 
 @specialize.argtype(0, 1)
