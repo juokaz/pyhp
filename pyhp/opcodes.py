@@ -165,19 +165,10 @@ class STRING_SUBSTITUTION(Opcode):
     @jit.unroll_safe
     def eval(self, interpreter, bytecode, frame, space):
         string = frame.pop()
-        parts = string.strings
 
-        parts2 = frame.pop_n(self.number)
+        parts = frame.pop_n(self.number)
 
-        s = []
-        i = 0
-        for part in parts:
-            if part is None:
-                part = parts2[i].str()
-                i += 1
-            s.append(part)
-
-        frame.push(space.wrap(u''.join(s)))
+        frame.push(string.substitute(parts))
 
     def str(self):
         return u'STRING_SUBSTITUTION %d' % (self.number)

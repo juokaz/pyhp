@@ -240,6 +240,17 @@ class W_StringSubstitution(W_Root):
     def __init__(self, strings):
         self.strings = strings
 
+    def substitute(self, parts):
+        s = []
+        i = 0
+        for part in self.strings:
+            if part is None:
+                part = parts[i].str()
+                i += 1
+            s.append(part)
+
+        return W_StringObject(u''.join(s))
+
     def __repr__(self):
         return 'W_StringSubstitution(%s)' % (self.strings,)
 
