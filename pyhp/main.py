@@ -24,8 +24,6 @@ def interpret(bc):
 
 
 def read_file(filename):
-    if filename is None:
-        raise OSError("invalid filename")
     f = open_file_as_stream(filename)
     data = f.readall()
     f.close()
@@ -84,7 +82,11 @@ def main(argv):
         i += 1
 
     source = ''
-    if filename is not None or server is False:
+    if server is False:
+        if filename is None:
+            print 'Required parameter filename missing'
+            return 1
+
         try:
             source = read_file(filename)
         except OSError:

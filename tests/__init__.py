@@ -1,5 +1,5 @@
 import py
-from pyhp.main import bytecode, ast
+from pyhp.main import bytecode, ast, main
 from pyhp.interpreter import Interpreter
 
 
@@ -17,6 +17,9 @@ class TestBase(object):
 
     def ast(self, code):
         return ast(code)
+
+    def main(self, argv):
+        return main(argv)
 
     def store(self, code):
         tmpdir = py.path.local.make_numbered_dir('pyhp')
