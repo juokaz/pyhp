@@ -3,6 +3,7 @@ from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
 from rpython.rlib.objectmodel import compute_hash
 from rpython.rlib.rarithmetic import intmask
+from collections import OrderedDict
 
 from rpython.rlib import jit
 
@@ -40,9 +41,6 @@ class W_Root(object):
         pass
 
     def get(self, key):
-        pass
-
-    def to_list(self):
         pass
 
     def to_iterator(self):
@@ -198,21 +196,37 @@ class W_ConcatStringObject(W_StringObject):
 
 
 class W_Array(W_Root):
-    def __init__(self):
-        self.data = {}
+    pass
+
+
+class W_ListArray(W_Array):
+    def __init__(self, items=[]):
+        self.data = items
 
     def len(self):
         return len(self.data)
 
     def put(self, key, value):
-        _key = key.hash()
-        self.data[_key] = (key, value)
+        if isinstance(key, W_IntObject):
+            index = key.get_int()
+            length = self.len()
+            if index >= length:
+                self.data += [None] * (index - length + 1)
+                self.data[index] = value
+
+            self.data[index] = value
+            return self
+        else:
+            array = self.to_dict()
+            array.put(key, value)
+            return array
 
     def get(self, key):
-        _key = key.hash()
+        if not isinstance(key, W_IntObject):
+            raise Exception("key %s not in %s" % (key, self))
         try:
-            element = self.data[_key]
-            return element[1]
+            element = self.data[key.get_int()]
+            return element
         except KeyError:
             raise Exception("key %s not in %s" % (key, self))
 
@@ -222,14 +236,72 @@ class W_Array(W_Root):
     @jit.unroll_safe
     def str_full(self):
         result = u"Array\n" + u"(\n"
-        for key, value in self.data.itervalues():
+        for key, value in enumerate(self.data):
             lines = value.str_full().split(u"\n")
             string = lines[0]
             end = len(lines)-1
             if end > 1:
                 offset = u"\n".join([u"\t" + line for line in lines[1:end]])
                 string = string + u"\n" + offset
-            result += u"\t[" + key.str() + u"] => " + string + u"\n"
+            result += u"\t[" + unicode(str(key)) + u"] => " + string + u"\n"
+        result += u")\n"
+        return result
+
+    def to_iterator(self):
+        array = self.to_dict()
+        iterator = W_Iterator(array)
+        return iterator
+
+    @jit.unroll_safe
+    def to_dict(self):
+        array = OrderedDict()
+        for key, value in enumerate(self.data):
+            array[unicode(str(key))] = value
+        return W_DictArray(array)
+
+    def __deepcopy__(self):
+        obj = instantiate(self.__class__)
+        obj.data = self.data[:]
+        return obj
+
+    def __repr__(self):
+        return 'W_ListArray(%s)' % (self.str_full(),)
+
+
+class W_DictArray(W_Array):
+    def __init__(self, items={}):
+        self.data = items
+
+    def len(self):
+        return len(self.data)
+
+    def put(self, key, value):
+        _key = key.str()
+        self.data[_key] = value
+        return self
+
+    def get(self, key):
+        _key = key.str()
+        try:
+            element = self.data[_key]
+            return element
+        except KeyError:
+            raise Exception("key %s not in %s" % (key, self))
+
+    def str(self):
+        return u'Array'
+
+    @jit.unroll_safe
+    def str_full(self):
+        result = u"Array\n" + u"(\n"
+        for key, value in self.data.iteritems():
+            lines = value.str_full().split(u"\n")
+            string = lines[0]
+            end = len(lines)-1
+            if end > 1:
+                offset = u"\n".join([u"\t" + line for line in lines[1:end]])
+                string = string + u"\n" + offset
+            result += u"\t[" + key + u"] => " + string + u"\n"
         result += u")\n"
         return result
 
@@ -244,20 +316,7 @@ class W_Array(W_Root):
         return obj
 
     def __repr__(self):
-        return 'W_Array(%s)' % (self.str_full(),)
-
-
-class W_List(W_Root):
-    _immutable_fields_ = ['values[*]']
-
-    def __init__(self, values):
-        self.values = values
-
-    def to_list(self):
-        return self.values
-
-    def __repr__(self):
-        return 'W_List(%s)' % (str([str(v) for v in self.values]))
+        return 'W_DictArray(%s)' % (self.str_full(),)
 
 
 class W_Iterator(W_Root):
@@ -273,11 +332,14 @@ class W_Iterator(W_Root):
         try:
             return self.keys[self.index]
         except IndexError:
-            return -1
+            return u'-1'
 
     def current(self):
         key = self._current()
         return self.array.data[key]
+
+    def key(self):
+        return W_StringObject(self._current())
 
     def next(self):
         value = self.current()
@@ -372,11 +434,12 @@ class W_CodeFunction(W_Function):
 
 
 class W_NativeFunction(W_Function):
-    _immutable_fields_ = ['name', 'function']
+    _immutable_fields_ = ['name', 'function', 'parameters[*]']
 
-    def __init__(self, name, function):
+    def __init__(self, name, function, parameters):
         self.name = name
         self.function = function
+        self.parameters = parameters
 
     def call(self, interpreter, frame, params):
         result = self.function(interpreter, params)

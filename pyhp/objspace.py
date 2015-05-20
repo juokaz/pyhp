@@ -1,8 +1,9 @@
-from rpython.rlib.objectmodel import enforceargs
+from rpython.rlib.objectmodel import enforceargs, specialize
 from rpython.rlib import jit
 
 from pyhp.datatypes import W_Function, W_NativeFunction, W_Null, \
-    W_Boolean, W_FloatObject, W_IntObject, W_StringObject, W_Root
+    W_Boolean, W_FloatObject, W_IntObject, W_StringObject, W_Root, W_DictArray, \
+    W_ListArray
 
 
 class VersionTag(object):
@@ -52,6 +53,13 @@ class ObjectSpace(object):
     def get_constant(self, name):
         return self.constants.find(name)
 
+    @specialize.argtype(1)
+    def wrap(self, value):
+        return wrap(value)
+
+    def newdictarray(self, value):
+        return newdictarray(value)
+
 
 @enforceargs(int)
 def newint(i):
@@ -82,5 +90,36 @@ def newbool(val):
     return w_False
 
 
+def newlistarray(val):
+    return W_ListArray(val)
+
+
+def newdictarray(val):
+    return W_DictArray(val)
+
+
 def new_native_function(name, function, params=[]):
-    return W_NativeFunction(name, function)
+    return W_NativeFunction(name, function, params)
+
+
+@specialize.argtype(0)
+def wrap(value):
+    if value is None:
+        return w_Null
+    elif isinstance(value, W_Root):
+        return value
+    elif isinstance(value, bool):
+        return newbool(value)
+    elif isinstance(value, int):
+        return newint(value)
+    elif isinstance(value, float):
+        return newfloat(value)
+    elif isinstance(value, unicode):
+        return newstring(value)
+    elif isinstance(value, str):
+        u_str = unicode(value)
+        return newstring(u_str)
+    elif isinstance(value, list):
+        return newlistarray(value)
+
+    raise TypeError("ffffuuu %s" % value)

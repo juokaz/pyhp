@@ -1,7 +1,4 @@
-from pyhp.datatypes import W_StringObject, \
-    W_Array, W_List, \
-    W_Function, W_CodeFunction, W_Iterator
-from pyhp.objspace import w_Null, newbool, newint, newfloat, newstring
+from pyhp.datatypes import W_Function, W_CodeFunction, W_Iterator
 from pyhp.datatypes import compare_gt, compare_ge, compare_lt, compare_le, \
     compare_eq
 from pyhp.datatypes import plus, increment, decrement, sub, mult, division, mod
@@ -119,23 +116,9 @@ class DECLARE_FUNCTION(Opcode):
         return u'DECLARE_FUNCTION %s' % (self.name)
 
 
-class LOAD_LIST(Opcode):
-    _immutable_fields_ = ['number']
-
-    def __init__(self, number):
-        self.number = number
-
-    def eval(self, interpreter, frame):
-        list_w = frame.pop_n(self.number)
-        frame.push(W_List(list_w))
-
-    def str(self):
-        return u'LOAD_LIST %d' % self.number
-
-
 class LOAD_NULL(Opcode):
     def eval(self, interpreter, frame):
-        frame.push(w_Null)
+        frame.push(interpreter.space.wrap(None))
 
     def str(self):
         return u'LOAD_NULL'
@@ -145,52 +128,55 @@ class LOAD_BOOLEAN(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = newbool(value)
+        self.value = value
 
     def eval(self, interpreter, frame):
-        frame.push(self.value)
+        frame.push(interpreter.space.wrap(self.value))
 
     def str(self):
-        return u'LOAD_BOOLEAN %s' % (self.value.str())
+        if self.value:
+            return u'LOAD_BOOLEAN True'
+        else:
+            return u'LOAD_BOOLEAN False'
 
 
 class LOAD_INTVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = newint(value)
+        self.value = value
 
     def eval(self, interpreter, frame):
-        frame.push(self.value)
+        frame.push(interpreter.space.wrap(self.value))
 
     def str(self):
-        return u'LOAD_INTVAL %s' % (self.value.str())
+        return u'LOAD_INTVAL %s' % (unicode(str(self.value)))
 
 
 class LOAD_FLOATVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = newfloat(value)
+        self.value = value
 
     def eval(self, interpreter, frame):
-        frame.push(self.value)
+        frame.push(interpreter.space.wrap(self.value))
 
     def str(self):
-        return u'LOAD_FLOATVAL %s' % (self.value.str())
+        return u'LOAD_FLOATVAL %s' % (unicode(str(self.value)))
 
 
 class LOAD_STRINGVAL(Opcode):
     _immutable_fields_ = ['value']
 
     def __init__(self, value):
-        self.value = newstring(value)
+        self.value = value
 
     def eval(self, interpreter, frame):
-        frame.push(self.value)
+        frame.push(interpreter.space.wrap(self.value))
 
     def str(self):
-        return u'LOAD_STRINGVAL "%s"' % (self.value.str())
+        return u'LOAD_STRINGVAL "%s"' % (self.value)
 
 
 class LOAD_STRING_SUBSTITUTION(Opcode):
@@ -201,7 +187,7 @@ class LOAD_STRING_SUBSTITUTION(Opcode):
 
     @jit.unroll_safe
     def eval(self, interpreter, frame):
-        value = newstring(u'')
+        value = interpreter.space.wrap(u'')
         list_w = frame.pop_n(self.number)
 
         for part in list_w:
@@ -221,11 +207,8 @@ class LOAD_ARRAY(Opcode):
 
     @jit.unroll_safe
     def eval(self, interpreter, frame):
-        array = W_Array()
         list_w = frame.pop_n(self.number)
-        for index, el in enumerate(list_w):
-            array.put(newint(index), el)
-        frame.push(array)
+        frame.push(interpreter.space.wrap(list_w))
 
     def str(self):
         return u'LOAD_ARRAY %d' % (self.number)
@@ -234,7 +217,6 @@ class LOAD_ARRAY(Opcode):
 class LOAD_MEMBER(Opcode):
     def eval(self, interpreter, frame):
         array = frame.pop()
-        assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
 
         member = frame.pop()
         value = array.get(member)
@@ -254,8 +236,6 @@ class LOAD_MEMBER_VAR(Opcode):
         if array is None:
             raise Exception(u"Variable %s is not set" % self.name)
 
-        assert isinstance(array, W_Array) or isinstance(array, W_StringObject)
-
         member = frame.pop()
         value = array.get(member)
         frame.push(value)
@@ -269,12 +249,37 @@ class STORE_MEMBER(Opcode):
         array = frame.pop()
         index = frame.pop()
         value = frame.pop()
-        array.put(index, value)
-
+        array = array.put(index, value)
+        # TODO here the array might have changed into a different instance
+        # it needs to be stored in the frame
         frame.push(array)
 
     def str(self):
         return u'STORE_MEMBER'
+
+
+class STORE_MEMBER_VAR(Opcode):
+    _immutable_fields_ = ['index', 'name']
+
+    def __init__(self, index, name):
+        self.index = index
+        self.name = name
+
+    def eval(self, interpreter, frame):
+        array = frame.get_variable(self.name, self.index)
+
+        if array is None:
+            raise Exception(u"Variable %s is not set" % self.name)
+
+        index = frame.pop()
+        value = frame.pop()
+        array = array.put(index, value)
+        frame.push(array)
+
+        frame.store_variable(self.name, self.index, array)
+
+    def str(self):
+        return u'STORE_MEMBER_VAR %d, %s' % (self.index, self.name)
 
 
 class ASSIGN(Opcode):
@@ -395,9 +400,11 @@ class NEXT_ITERATOR(Opcode):
     def eval(self, interpreter, frame):
         iterator = frame.top()
         assert isinstance(iterator, W_Iterator)
-        key, value = iterator.next()
+        key = iterator.key()
+        value = iterator.current()
         frame.push(value)
         frame.push(key)
+        iterator.next()
 
 
 class RETURN(Opcode):
@@ -412,14 +419,19 @@ class PRINT(Opcode):
 
 
 class CALL(Opcode):
+    _immutable_fields_ = ['arguments']
+
+    def __init__(self, arguments):
+        self.arguments = arguments
+
     def eval(self, interpreter, frame):
         method = frame.pop()
-        params = frame.pop()
 
         assert isinstance(method, W_Function)
-        assert isinstance(params, W_List)
 
-        res = method.call(interpreter, frame, params.to_list())
+        params = frame.pop_n(self.arguments)
+
+        res = method.call(interpreter, frame, params)
         frame.push(res)
 
 
@@ -428,7 +440,7 @@ class BaseDecision(Opcode):
         right = frame.pop()
         left = frame.pop()
         res = self.decision(left, right)
-        frame.push(newbool(res))
+        frame.push(interpreter.space.wrap(res))
 
     def decision(self, op1, op2):
         raise NotImplementedError
@@ -502,7 +514,7 @@ class NOT(BaseUnaryOperation):
     def eval(self, interpreter, frame):
         val = frame.pop()
         boolval = val.is_true()
-        frame.push(newbool(not boolval))
+        frame.push(interpreter.space.wrap(not boolval))
 
 
 class INCR(BaseUnaryOperation):
@@ -539,7 +551,7 @@ class URSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(newint(res))
+        frame.push(interpreter.space.wrap(res))
 
 
 class RSH(BaseBinaryBitwiseOp):
@@ -553,7 +565,7 @@ class RSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(newint(res))
+        frame.push(interpreter.space.wrap(res))
 
 
 class LSH(BaseBinaryBitwiseOp):
@@ -567,7 +579,7 @@ class LSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum << shift_count
 
-        frame.push(newint(res))
+        frame.push(interpreter.space.wrap(res))
 
 
 class Opcodes:

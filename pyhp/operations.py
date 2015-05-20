@@ -135,7 +135,7 @@ class Call(Node):
         self.params.compile(ctx)
         self.left.compile(ctx)
 
-        ctx.emit('CALL')
+        ctx.emit('CALL', len(self.params.nodes))
 
     def str(self):
         return u'Call (%s, %s)' % (self.left.str(), self.params.str())
@@ -173,7 +173,6 @@ class ArgumentList(ListOp):
                 ctx.emit('LOAD_REF', node.index, node.identifier)
             else:
                 node.compile(ctx)
-        ctx.emit('LOAD_LIST', len(self.nodes))
 
     def str(self):
         arguments = u", ".join([node.str() for node in self.nodes])
@@ -390,8 +389,13 @@ class MemberAssignmentOperation(BaseAssignment):
 
     def compile_store(self, ctx):
         self.expr.compile(ctx)
-        self.w_array.compile(ctx)
-        ctx.emit('STORE_MEMBER')
+
+        if isinstance(self.w_array, VariableIdentifier):
+            ctx.emit('STORE_MEMBER_VAR', self.w_array.index,
+                     self.w_array.identifier)
+        else:
+            self.w_array.compile(ctx)
+            ctx.emit('STORE_MEMBER')
 
     def str(self):
         return u'MemberAssignmentOperation (%s, %s, %s)' % (

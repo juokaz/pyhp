@@ -14,9 +14,9 @@ Read http://doc.pypy.org/en/latest/jit/pyjitpl5.html for details.
 
 from pyhp.opcodes import BaseJump, RETURN
 from pyhp.frame import Frame
-from pyhp.objspace import ObjectSpace, newstring
+from pyhp.objspace import ObjectSpace
 from pyhp.stdlib import functions as global_functions
-from pyhp.datatypes import W_Reference, W_Array
+from pyhp.datatypes import W_Reference
 
 from rpython.rlib import jit
 from rpython.rlib.rstring import UnicodeBuilder
@@ -68,11 +68,10 @@ class Interpreter(object):
                 return buffer
 
     def setup(self, request):
-        get = W_Array()
-        for name, value in request.get.iteritems():
-            key = newstring(unicode(name))
-            value = newstring(unicode(value))
-            get.put(key, value)
+        get_ = {}
+        for key, value in request.get.iteritems():
+            get_[unicode(key)] = self.space.wrap(value)
+        get = self.space.newdictarray(get_)
         getref = W_Reference(get)
 
         # structure of this list needs to match pyhp.scopes.SUPERGLOBALS
