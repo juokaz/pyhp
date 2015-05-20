@@ -1,7 +1,6 @@
 from rpython.rlib.rstring import UnicodeBuilder
 from rpython.rlib.rarithmetic import ovfcheck
 from rpython.rlib.objectmodel import specialize, instantiate
-from rpython.rlib.objectmodel import compute_hash
 from rpython.rlib.rarithmetic import intmask
 from collections import OrderedDict
 
@@ -27,9 +26,6 @@ class W_Root(object):
 
     def append(self, stringval):
         pass
-
-    def hash(self):
-        return 0
 
     def to_number(self):
         return 0.0
@@ -95,9 +91,6 @@ class W_IntObject(W_Number):
     def str(self):
         return u"%d" % self.intval
 
-    def hash(self):
-        return compute_hash(self.intval)
-
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
         obj.intval = self.intval
@@ -118,9 +111,6 @@ class W_FloatObject(W_Number):
 
     def str(self):
         return unicode(str(self.floatval))
-
-    def hash(self):
-        return compute_hash(self.floatval)
 
     def __deepcopy__(self):
         obj = instantiate(self.__class__)
@@ -154,9 +144,6 @@ class W_StringObject(W_Root):
     def str(self):
         return self.stringval
 
-    def hash(self):
-        return compute_hash(self.stringval)
-
     def len(self):
         return len(self.stringval)
 
@@ -187,9 +174,6 @@ class W_ConcatStringObject(W_StringObject):
 
     def str(self):
         return self.builder.build()
-
-    def hash(self):
-        return compute_hash(self.str())
 
     def len(self):
         return len(self.str())
