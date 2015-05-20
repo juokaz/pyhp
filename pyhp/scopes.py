@@ -45,8 +45,8 @@ class Scope(object):
     def add_global(self, name):
         idx = self.add_symbol(name)
 
-        if name not in self.globals:
-            self.globals.append(name)
+        if (name, idx) not in self.globals:
+            self.globals.append((name, idx))
 
         return idx
 

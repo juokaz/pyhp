@@ -58,7 +58,11 @@ class SourceElements(Statement):
         if len(self.nodes) > 1:
             for node in self.nodes[:-1]:
                 node.compile(ctx)
-                ctx.emit('DISCARD_TOP')
+                # it is possible that a return statement is in the middle of
+                # the sourcecode and it will return without leavig a value
+                # to discard
+                if not isinstance(node, Return):
+                    ctx.emit('DISCARD_TOP')
 
         if len(self.nodes) > 0:
             node = self.nodes[-1]

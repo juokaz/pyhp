@@ -412,11 +412,11 @@ class W_CodeFunction(W_Function):
             param_index += 1
 
         # every variable referenced in 'globals' needs to be initialized
-        for name in self.globals:
-            ref = frame.get_reference(name)
+        for name, index in self.globals:
+            ref = frame.get_reference_by_name(name)
             if ref is None:
                 raise Exception("Global variable %s does not exist" % name)
-            new_frame.set_reference(name, -1, ref)
+            new_frame.set_reference(name, index, ref)
 
         result = interpreter.execute(bytecode, new_frame)
 

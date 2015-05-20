@@ -8,6 +8,8 @@ from rpython.rlib import jit
 
 class Opcode(object):
     _settled_ = True
+    _immutable_fields_ = ['_stack_change']
+    _stack_change = 1
 
     def __init__(self):
         pass
@@ -20,6 +22,9 @@ class Opcode(object):
         """
         raise NotImplementedError(self.get_name() + ".eval")
 
+    def stack_change(self):
+        return self._stack_change
+
     def str(self):
         return unicode(self.get_name())
 
@@ -28,7 +33,8 @@ class Opcode(object):
 
 
 class LOAD_NAMED_CONSTANT(Opcode):
-    _immutable_fields_ = ['name']
+    _immutable_fields_ = ['_stack_change', 'name']
+    _stack_change = 1
 
     def __init__(self, name):
         self.name = name
@@ -44,7 +50,8 @@ class LOAD_NAMED_CONSTANT(Opcode):
 
 
 class LOAD_VAR(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['_stack_change', 'index', 'name']
+    _stack_change = 1
 
     def __init__(self, index, name):
         self.index = index
@@ -63,7 +70,8 @@ class LOAD_VAR(Opcode):
 
 
 class LOAD_REF(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['_stack_change', 'index', 'name']
+    _stack_change = 1
 
     def __init__(self, index, name):
         self.index = index
@@ -82,7 +90,8 @@ class LOAD_REF(Opcode):
 
 
 class LOAD_FUNCTION(Opcode):
-    _immutable_fields_ = ['name']
+    _immutable_fields_ = ['_stack_change', 'name']
+    _stack_change = 1
 
     def __init__(self, name):
         self.name = name
@@ -98,7 +107,8 @@ class LOAD_FUNCTION(Opcode):
 
 
 class DECLARE_FUNCTION(Opcode):
-    _immutable_fields_ = ['name', 'bytecode']
+    _immutable_fields_ = ['_stack_change', 'name', 'bytecode']
+    _stack_change = 0
 
     def __init__(self, name, bytecode):
         self.name = name
@@ -117,6 +127,8 @@ class DECLARE_FUNCTION(Opcode):
 
 
 class LOAD_NULL(Opcode):
+    _stack_change = 1
+
     def eval(self, interpreter, bytecode, frame, space):
         frame.push(space.w_Null)
 
@@ -125,7 +137,8 @@ class LOAD_NULL(Opcode):
 
 
 class LOAD_BOOLEAN(Opcode):
-    _immutable_fields_ = ['value']
+    _immutable_fields_ = ['_stack_change', 'value']
+    _stack_change = 1
 
     def __init__(self, value):
         self.value = value
@@ -144,10 +157,11 @@ class LOAD_BOOLEAN(Opcode):
 
 
 class STRING_SUBSTITUTION(Opcode):
-    _immutable_fields_ = ['number']
+    _immutable_fields_ = ['_stack_change', 'number']
 
     def __init__(self, number):
         self.number = number
+        self._stack_change = -1 + (-1 * self.number) + 1
 
     @jit.unroll_safe
     def eval(self, interpreter, bytecode, frame, space):
@@ -171,10 +185,11 @@ class STRING_SUBSTITUTION(Opcode):
 
 
 class LOAD_ARRAY(Opcode):
-    _immutable_fields_ = ['number']
+    _immutable_fields_ = ['_stack_change', 'number']
 
     def __init__(self, number):
         self.number = number
+        self._stack_change = (-1 * self.number) + 1
 
     @jit.unroll_safe
     def eval(self, interpreter, bytecode, frame, space):
@@ -186,7 +201,8 @@ class LOAD_ARRAY(Opcode):
 
 
 class LOAD_CONSTANT(Opcode):
-    _immutable_fields_ = ['index']
+    _immutable_fields_ = ['_stack_change', 'index']
+    _stack_change = 1
 
     def __init__(self, index):
         self.index = index
@@ -199,6 +215,8 @@ class LOAD_CONSTANT(Opcode):
 
 
 class LOAD_MEMBER(Opcode):
+    _stack_change = -1
+
     def eval(self, interpreter, bytecode, frame, space):
         array = frame.pop()
 
@@ -208,7 +226,8 @@ class LOAD_MEMBER(Opcode):
 
 
 class LOAD_MEMBER_VAR(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['_stack_change', 'index', 'name']
+    _stack_change = 0
 
     def __init__(self, index, name):
         self.index = index
@@ -229,6 +248,8 @@ class LOAD_MEMBER_VAR(Opcode):
 
 
 class STORE_MEMBER(Opcode):
+    _stack_change = -2
+
     def eval(self, interpreter, bytecode, frame, space):
         array = frame.pop()
         index = frame.pop()
@@ -243,7 +264,8 @@ class STORE_MEMBER(Opcode):
 
 
 class STORE_MEMBER_VAR(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['_stack_change', 'index', 'name']
+    _stack_change = -1
 
     def __init__(self, index, name):
         self.index = index
@@ -267,7 +289,8 @@ class STORE_MEMBER_VAR(Opcode):
 
 
 class ASSIGN(Opcode):
-    _immutable_fields_ = ['index', 'name']
+    _immutable_fields_ = ['_stack_change', 'index', 'name']
+    _stack_change = 0
 
     def __init__(self, index, name):
         self.index = index
@@ -284,17 +307,22 @@ class ASSIGN(Opcode):
 
 
 class DISCARD_TOP(Opcode):
+    _stack_change = -1
+
     def eval(self, interpreter, bytecode, frame, space):
         frame.pop()
 
 
 class DUP(Opcode):
+    _stack_change = 1
+
     def eval(self, interpreter, bytecode, frame, space):
         frame.push(frame.top())
 
 
 class LABEL(Opcode):
-    _immutable_fields_ = ['num']
+    _immutable_fields_ = ['_stack_change', 'num']
+    _stack_change = 0
 
     def __init__(self, num):
         self.num = num
@@ -304,7 +332,8 @@ class LABEL(Opcode):
 
 
 class BaseJump(Opcode):
-    _immutable_fields_ = ['where']
+    _immutable_fields_ = ['_stack_change', 'where']
+    _stack_change = -1
 
     def __init__(self, where):
         self.where = where
@@ -349,6 +378,8 @@ class JUMP_IF_TRUE_NOPOP(BaseJump):
 
 
 class JUMP(BaseJump):
+    _stack_change = 0
+
     def do_jump(self, frame, pos):
         return self.where
 
@@ -357,6 +388,8 @@ class JUMP(BaseJump):
 
 
 class LOAD_ITERATOR(Opcode):
+    _stack_change = 0
+
     def eval(self, interpreter, bytecode, frame, space):
         obj = frame.pop()
         iterator = obj.to_iterator()
@@ -365,6 +398,8 @@ class LOAD_ITERATOR(Opcode):
 
 
 class JUMP_IF_ITERATOR_EMPTY(BaseJump):
+    _stack_change = 0
+
     def do_jump(self, frame, pos):
         last_block_value = frame.pop()
         iterator = frame.top()
@@ -381,6 +416,8 @@ class JUMP_IF_ITERATOR_EMPTY(BaseJump):
 
 
 class NEXT_ITERATOR(Opcode):
+    _stack_change = 2
+
     def eval(self, interpreter, bytecode, frame, space):
         iterator = frame.top()
         assert isinstance(iterator, W_Iterator)
@@ -392,21 +429,26 @@ class NEXT_ITERATOR(Opcode):
 
 
 class RETURN(Opcode):
+    _stack_change = -1
+
     def eval(self, interpreter, bytecode, frame, space):
         return frame.pop()
 
 
 class PRINT(Opcode):
+    _stack_change = 0
+
     def eval(self, interpreter, bytecode, frame, space):
         item = frame.top()
         interpreter.output(item.str())
 
 
 class CALL(Opcode):
-    _immutable_fields_ = ['arguments']
+    _immutable_fields_ = ['_stack_change', 'arguments']
 
     def __init__(self, arguments):
         self.arguments = arguments
+        self._stack_change = -1 + (-1 * self.arguments) + 1
 
     def eval(self, interpreter, bytecode, frame, space):
         method = frame.pop()
@@ -420,6 +462,8 @@ class CALL(Opcode):
 
 
 class BaseDecision(Opcode):
+    _stack_change = -1
+
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
@@ -455,35 +499,39 @@ class LE(BaseDecision):
         return compare_le(left, right)
 
 
-class ADD(Opcode):
+class BaseMathOperation(Opcode):
+    _stack_change = -1
+
+
+class ADD(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(plus(left, right))
 
 
-class SUB(Opcode):
+class SUB(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(sub(left, right))
 
 
-class MUL(Opcode):
+class MUL(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(mult(left, right))
 
 
-class DIV(Opcode):
+class DIV(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(division(left, right))
 
 
-class MOD(Opcode):
+class MOD(BaseMathOperation):
     def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
@@ -491,7 +539,7 @@ class MOD(Opcode):
 
 
 class BaseUnaryOperation(Opcode):
-    pass
+    _stack_change = 0
 
 
 class NOT(BaseUnaryOperation):
@@ -521,7 +569,7 @@ class COMMA(BaseUnaryOperation):
 
 
 class BaseBinaryBitwiseOp(Opcode):
-    pass
+    _stack_change = -1
 
 
 class URSH(BaseBinaryBitwiseOp):

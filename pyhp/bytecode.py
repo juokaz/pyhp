@@ -20,6 +20,8 @@ class ByteCode(object):
         self._superglobals = superglobals
         self._constants = constants
 
+        self._estimated_stack_size = -1
+
         self.label_count = 100000
         self.startlooplabel = []
         self.endlooplabel = []
@@ -29,6 +31,7 @@ class ByteCode(object):
     def compile(self):
         self.unlabel()
         self.compiled_opcodes = [o for o in self.opcodes]
+        self.estimated_stack_size()
 
     def unlabel(self):
         labels = {}
@@ -45,14 +48,12 @@ class ByteCode(object):
             if isinstance(op, BaseJump):
                 op.where = labels[op.where]
 
-    def symbols(self):
-        return self._symbols
-
     def symbol_size(self):
         return self._symbol_size
 
-    def variables(self):
-        return self._variables
+    @jit.elidable_promote()
+    def get_variable_index(self, name):
+        return self._symbols.lookup(name)
 
     def superglobals(self):
         return self._superglobals
@@ -62,6 +63,20 @@ class ByteCode(object):
 
     def params(self):
         return self._parameters
+
+    @jit.elidable
+    def estimated_stack_size(self):
+        if self._estimated_stack_size == -1:
+            max_size = 0
+            moving_size = 0
+            for opcode in self.compiled_opcodes:
+                moving_size += opcode.stack_change()
+                assert moving_size >= 0
+                max_size = max(moving_size, max_size)
+            assert max_size >= 0
+            self._estimated_stack_size = max_size
+
+        return jit.promote(self._estimated_stack_size)
 
     def emit_label(self, num=-1):
         if num == -1:

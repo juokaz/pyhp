@@ -3,8 +3,7 @@ from pyhp.datatypes import W_Reference
 
 
 class Frame(object):
-    _settled_ = True
-    _immutable_fields_ = ['symbols', 'arguments[*]']
+    _immutable_fields_ = ['bytecode']
     _virtualizable_ = ['valuestack[*]', 'valuestack_pos', 'vars[*]']
 
     @jit.unroll_safe
@@ -13,14 +12,11 @@ class Frame(object):
         assert(isinstance(bytecode, ByteCode))
 
         self = jit.hint(self, access_directly=True, fresh_virtualizable=True)
-        self.valuestack = [None] * 10  # safe estimate!
         self.valuestack_pos = 0
+        self.valuestack = [None] * bytecode.estimated_stack_size()
+        self.vars = [None] * bytecode.symbol_size()
 
-        vars_len = bytecode.symbol_size()
-        assert vars_len >= 0
-        self.vars = [None] * vars_len
-
-        self.symbols = bytecode.symbols()
+        self.bytecode = bytecode
 
         # initialize superglobals like $_GET and $_POST
         for num, i in enumerate(bytecode.superglobals()):
@@ -80,8 +76,6 @@ class Frame(object):
 
     def set_reference(self, name, index, value):
         assert isinstance(value, W_Reference)
-        index = self._get_index(name, index)
-
         old_value = self._load(index)
 
         if not isinstance(old_value, W_Reference):
@@ -89,9 +83,7 @@ class Frame(object):
         else:
             old_value.put_value(value.get_value())
 
-    def get_reference(self, name, index=-1):
-        index = self._get_index(name, index)
-
+    def get_reference(self, name, index):
         value = self._load(index)
 
         if not isinstance(value, W_Reference):
@@ -100,9 +92,11 @@ class Frame(object):
 
         return value
 
-    def store_variable(self, name, index, value):
-        index = self._get_index(name, index)
+    def get_reference_by_name(self, name):
+        index = self.bytecode.get_variable_index(name)
+        return self.get_reference(name, index)
 
+    def store_variable(self, name, index, value):
         old_value = self._load(index)
 
         if not isinstance(old_value, W_Reference):
@@ -110,8 +104,7 @@ class Frame(object):
         else:
             old_value.put_value(value)
 
-    def get_variable(self, name, index=-1):
-        index = self._get_index(name, index)
+    def get_variable(self, name, index):
         value = self._load(index)
 
         if value is None:
@@ -121,14 +114,6 @@ class Frame(object):
             return value
 
         return value.get_value()
-
-    def _get_index(self, name, index):
-        if index < 0:
-            if self.symbols.contains(name):
-                index = self.symbols.lookup(name)
-            else:
-                raise Exception(u'Frame has no variable %s' % name)
-        return index
 
     def __repr__(self):
         return "Frame"
