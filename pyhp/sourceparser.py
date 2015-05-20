@@ -8,7 +8,6 @@ from pyhp import operations
 from pyhp.scopes import Scope
 from pyhp.constants import CURLYVARIABLE
 from pyhp.utils import string_unquote, decode_str_utf8, string_unescape
-from rpython.rlib.objectmodel import enforceargs
 
 
 grammar_file = 'grammar.txt'
@@ -63,8 +62,7 @@ class Transformer(RPythonVisitor):
         self.enter_scope()
         body = self.dispatch(node.children[0])
         scope = self.current_scope()
-        final_scope = scope.finalize()
-        return operations.Program(body, final_scope)
+        return operations.Program(body, scope)
 
     def visit_arguments(self, node):
         nodes = [self.dispatch(child) for child in node.children[1:]]
@@ -97,11 +95,10 @@ class Transformer(RPythonVisitor):
         functionbody, i = self.get_next_expr(node, i)
 
         scope = self.current_scope()
-        final_scope = scope.finalize()
 
         self.exit_scope()
 
-        funcobj = operations.Function(identifier, functionbody, final_scope)
+        funcobj = operations.Function(identifier, functionbody, scope)
 
         if declaration:
             self.funclists[-1][identifier.get_literal()] = funcobj
@@ -168,11 +165,15 @@ class Transformer(RPythonVisitor):
             f = float(number)
             i = ovfcheck_float_to_int(f)
             if i != f:
-                return operations.ConstantFloat(f)
+                index = self.declare_constant_float(f)
+                return operations.ConstantFloat(f, index)
             else:
-                return operations.ConstantInt(i)
+                index = self.declare_constant_int(i)
+                return operations.ConstantInt(i, index)
         except (ValueError, OverflowError):
-            return operations.ConstantFloat(float(node.additional_info))
+            f = float(node.additional_info)
+            index = self.declare_constant_float(f)
+            return operations.ConstantFloat(f, index)
 
     def visit_expressionstatement(self, node):
         return operations.ExprStatement(self.dispatch(node.children[0]))
@@ -188,7 +189,7 @@ class Transformer(RPythonVisitor):
         node = node.children[0]
         name = node.additional_info
         n = unicode(name)
-        return operations.Constant(n)
+        return operations.NamedConstant(n)
 
     def visit_callexpression(self, node):
         left = self.dispatch(node.children[0])
@@ -337,12 +338,37 @@ class Transformer(RPythonVisitor):
         string, single_quotes = string_unquote(string)
         string = string_unescape(string)
         if single_quotes:
-            return operations.ConstantString(string)
-        else:
-            string, has_variable = double_quote_string_parse(self, string)
-            if not has_variable:
-                return string[0]
-            return operations.StringSubstitution(string)
+            index = self.declare_constant_string(string)
+            return operations.ConstantString(string, index)
+
+        strings = []
+        parts = []
+        has_variable = False
+        for part in CURLYVARIABLE.split(string):
+            # if the original string was just an empty string allow it to
+            # get handled by the else branch below
+            if part is None or (part == u'' and len(strings) > 0):
+                continue
+
+            if len(part) > 0 and part[0] == '$':
+                has_variable = True
+                # force variable to be a valid php expression "$a;"
+                # parse() works with strings only, but the part variable
+                # is unicode, covert to a string before passing
+                parsed = parse(part.encode("utf-8") + ';')
+                expression = parsed.children[0].children[0].children[0]
+
+                parts.append(self.dispatch(expression))
+                strings.append(None)
+            else:
+                strings.append(part)
+
+        if not has_variable:
+            index = self.declare_constant_string(string)
+            return operations.ConstantString(string, index)
+
+        index = self.declare_string_substitution(strings)
+        return operations.StringSubstitution(string, parts, index)
     visit_DOUBLESTRING = string
     visit_SINGLESTRING = string
 
@@ -379,6 +405,22 @@ class Transformer(RPythonVisitor):
         idx = self.scopes[-1].add_parameter(symbol, by_value)
         return idx
 
+    def declare_constant_int(self, value):
+        idx = self.scopes[-1].add_int_constant(value)
+        return idx
+
+    def declare_constant_float(self, value):
+        idx = self.scopes[-1].add_float_constant(value)
+        return idx
+
+    def declare_constant_string(self, value):
+        idx = self.scopes[-1].add_string_constant(value)
+        return idx
+
+    def declare_string_substitution(self, value):
+        idx = self.scopes[-1].add_string_substitution(value)
+        return idx
+
     def exit_scope(self):
         self.depth = self.depth - 1
         self.scopes.pop()
@@ -388,32 +430,6 @@ class Transformer(RPythonVisitor):
             return self.scopes[-1]
         except IndexError:
             return None
-
-
-@enforceargs(None, unicode)
-def double_quote_string_parse(transformer, string):
-    s_ = []
-
-    has_variable = False
-    for part in CURLYVARIABLE.split(string):
-        # if the original string was just an empty string allow it to get
-        # handled by the else branch below
-        if part is None or (part == u'' and len(s_) > 0):
-            continue
-
-        if len(part) > 0 and part[0] == '$':
-            has_variable = True
-            # force variable to be a valid php expression "$a;"
-            # parse() works with strings only, but the part variable is unicode
-            # covert to a string before passing
-            parsed = parse(part.encode("utf-8") + ';')
-            expression = parsed.children[0].children[0].children[0]
-            part = transformer.dispatch(expression)
-        else:
-            part = operations.ConstantString(part)
-        s_.append(part)
-
-    return s_, has_variable
 
 
 def source_to_ast(source):

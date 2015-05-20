@@ -3,19 +3,22 @@ from rpython.rlib import jit
 
 
 class ByteCode(object):
-    _immutable_fields_ = ['compiled_opcodes[*]', '_symbols', '_symbol_size',
+    _immutable_fields_ = ['name', 'compiled_opcodes[*]', '_symbols',
+                          '_symbol_size',
                           '_variables[*]', '_globals[*]', '_parameters[*]',
-                          '_superglobals[*]', 'name']
+                          '_superglobals[*]', '_constants[*]']
 
-    def __init__(self, name, scope):
+    def __init__(self, name, symbols, variables, globals, parameters,
+                 superglobals, constants):
         self.name = name
         self.opcodes = []
-        self._symbols = scope.symbols
-        self._symbol_size = scope.symbols.len()
-        self._variables = scope.variables[:]
-        self._globals = scope.globals[:]
-        self._parameters = scope.parameters[:]
-        self._superglobals = scope.superglobals[:]
+        self._symbols = symbols
+        self._symbol_size = symbols.len()
+        self._variables = variables
+        self._globals = globals
+        self._parameters = parameters
+        self._superglobals = superglobals
+        self._constants = constants
 
         self.label_count = 100000
         self.startlooplabel = []
@@ -161,8 +164,10 @@ class ByteCode(object):
         return u"\n".join(lines)
 
 
-def compile_ast(ast, symbols, name):
-    bc = ByteCode(name, symbols)
+def compile_ast(ast, scope, name):
+    bc = ByteCode(name, scope.symbols, scope.variables[:], scope.globals[:],
+                  scope.parameters[:], scope.superglobals[:],
+                  scope.constants[:])
     if ast is not None:
         ast.compile(bc)
     bc.compile()

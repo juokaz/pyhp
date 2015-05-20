@@ -67,6 +67,7 @@ class Interpreter(object):
             else:
                 return buffer
 
+    @jit.unroll_safe
     def setup(self, request):
         get_ = {}
         for key, value in request.get.iteritems():
@@ -101,7 +102,7 @@ class Interpreter(object):
             if isinstance(opcode, RETURN):
                 return frame.pop()
 
-            opcode.eval(self, frame)
+            opcode.eval(self, bytecode, frame, self.space)
 
             if isinstance(opcode, BaseJump):
                 new_pc = opcode.do_jump(frame, pc)
@@ -112,18 +113,6 @@ class Interpreter(object):
                 continue
             else:
                 pc += 1
-
-    def declare_function(self, name, func):
-        self.space.declare_function(name, func)
-
-    def get_function(self, name):
-        return self.space.get_function(name)
-
-    def declare_constant(self, name, value):
-        self.space.declare_constant(name, value)
-
-    def get_constant(self, name):
-        return self.space.get_constant(name)
 
     def start_buffering(self):
         self.output_buffer.append(UnicodeBuilder())

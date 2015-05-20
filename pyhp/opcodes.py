@@ -15,7 +15,7 @@ class Opcode(object):
     def get_name(self):
         return self.__class__.__name__
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         """ Execute in frame
         """
         raise NotImplementedError(self.get_name() + ".eval")
@@ -27,20 +27,20 @@ class Opcode(object):
         return self.str()
 
 
-class LOAD_CONSTANT(Opcode):
+class LOAD_NAMED_CONSTANT(Opcode):
     _immutable_fields_ = ['name']
 
     def __init__(self, name):
         self.name = name
 
-    def eval(self, interpreter, frame):
-        value = interpreter.get_constant(self.name)
+    def eval(self, interpreter, bytecode, frame, space):
+        value = space.get_constant(self.name)
         if value is None:
             raise Exception(u"Constant %s is not defined" % self.name)
         frame.push(value)
 
     def str(self):
-        return u'LOAD_CONSTANT %s' % (self.name)
+        return u'LOAD_NAMED_CONSTANT %s' % (self.name)
 
 
 class LOAD_VAR(Opcode):
@@ -50,7 +50,7 @@ class LOAD_VAR(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         variable = frame.get_variable(self.name, self.index)
 
         if variable is None:
@@ -69,7 +69,7 @@ class LOAD_REF(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         ref = frame.get_reference(self.name, self.index)
 
         if ref is None:
@@ -87,8 +87,8 @@ class LOAD_FUNCTION(Opcode):
     def __init__(self, name):
         self.name = name
 
-    def eval(self, interpreter, frame):
-        func = interpreter.get_function(self.name)
+    def eval(self, interpreter, bytecode, frame, space):
+        func = space.get_function(self.name)
         if func is None:
             raise Exception(u"Function %s is not defined" % self.name)
         frame.push(func)
@@ -104,21 +104,21 @@ class DECLARE_FUNCTION(Opcode):
         self.name = name
         self.bytecode = bytecode
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         funcobj = W_CodeFunction(self.bytecode)
 
-        if interpreter.get_function(self.name):
+        if space.get_function(self.name):
             raise Exception(u'Function %s alredy declared' % self.name)
 
-        interpreter.declare_function(self.name, funcobj)
+        space.declare_function(self.name, funcobj)
 
     def str(self):
         return u'DECLARE_FUNCTION %s' % (self.name)
 
 
 class LOAD_NULL(Opcode):
-    def eval(self, interpreter, frame):
-        frame.push(interpreter.space.wrap(None))
+    def eval(self, interpreter, bytecode, frame, space):
+        frame.push(space.w_Null)
 
     def str(self):
         return u'LOAD_NULL'
@@ -130,8 +130,11 @@ class LOAD_BOOLEAN(Opcode):
     def __init__(self, value):
         self.value = value
 
-    def eval(self, interpreter, frame):
-        frame.push(interpreter.space.wrap(self.value))
+    def eval(self, interpreter, bytecode, frame, space):
+        if self.value:
+            frame.push(space.w_True)
+        else:
+            frame.push(space.w_False)
 
     def str(self):
         if self.value:
@@ -140,63 +143,31 @@ class LOAD_BOOLEAN(Opcode):
             return u'LOAD_BOOLEAN False'
 
 
-class LOAD_INTVAL(Opcode):
-    _immutable_fields_ = ['value']
-
-    def __init__(self, value):
-        self.value = value
-
-    def eval(self, interpreter, frame):
-        frame.push(interpreter.space.wrap(self.value))
-
-    def str(self):
-        return u'LOAD_INTVAL %s' % (unicode(str(self.value)))
-
-
-class LOAD_FLOATVAL(Opcode):
-    _immutable_fields_ = ['value']
-
-    def __init__(self, value):
-        self.value = value
-
-    def eval(self, interpreter, frame):
-        frame.push(interpreter.space.wrap(self.value))
-
-    def str(self):
-        return u'LOAD_FLOATVAL %s' % (unicode(str(self.value)))
-
-
-class LOAD_STRINGVAL(Opcode):
-    _immutable_fields_ = ['value']
-
-    def __init__(self, value):
-        self.value = value
-
-    def eval(self, interpreter, frame):
-        frame.push(interpreter.space.wrap(self.value))
-
-    def str(self):
-        return u'LOAD_STRINGVAL "%s"' % (self.value)
-
-
-class LOAD_STRING_SUBSTITUTION(Opcode):
+class STRING_SUBSTITUTION(Opcode):
     _immutable_fields_ = ['number']
 
     def __init__(self, number):
         self.number = number
 
     @jit.unroll_safe
-    def eval(self, interpreter, frame):
-        value = interpreter.space.wrap(u'')
-        list_w = frame.pop_n(self.number)
+    def eval(self, interpreter, bytecode, frame, space):
+        string = frame.pop()
+        parts = string.strings
 
-        for part in list_w:
-            value = value.append(part.str())
+        parts2 = frame.pop_n(self.number)
 
-        frame.push(value)
+        s = []
+        i = 0
+        for part in parts:
+            if part is None:
+                part = parts2[i].str()
+                i += 1
+            s.append(part)
+
+        frame.push(space.wrap(u''.join(s)))
 
     def str(self):
-        return u'LOAD_STRING_SUBSTITUTION %d' % (self.number)
+        return u'STRING_SUBSTITUTION %d' % (self.number)
 
 
 class LOAD_ARRAY(Opcode):
@@ -206,16 +177,29 @@ class LOAD_ARRAY(Opcode):
         self.number = number
 
     @jit.unroll_safe
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         list_w = frame.pop_n(self.number)
-        frame.push(interpreter.space.wrap(list_w))
+        frame.push(space.wrap(list_w))
 
     def str(self):
         return u'LOAD_ARRAY %d' % (self.number)
 
 
+class LOAD_CONSTANT(Opcode):
+    _immutable_fields_ = ['index']
+
+    def __init__(self, index):
+        self.index = index
+
+    def eval(self, interpreter, bytecode, frame, space):
+        frame.push(bytecode._constants[self.index])
+
+    def str(self):
+        return u'LOAD_CONSTANT %d' % (self.index)
+
+
 class LOAD_MEMBER(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         array = frame.pop()
 
         member = frame.pop()
@@ -230,7 +214,7 @@ class LOAD_MEMBER_VAR(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         array = frame.get_variable(self.name, self.index)
 
         if array is None:
@@ -245,7 +229,7 @@ class LOAD_MEMBER_VAR(Opcode):
 
 
 class STORE_MEMBER(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         array = frame.pop()
         index = frame.pop()
         value = frame.pop()
@@ -265,7 +249,7 @@ class STORE_MEMBER_VAR(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         array = frame.get_variable(self.name, self.index)
 
         if array is None:
@@ -289,7 +273,7 @@ class ASSIGN(Opcode):
         self.index = index
         self.name = name
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         value = frame.pop()
         frame.store_variable(self.name, self.index, value)
 
@@ -300,12 +284,12 @@ class ASSIGN(Opcode):
 
 
 class DISCARD_TOP(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         frame.pop()
 
 
 class DUP(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         frame.push(frame.top())
 
 
@@ -325,7 +309,7 @@ class BaseJump(Opcode):
     def __init__(self, where):
         self.where = where
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         pass
 
 
@@ -373,7 +357,7 @@ class JUMP(BaseJump):
 
 
 class LOAD_ITERATOR(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         obj = frame.pop()
         iterator = obj.to_iterator()
 
@@ -397,7 +381,7 @@ class JUMP_IF_ITERATOR_EMPTY(BaseJump):
 
 
 class NEXT_ITERATOR(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         iterator = frame.top()
         assert isinstance(iterator, W_Iterator)
         key = iterator.key()
@@ -408,12 +392,12 @@ class NEXT_ITERATOR(Opcode):
 
 
 class RETURN(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         return frame.pop()
 
 
 class PRINT(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         item = frame.top()
         interpreter.output(item.str())
 
@@ -424,23 +408,23 @@ class CALL(Opcode):
     def __init__(self, arguments):
         self.arguments = arguments
 
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         method = frame.pop()
 
         assert isinstance(method, W_Function)
 
         params = frame.pop_n(self.arguments)
 
-        res = method.call(interpreter, frame, params)
+        res = method.call(interpreter, space, frame, params)
         frame.push(res)
 
 
 class BaseDecision(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         res = self.decision(left, right)
-        frame.push(interpreter.space.wrap(res))
+        frame.push(space.wrap(res))
 
     def decision(self, op1, op2):
         raise NotImplementedError
@@ -472,35 +456,35 @@ class LE(BaseDecision):
 
 
 class ADD(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(plus(left, right))
 
 
 class SUB(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(sub(left, right))
 
 
 class MUL(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(mult(left, right))
 
 
 class DIV(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(division(left, right))
 
 
 class MOD(Opcode):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         right = frame.pop()
         left = frame.pop()
         frame.push(mod(left, right))
@@ -511,26 +495,26 @@ class BaseUnaryOperation(Opcode):
 
 
 class NOT(BaseUnaryOperation):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         val = frame.pop()
         boolval = val.is_true()
-        frame.push(interpreter.space.wrap(not boolval))
+        frame.push(space.wrap(not boolval))
 
 
 class INCR(BaseUnaryOperation):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         left = frame.pop()
         frame.push(increment(left))
 
 
 class DECR(BaseUnaryOperation):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         left = frame.pop()
         frame.push(decrement(left))
 
 
 class COMMA(BaseUnaryOperation):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         one = frame.pop()
         frame.pop()
         frame.push(one)
@@ -541,7 +525,7 @@ class BaseBinaryBitwiseOp(Opcode):
 
 
 class URSH(BaseBinaryBitwiseOp):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         rval = frame.pop()
         lval = frame.pop()
 
@@ -551,11 +535,11 @@ class URSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(interpreter.space.wrap(res))
+        frame.push(space.wrap(res))
 
 
 class RSH(BaseBinaryBitwiseOp):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         rval = frame.pop()
         lval = frame.pop()
 
@@ -565,11 +549,11 @@ class RSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum >> shift_count
 
-        frame.push(interpreter.space.wrap(res))
+        frame.push(space.wrap(res))
 
 
 class LSH(BaseBinaryBitwiseOp):
-    def eval(self, interpreter, frame):
+    def eval(self, interpreter, bytecode, frame, space):
         rval = frame.pop()
         lval = frame.pop()
 
@@ -579,7 +563,7 @@ class LSH(BaseBinaryBitwiseOp):
         shift_count = rnum & 0x1F
         res = lnum << shift_count
 
-        frame.push(interpreter.space.wrap(res))
+        frame.push(space.wrap(res))
 
 
 class Opcodes:

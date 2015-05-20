@@ -155,15 +155,15 @@ class Identifier(Expression):
         return u'Identifier %s' % self.identifier
 
 
-class Constant(Expression):
+class NamedConstant(Expression):
     def __init__(self, identifier):
         self.identifier = identifier
 
     def compile(self, ctx):
-        ctx.emit('LOAD_CONSTANT', self.identifier)
+        ctx.emit('LOAD_NAMED_CONSTANT', self.identifier)
 
     def str(self):
-        return u'Constant (%s)' % self.identifier
+        return u'NamedConstant (%s)' % self.identifier
 
 
 class ArgumentList(ListOp):
@@ -216,11 +216,12 @@ class Member(Expression):
 class ConstantInt(Node):
     """ Represent a constant
     """
-    def __init__(self, intval):
+    def __init__(self, intval, index):
         self.intval = intval
+        self.index = index
 
     def compile(self, ctx):
-        ctx.emit('LOAD_INTVAL', self.intval)
+        ctx.emit('LOAD_CONSTANT', self.index)
 
     def str(self):
         return u'ConstantInt %d' % self.intval
@@ -229,11 +230,12 @@ class ConstantInt(Node):
 class ConstantFloat(Node):
     """ Represent a constant
     """
-    def __init__(self, floatval):
+    def __init__(self, floatval, index):
         self.floatval = floatval
+        self.index = index
 
     def compile(self, ctx):
-        ctx.emit('LOAD_FLOATVAL', self.floatval)
+        ctx.emit('LOAD_CONSTANT', self.index)
 
     def str(self):
         return u'ConstantFloat %s' % unicode(str(self.floatval))
@@ -242,12 +244,13 @@ class ConstantFloat(Node):
 class ConstantString(Node):
     """ Represent a constant
     """
-    @enforceargs(None, unicode)
-    def __init__(self, stringval):
+    @enforceargs(None, unicode, int)
+    def __init__(self, stringval, index):
         self.stringval = stringval
+        self.index = index
 
     def compile(self, ctx):
-        ctx.emit('LOAD_STRINGVAL', self.stringval)
+        ctx.emit('LOAD_CONSTANT', self.index)
 
     def str(self):
         return u'ConstantString "%s"' % self.stringval
@@ -256,17 +259,19 @@ class ConstantString(Node):
 class StringSubstitution(Node):
     """ Represent a constant
     """
-    def __init__(self, strings):
-        self.strings = strings
+    def __init__(self, string, parts, index):
+        self.string = string
+        self.parts = parts
+        self.index = index
 
     def compile(self, ctx):
-        for part in self.strings:
+        for part in self.parts:
             part.compile(ctx)
-        ctx.emit('LOAD_STRING_SUBSTITUTION', len(self.strings))
+        ctx.emit('LOAD_CONSTANT', self.index)
+        ctx.emit('STRING_SUBSTITUTION', len(self.parts))
 
     def str(self):
-        strings = u", ".join([node.str() for node in self.strings])
-        return u'StringSubstitution (%s)' % strings
+        return u'StringSubstitution (%s)' % self.string
 
 
 class Boolean(Expression):

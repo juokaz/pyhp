@@ -195,6 +195,16 @@ class W_ConcatStringObject(W_StringObject):
         return len(self.str())
 
 
+class W_StringSubstitution(W_Root):
+    _immutable_fields_ = ['strings[:]']
+
+    def __init__(self, strings):
+        self.strings = strings
+
+    def __repr__(self):
+        return 'W_StringSubstitution(%s)' % (self.strings,)
+
+
 class W_Array(W_Root):
     pass
 
@@ -392,7 +402,7 @@ class W_CodeFunction(W_Function):
         self.parameters = bytecode.params()
 
     @jit.unroll_safe
-    def call(self, interpreter, frame, params):
+    def call(self, interpreter, space, frame, params):
         bytecode = self.bytecode
 
         from pyhp.frame import Frame
@@ -441,8 +451,8 @@ class W_NativeFunction(W_Function):
         self.function = function
         self.parameters = parameters
 
-    def call(self, interpreter, frame, params):
-        result = self.function(interpreter, params)
+    def call(self, interpreter, space, frame, params):
+        result = self.function(interpreter, space, params)
 
         assert result is not None
         return result
@@ -467,6 +477,7 @@ def isnumber(w):
     return isinstance(w, W_Number)
 
 
+@specialize.argtype(0, 1)
 def plus(left, right):
     if isstr(left) or isstr(right):
         sright = right.str()
@@ -485,6 +496,7 @@ def plus(left, right):
         return W_FloatObject(fleft + fright)
 
 
+@specialize.argtype(0)
 def increment(nleft, constval=1):
     if isint(nleft):
         return W_IntObject(nleft.get_int() + constval)
@@ -492,6 +504,7 @@ def increment(nleft, constval=1):
         return plus(nleft, W_IntObject(constval))
 
 
+@specialize.argtype(0)
 def decrement(nleft, constval=1):
     if isint(nleft):
         return W_IntObject(nleft.get_int() - constval)
@@ -499,6 +512,7 @@ def decrement(nleft, constval=1):
         return sub(nleft, W_IntObject(constval))
 
 
+@specialize.argtype(0, 1)
 def sub(left, right):
     if isint(left) and isint(right):
         # XXX fff
@@ -513,6 +527,7 @@ def sub(left, right):
     return W_FloatObject(fleft - fright)
 
 
+@specialize.argtype(0, 1)
 def mult(left, right):
     if isint(left) and isint(right):
         # XXXX test & stuff
@@ -527,6 +542,7 @@ def mult(left, right):
     return W_FloatObject(fleft * fright)
 
 
+@specialize.argtype(0, 1)
 def division(left, right):
     fleft = left.to_number()
     fright = right.to_number()
@@ -537,6 +553,7 @@ def division(left, right):
         return W_FloatObject(result)
 
 
+@specialize.argtype(0, 1)
 def mod(left, right):
     fleft = left.get_int()
     fright = right.get_int()
@@ -594,3 +611,10 @@ def compare_le(x, y):
 
 def compare_eq(x, y):
     return _base_compare(y, x, _compare_eq)
+
+w_Null = W_Null()
+jit.promote(w_Null)
+w_True = W_Boolean(True)
+jit.promote(w_True)
+w_False = W_Boolean(False)
+jit.promote(w_False)

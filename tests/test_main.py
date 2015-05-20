@@ -15,7 +15,7 @@ class TestMain(TestBase):
 
 /tmp/example.php:
 0: DECLARE_FUNCTION a
-1: LOAD_INTVAL 1
+1: LOAD_CONSTANT 0
 2: ASSIGN 0, $x
 3: DISCARD_TOP
 4: LOAD_VAR 0, $x

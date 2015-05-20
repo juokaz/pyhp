@@ -1,9 +1,9 @@
 from rpython.rlib.objectmodel import enforceargs, specialize
 from rpython.rlib import jit
 
-from pyhp.datatypes import W_Function, W_NativeFunction, W_Null, \
-    W_Boolean, W_FloatObject, W_IntObject, W_StringObject, W_Root, W_DictArray, \
-    W_ListArray
+from pyhp.datatypes import W_Function, W_NativeFunction, \
+    W_FloatObject, W_IntObject, W_StringObject, W_Root, W_DictArray, \
+    W_ListArray, w_Null, w_True, w_False
 
 
 class VersionTag(object):
@@ -35,6 +35,10 @@ class NamesMap(object):
 
 
 class ObjectSpace(object):
+    w_Null = w_Null
+    w_True = w_True
+    w_False = w_False
+
     def __init__(self, global_functions):
         self.functions = NamesMap(global_functions.copy())
         self.constants = NamesMap()
@@ -55,7 +59,25 @@ class ObjectSpace(object):
 
     @specialize.argtype(1)
     def wrap(self, value):
-        return wrap(value)
+        if value is None:
+            return self.w_Null
+        elif isinstance(value, W_Root):
+            return value
+        elif isinstance(value, bool):
+            return newbool(value)
+        elif isinstance(value, int):
+            return newint(value)
+        elif isinstance(value, float):
+            return newfloat(value)
+        elif isinstance(value, unicode):
+            return newstring(value)
+        elif isinstance(value, str):
+            u_str = unicode(value)
+            return newstring(u_str)
+        elif isinstance(value, list):
+            return newlistarray(value)
+
+        raise TypeError("ffffuuu %s" % value)
 
     def newdictarray(self, value):
         return newdictarray(value)
@@ -75,13 +97,6 @@ def newfloat(f):
 def newstring(s):
     return W_StringObject(s)
 
-w_Null = W_Null()
-jit.promote(w_Null)
-w_True = W_Boolean(True)
-jit.promote(w_True)
-w_False = W_Boolean(False)
-jit.promote(w_False)
-
 
 @enforceargs(bool)
 def newbool(val):
@@ -100,26 +115,3 @@ def newdictarray(val):
 
 def new_native_function(name, function, params=[]):
     return W_NativeFunction(name, function, params)
-
-
-@specialize.argtype(0)
-def wrap(value):
-    if value is None:
-        return w_Null
-    elif isinstance(value, W_Root):
-        return value
-    elif isinstance(value, bool):
-        return newbool(value)
-    elif isinstance(value, int):
-        return newint(value)
-    elif isinstance(value, float):
-        return newfloat(value)
-    elif isinstance(value, unicode):
-        return newstring(value)
-    elif isinstance(value, str):
-        u_str = unicode(value)
-        return newstring(u_str)
-    elif isinstance(value, list):
-        return newlistarray(value)
-
-    raise TypeError("ffffuuu %s" % value)

@@ -72,7 +72,7 @@ tests:
 	$(DOCKER) py.test tests
 
 tests-cov:
-	$(DOCKER) py.test --cov pyhp tests
+	$(DOCKER) py.test --cov pyhp --cov-report=html tests
 
 flake8:
 	$(DOCKER) flake8 pyhp tests

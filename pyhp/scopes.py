@@ -1,4 +1,6 @@
 from pyhp.symbols import new_map
+from pyhp.datatypes import W_IntObject, W_FloatObject, W_StringSubstitution, \
+    W_StringObject
 
 SUPERGLOBALS = [u'$_GET', u'$_POST']
 SUPERGLOBAL_LOOKUP = {}
@@ -13,6 +15,10 @@ class Scope(object):
         self.globals = []
         self.parameters = []
         self.superglobals = [-1] * len(SUPERGLOBALS)
+        self.constants = []
+        self.constants_ints = {}
+        self.constants_floats = {}
+        self.constants_strings = {}
 
     def add_symbol(self, name):
         idx = self.symbols.lookup(name)
@@ -52,18 +58,34 @@ class Scope(object):
 
         return idx
 
-    def finalize(self):
-        return FinalScope(self.symbols, self.variables[:], self.globals[:],
-                          self.parameters[:], self.superglobals[:])
+    def add_int_constant(self, value):
+        try:
+            return self.constants_ints[value]
+        except KeyError:
+            a = len(self.constants)
+            self.constants.append(W_IntObject(value))
+            self.constants_ints[value] = a
+            return a
 
+    def add_float_constant(self, value):
+        try:
+            return self.constants_floats[value]
+        except KeyError:
+            a = len(self.constants)
+            self.constants.append(W_FloatObject(value))
+            self.constants_floats[value] = a
+            return a
 
-class FinalScope(object):
-    _immutable_fields_ = ['symbols', 'variables[*]', 'globals[*]',
-                          'parameters[*]', 'superglobals[*]']
+    def add_string_constant(self, value):
+        try:
+            return self.constants_strings[value]
+        except KeyError:
+            a = len(self.constants)
+            self.constants.append(W_StringObject(value))
+            self.constants_strings[value] = a
+            return a
 
-    def __init__(self, symbols, variables, globals, parameters, superglobals):
-        self.symbols = symbols
-        self.variables = variables
-        self.globals = globals
-        self.parameters = parameters
-        self.superglobals = superglobals
+    def add_string_substitution(self, value):
+        a = len(self.constants)
+        self.constants.append(W_StringSubstitution(value))
+        return a
