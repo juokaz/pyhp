@@ -269,12 +269,15 @@ class W_ListArray(W_Array):
     def put(self, key, value):
         if isinstance(key, W_IntObject):
             index = key.get_int()
-            length = self.len()
-            if index >= length:
-                self.data += [None] * (index - length + 1)
+            if index >= self.len():
+                if index > self.len():
+                    self.data += [w_Null] * (index - self.len() + 1)
+                    self.data[index] = value
+                else:
+                    self.data.append(value)
+            else:
                 self.data[index] = value
 
-            self.data[index] = value
             return self
         else:
             array = self.to_dict()
