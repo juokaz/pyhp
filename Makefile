@@ -27,6 +27,10 @@ DOCKER_IMAGE = juokaz/pyhp
 
 DOCKER_ARGS = -ti -v $(CURDIR):$(CURDIR) -w $(CURDIR) -e "IN_DOCKER=1" -e "PYTHONPATH=$$PYTHONPATH:$(RPYTHON)"
 
+ifeq ($(CIRCLECI),)
+    DOCKER_ARGS += --rm
+endif
+
 ifeq ($(IN_DOCKER), 1)
     DOCKER =
 else
