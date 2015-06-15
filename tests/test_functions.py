@@ -73,3 +73,15 @@ class TestFunctions(TestBase):
 
         hello();""")
         assert out == "hello"
+
+    def test_function_two_returns(self):
+        out = self.run("""function hello() {
+            if (1 > 2) {
+                return 2;
+            } else {
+                return 3;
+            }
+        }
+
+        print hello();""")
+        assert out == "3"

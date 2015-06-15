@@ -419,7 +419,10 @@ class NEXT_ITERATOR(Opcode):
 
 
 class RETURN(Opcode):
-    _stack_change = -1
+    # return reads one value from the stack and thus reduces the stack size by 1
+    # but if two returns are following eachother the first one will terminate
+    # execution and the secon is impossible
+    _stack_change = 0
 
     def eval(self, interpreter, bytecode, frame, space):
         return frame.pop()
