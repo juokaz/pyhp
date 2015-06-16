@@ -75,6 +75,10 @@ class TestFunctions(TestBase):
         assert out == "hello"
 
     def test_function_two_returns(self):
+        # the else branch generates a RETURN bytecode, which is immediately
+        # followed by a auto-added RETURN bytecode for the function itself
+        # stack size estimation shoud understand that the last RETURN is not
+        # reachable
         out = self.run("""function hello() {
             if (1 > 2) {
                 return 2;

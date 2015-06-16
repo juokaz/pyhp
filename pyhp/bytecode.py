@@ -1,4 +1,4 @@
-from pyhp.opcodes import opcodes, LABEL, BaseJump, DECLARE_FUNCTION
+from pyhp.opcodes import opcodes, LABEL, BaseJump, DECLARE_FUNCTION, RETURN
 from rpython.rlib import jit
 
 
@@ -30,7 +30,16 @@ class ByteCode(object):
 
     def compile(self):
         self.unlabel()
-        self.compiled_opcodes = [o for o in self.opcodes]
+        compiled_opcodes = []
+        prev_o = None
+        for o in self.opcodes:
+            # if two or more return statements are after another, ignore
+            # everything, but the first one (they are unreachable)
+            if isinstance(o, RETURN) and isinstance(prev_o, RETURN):
+                continue
+            compiled_opcodes.append(o)
+            prev_o = o
+        self.compiled_opcodes = compiled_opcodes
         self.estimated_stack_size()
 
     def unlabel(self):
