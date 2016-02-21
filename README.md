@@ -48,9 +48,16 @@ like int, float, array, etc.
 
 ## Building
 
-### Building the interpreter
+Build the container first
+
+    docker build -t juokaz/pyhp .
+
+or pull from docker hup
 
     docker pull juokaz/pyhp
+
+### Building the interpreter
+
     make build
 
 Or to build without JIT support
