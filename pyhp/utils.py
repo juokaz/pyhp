@@ -2,6 +2,9 @@ from rpython.rlib import jit
 from rpython.rlib.rfloat import formatd
 from rpython.rlib.unroll import unrolling_iterable
 
+from rpython.rlib.objectmodel import enforceargs
+from rpython.rlib import runicode
+
 FORMAT_CHARS = unrolling_iterable([
     "s", "d", "f"
 ])
@@ -62,9 +65,6 @@ class StringFormatter(object):
     def fmt_f(self, w_item, width):
         num = w_item.to_number()
         return self._fmt_num(unicode(formatd(num, "f", width)), width)
-
-from rpython.rlib.objectmodel import enforceargs
-from rpython.rlib import runicode
 
 
 @enforceargs(unicode)
