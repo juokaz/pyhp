@@ -4,9 +4,7 @@ PyHP is an (incomplete!) implementation of the PHP language using the
 [RPython](http://pypy.org) technology. It uses JIT transformer provided by the
 RPython library to achieve good performance.
 
-PyHP stands for Python + PHP, as RRpython is a subset of the Python language.
-
-Highly unstable and work in progress.
+PyHP stands for Python + PHP.
 
 [HippyVM](https://github.com/hippyvm/hippyvm) is too built on top of RPython,
 and is a complete, working implementation.
@@ -21,6 +19,8 @@ and is a complete, working implementation.
 - global constants using `define()`
 - (incomplete) standard library functions
 - unicode support for function/variable names and string values. PHP 6 compatible!
+
+![PHP 7 vs PyHP](/docs/php7-vs-pyhp.png?raw=true "Bench")
 
 ## Project structure
 
