@@ -49,7 +49,7 @@ def run(filename, source):
 
 
 def main(argv):
-    filename = None
+    filename = ''
     print_bytecode = False
     print_ast = False
     server = False
@@ -83,7 +83,7 @@ def main(argv):
 
     source = ''
     if server is False:
-        if filename is None:
+        if filename == '':
             print 'Required parameter filename missing'
             return 1
 

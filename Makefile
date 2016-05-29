@@ -20,7 +20,7 @@
 # This runs the dockerized build commands as if they were in the current
 # directory, with write access to the current directory.
 
-RPYTHON = /tmp/pypy-2.6.0-src
+RPYTHON = /tmp/pypy-5.1.1-src
 RPYTHON_BIN = $(RPYTHON)/rpython/bin/rpython
 
 DOCKER_IMAGE = juokaz/pyhp
@@ -82,5 +82,6 @@ flake8:
 	$(DOCKER) flake8 pyhp tests
 
 bench: ./build/pyhp
+	$(DOCKER) php -v
 	$(DOCKER) php bench.php
 	$(DOCKER) ./build/pyhp bench.php

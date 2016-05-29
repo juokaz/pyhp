@@ -33,7 +33,8 @@ def printable_loc(pc, bc):
 driver = jit.JitDriver(reds=['frame', 'self'],
                        greens=['pc', 'bytecode'],
                        virtualizables=['frame'],
-                       get_printable_location=printable_loc)
+                       get_printable_location=printable_loc,
+                       is_recursive=True)
 
 
 class Interpreter(object):
