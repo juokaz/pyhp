@@ -82,4 +82,5 @@ flake8:
 	$(DOCKER) flake8 pyhp tests
 
 bench: ./build/pyhp
+	$(DOCKER) php bench.php
 	$(DOCKER) ./build/pyhp bench.php
